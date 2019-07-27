@@ -54,6 +54,13 @@ export class OOXMLViewer {
         }
     }
 
+    /**
+     * Clears the OOXML viewer
+     */
+    clear() {
+        this.resetOOXMLViewer();
+    }
+
     private resetOOXMLViewer() {
         this.zip = new JSZip();
         this.treeDataProvider.rootFileNode = new FileNode();

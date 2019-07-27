@@ -20,6 +20,11 @@
 				"command": "ooxmlViewer.viewContents",
 				"title": "View Contents",
 				"when": "resourceLangId == ooxml"
+			},
+			{
+				"command": "ooxmlViewer.clear",
+				"title": "Clear",
+				"when": "view == ooxmlViewer"
 			}
 		],
 		"languages": [
@@ -38,6 +43,13 @@
 					"command": "ooxmlViewer.viewContents",
 					"group": "navigation",
 					"when": "resourceLangId == ooxml"
+				}
+			],
+			"view/title": [
+				{
+					"command": "ooxmlViewer.clear",
+					"group": "navigation",
+					"when": "view == ooxmlViewer"
 				}
 			]
 		},
