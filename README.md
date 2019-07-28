@@ -1,6 +1,6 @@
 # OOXML Viewer VSCode Extension
 
-![OOXML Viewer](images/overview.gif)
+![OOXML Viewer](https://raw.githubusercontent.com/yuenm18/ooxml-viewer-vscode/master/images/overview.gif)
 
 ## Features
 
