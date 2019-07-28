@@ -1,7 +1,7 @@
 {
 	"name": "ooxml-viewer",
-	"displayName": "ooxml-viewer",
-	"description": "Views contents of OOXML files",
+	"displayName": "OOXML Viewer",
+	"description": "Displays the contents of OOXML files",
 	"version": "0.0.1",
 	"engines": {
 		"vscode": "^1.36.0"
