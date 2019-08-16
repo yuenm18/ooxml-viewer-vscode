@@ -1,5 +1,7 @@
 # OOXML Viewer VSCode Extension
 
+[![Visual Studio Marketplace](http://vsmarketplacebadge.apphb.com/version/yuenm18.ooxml-viewer.svg)](https://marketplace.visualstudio.com/items?itemName=yuenm18.ooxml-viewer)
+
 ![OOXML Viewer](https://raw.githubusercontent.com/yuenm18/ooxml-viewer-vscode/master/images/overview.gif)
 
 ## Features
