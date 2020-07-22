@@ -2,7 +2,7 @@ trigger:
   branches:
     include:
     - master
-git  tags:
+  tags:
     include:
     - v*
 
