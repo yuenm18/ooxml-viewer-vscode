@@ -1,8 +1,8 @@
-import * as fs from 'fs';
-import * as JSZip from 'jszip';
-import * as format from 'xml-formatter';
+import fs from 'fs';
+import JSZip from 'jszip';
+import format from 'xml-formatter';
 import { OOXMLTreeDataProvider, FileNode } from './ooxml-tree-view-provider';
-import * as vscode from 'vscode';
+import vscode from 'vscode';
 
 /**
  * The OOXML Viewer
@@ -41,7 +41,7 @@ export class OOXMLViewer {
     async viewFile(fileNode: FileNode) {
         try {
             let file = this.zip.file(fileNode.fullPath);
-            let text = await file.async("text");
+            let text = await file?.async('text') ?? '';
             let formattedXml = format(text);
             let xmlDoc = await vscode.workspace.openTextDocument({
                 content: formattedXml || text

@@ -1,10 +1,10 @@
-import * as vscode from 'vscode';
+import vscode from 'vscode';
 
 /**
  * OOXML tree data provider
  */
 export class OOXMLTreeDataProvider implements vscode.TreeDataProvider<FileNode> {
-    private _onDidChangeTreeData: vscode.EventEmitter<FileNode> = new vscode.EventEmitter<FileNode>();
+    private _onDidChangeTreeData: vscode.EventEmitter<FileNode | undefined | null> = new vscode.EventEmitter<FileNode | undefined | null>();
 
     /**
      * An optional event to signal that an element or root has changed.
@@ -20,7 +20,7 @@ export class OOXMLTreeDataProvider implements vscode.TreeDataProvider<FileNode> 
     }
 
     refresh() {
-        this._onDidChangeTreeData.fire();
+        this._onDidChangeTreeData.fire(undefined);
     }
 
     /**
