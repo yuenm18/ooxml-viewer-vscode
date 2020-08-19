@@ -1,8 +1,13 @@
 import fs from 'fs';
-import JSZip from 'jszip';
+import { join, parse, dirname } from 'path';
+import JSZip, { JSZipObject } from 'jszip';
 import format from 'xml-formatter';
 import { OOXMLTreeDataProvider, FileNode } from './ooxml-tree-view-provider';
-import vscode from 'vscode';
+import vscode, { Uri, TextDocument } from 'vscode';
+import mkdirp from 'mkdirp';
+import { promisify } from 'util';
+import { exec } from 'child_process';
+const execPromise = promisify(exec);
 
 /**
  * The OOXML Viewer
@@ -27,7 +32,7 @@ export class OOXMLViewer {
             let data = await fs.promises.readFile(file.fsPath);
             await this.zip.loadAsync(data);
             this.populateOOXMLViewer(this.zip.files);
-        } catch(e) {
+        } catch (e) {
             console.error(e);
             vscode.window.showErrorMessage(`Could not load ${file.fsPath}`, e);
         }
@@ -40,15 +45,25 @@ export class OOXMLViewer {
      */
     async viewFile(fileNode: FileNode) {
         try {
-            let file = this.zip.file(fileNode.fullPath);
-            let text = await file?.async('text') ?? '';
-            let formattedXml = format(text);
-            let xmlDoc = await vscode.workspace.openTextDocument({
-                content: formattedXml || text
-            });
-    
+            const file: JSZipObject | null = this.zip.file(fileNode.fullPath);
+            const text: string = await file?.async('text') ?? '';
+            const formattedXml: string = format(text);
+            const root: string = vscode.workspace.rootPath ?? parse(process.cwd()).root;
+            const folderPath = join(root, '.ooxml-temp-file-folder-78kIPsmTq5TK', dirname(fileNode.fullPath));
+            const filePath: string = join(folderPath, fileNode.fileName);
+            const created: string | void = await mkdirp(folderPath);
+            if (process.platform.startsWith('win')) {
+                const { stdout, stderr } = await execPromise('attrib +h ' + join(root, '.ooxml-temp-file-folder-78kIPsmTq5TK'));
+                if (stderr) {
+                    throw new Error(stderr);
+                }
+            }
+
+            await fs.promises.writeFile(filePath, formattedXml, 'utf8');
+            const xmlDoc: TextDocument = await vscode.workspace.openTextDocument(Uri.parse("file:///" + filePath));
+
             vscode.window.showTextDocument(xmlDoc);
-        } catch(e) {
+        } catch (e) {
             console.error(e);
             vscode.window.showErrorMessage(`Could not load ${fileNode.fullPath}`);
         }
@@ -67,7 +82,7 @@ export class OOXMLViewer {
         this.treeDataProvider.refresh();
     }
 
-    private populateOOXMLViewer(files: {[key: string]: JSZip.JSZipObject}) {
+    private populateOOXMLViewer(files: { [key: string]: JSZip.JSZipObject }) {
         for (let fileWithPath of Object.keys(files)) {
             // ignore folder files
             if (files[fileWithPath].dir) {
@@ -93,7 +108,7 @@ export class OOXMLViewer {
 
             currentFileNode.fullPath = fileWithPath;
         }
-        
+
         this.treeDataProvider.refresh();
     }
 }
