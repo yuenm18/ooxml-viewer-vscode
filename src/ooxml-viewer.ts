@@ -1,8 +1,10 @@
 import fs from 'fs';
-import JSZip from 'jszip';
+import {join, parse} from 'path';
+import JSZip, { JSZipObject } from 'jszip';
 import format from 'xml-formatter';
 import { OOXMLTreeDataProvider, FileNode } from './ooxml-tree-view-provider';
-import vscode from 'vscode';
+import vscode, { Uri, TextDocument } from 'vscode';
+import mkdirp from 'mkdirp';
 
 /**
  * The OOXML Viewer
@@ -40,12 +42,18 @@ export class OOXMLViewer {
      */
     async viewFile(fileNode: FileNode) {
         try {
-            let file = this.zip.file(fileNode.fullPath);
-            let text = await file?.async('text') ?? '';
-            let formattedXml = format(text);
-            let xmlDoc = await vscode.workspace.openTextDocument({
-                content: formattedXml || text
-            });
+            const file: JSZipObject | null = this.zip.file(fileNode.fullPath);
+            const text: string = await file?.async('text') ?? '';
+            const formattedXml: string = format(text);
+            const root: string = vscode.workspace.rootPath ?? parse(process.cwd()).root;
+            const folderPath = join(root, '.ooxml-temp-file-folder-78kIPsmTq5TK');
+            const filePath: string = join(folderPath, 'test-file.xml');
+            const created: string | void = await mkdirp(folderPath);
+            await fs.promises.writeFile(filePath, formattedXml, 'utf8');
+            // let xmlDoc = await vscode.workspace.openTextDocument({
+            //     content: formattedXml || text
+            // });
+            const xmlDoc: TextDocument = await vscode.workspace.openTextDocument(Uri.parse("file:///" + filePath));
     
             vscode.window.showTextDocument(xmlDoc);
         } catch(e) {
