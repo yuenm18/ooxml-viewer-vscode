@@ -1,4 +1,4 @@
-import fs from 'fs';
+import { readFile, writeFile } from 'fs';
 import { join, parse, dirname } from 'path';
 import JSZip, { JSZipObject } from 'jszip';
 import format from 'xml-formatter';
@@ -8,6 +8,8 @@ import mkdirp from 'mkdirp';
 import { promisify } from 'util';
 import { exec } from 'child_process';
 const execPromise = promisify(exec);
+const readFilePromise = promisify(readFile);
+const writeFilePromise = promisify(writeFile);
 
 /**
  * The OOXML Viewer
@@ -29,7 +31,7 @@ export class OOXMLViewer {
     async viewContents(file: vscode.Uri) {
         try {
             this.resetOOXMLViewer();
-            let data = await fs.promises.readFile(file.fsPath);
+            let data = await readFilePromise(file.fsPath);
             await this.zip.loadAsync(data);
             this.populateOOXMLViewer(this.zip.files);
         } catch (e) {
@@ -52,6 +54,7 @@ export class OOXMLViewer {
             const folderPath = join(root, '.ooxml-temp-file-folder-78kIPsmTq5TK', dirname(fileNode.fullPath));
             const filePath: string = join(folderPath, fileNode.fileName);
             const created: string | void = await mkdirp(folderPath);
+            // On Windows hide the folder
             if (process.platform.startsWith('win')) {
                 const { stdout, stderr } = await execPromise('attrib +h ' + join(root, '.ooxml-temp-file-folder-78kIPsmTq5TK'));
                 if (stderr) {
@@ -59,7 +62,7 @@ export class OOXMLViewer {
                 }
             }
 
-            await fs.promises.writeFile(filePath, formattedXml, 'utf8');
+            await writeFilePromise(filePath, formattedXml, 'utf8');
             const xmlDoc: TextDocument = await vscode.workspace.openTextDocument(Uri.parse("file:///" + filePath));
 
             vscode.window.showTextDocument(xmlDoc);
