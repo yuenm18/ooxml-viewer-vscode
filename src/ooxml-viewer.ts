@@ -1,4 +1,4 @@
-import { readFile, writeFile, watch } from 'fs';
+import { readFile, writeFile/**, watch */ } from 'fs';
 import { join, parse, dirname } from 'path';
 import JSZip, { JSZipObject } from 'jszip';
 import format from 'xml-formatter';
@@ -28,13 +28,13 @@ export class OOXMLViewer {
 
   /**
    * Loads the selected OOXML file into the tree view
-   * 
+   *
    * @param file The OOXML file
    */
-  async viewContents(file: vscode.Uri) {
+  async viewContents(file: vscode.Uri): Promise<void> {
     try {
       this.resetOOXMLViewer();
-      let data = await readFilePromise(file.fsPath);
+      const data = await readFilePromise(file.fsPath);
       await this.zip.loadAsync(data);
       this.populateOOXMLViewer(this.zip.files);
       // TODO: Use this watch to update the ooxml file when the file is changed from outside vscode. i.e. in PowerPoint
@@ -53,20 +53,20 @@ export class OOXMLViewer {
 
   /**
    * Displays the selected file
-   * 
+   *
    * @param fileNode The selected file node
    */
-  async viewFile(fileNode: FileNode) {
+  async viewFile(fileNode: FileNode): Promise<void> {
     try {
       const file: JSZipObject | null = this.zip.file(fileNode.fullPath);
       const text: string = await file?.async('text') ?? '';
       const formattedXml: string = format(text);
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fileNode.fullPath));
       const filePath: string = join(folderPath, fileNode.fileName);
-      const created: string | void = await mkdirp(folderPath);
+      await mkdirp(folderPath);
       // On Windows hide the folder
       if (process.platform.startsWith('win')) {
-        const { stdout, stderr } = await execPromise('attrib +h ' + OOXMLViewer.fileCachePath);
+        const { stderr } = await execPromise('attrib +h ' + OOXMLViewer.fileCachePath);
         if (stderr) {
           throw new Error(stderr);
         }
@@ -84,7 +84,7 @@ export class OOXMLViewer {
   /**
    * Clears the OOXML viewer
    */
-  clear() {
+  clear(): void {
     this.resetOOXMLViewer();
   }
   private static closeEditors(): void {
@@ -117,7 +117,7 @@ export class OOXMLViewer {
   }
 
   private populateOOXMLViewer(files: { [key: string]: JSZip.JSZipObject; }) {
-    for (let fileWithPath of Object.keys(files)) {
+    for (const fileWithPath of Object.keys(files)) {
       // ignore folder files
       if (files[fileWithPath].dir) {
         continue;
@@ -125,14 +125,14 @@ export class OOXMLViewer {
 
       // Build nodes for each file
       let currentFileNode = this.treeDataProvider.rootFileNode;
-      for (let fileOrFolderName of fileWithPath.split('/')) {
+      for (const fileOrFolderName of fileWithPath.split('/')) {
 
         // Create node if it does not exist
-        let existingFileNode = currentFileNode.children.find(c => c.description === fileOrFolderName);
+        const existingFileNode = currentFileNode.children.find(c => c.description === fileOrFolderName);
         if (existingFileNode) {
           currentFileNode = existingFileNode;
         } else {
-          let newFileNode = new FileNode();
+          const newFileNode = new FileNode();
           newFileNode.fileName = fileOrFolderName;
           newFileNode.parent = currentFileNode;
           currentFileNode.children.push(newFileNode);

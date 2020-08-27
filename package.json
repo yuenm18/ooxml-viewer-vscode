@@ -1,112 +1,116 @@
 {
-	"name": "ooxml-viewer",
-	"displayName": "OOXML Viewer",
-	"description": "Displays the contents of OOXML files",
-	"version": "0.0.1",
-	"license": "MIT",
-	"publisher": "yuenm18",
-	"homepage": "https://github.com/yuenm18/ooxml-viewer-vscode/blob/master/README.md",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/yuenm18/ooxml-viewer-vscode.git"
-	},
-	"bugs": {
-		"url": "https://github.com/yuenm18/ooxml-viewer-vscode/issues"
-	},
-	"icon": "images/icon.png",
-	"keywords": [
-		"ooxml"
-	],
-	"engines": {
-		"vscode": "^1.47.0"
-	},
-	"categories": [
-		"Other"
-	],
-	"activationEvents": [
-		"onCommand:ooxmlViewer.viewContents",
-		"onView:ooxmlViewer"
-	],
-	"main": "./dist/extension.js",
-	"contributes": {
-		"commands": [
-			{
-				"command": "ooxmlViewer.viewContents",
-				"title": "View Contents",
-				"when": "resourceLangId == ooxml"
-			},
-			{
-				"command": "ooxmlViewer.clear",
-				"title": "Clear",
-				"when": "view == ooxmlViewer"
-			}
-		],
-		"languages": [
-			{
-				"id": "ooxml",
-				"extensions": [
-					".docx",
-					".xlsx",
-					".pptx"
-				]
-			}
-		],
-		"menus": {
-			"explorer/context": [
-				{
-					"command": "ooxmlViewer.viewContents",
-					"group": "navigation",
-					"when": "resourceLangId == ooxml"
-				}
-			],
-			"view/title": [
-				{
-					"command": "ooxmlViewer.clear",
-					"group": "navigation",
-					"when": "view == ooxmlViewer"
-				}
-			]
-		},
-		"views": {
-			"explorer": [
-				{
-					"id": "ooxmlViewer",
-					"name": "OOXML Viewer"
-				}
-			]
-		}
-	},
-	"scripts": {
-		"vscode:prepublish": "webpack --mode production",
-		"compile": "webpack --mode development",
-		"watch": "webpack --mode development --watch",
-		"test-watch": "tsc -watch -p ./",
-		"pretest": "tsc -p ./",
-		"test": "node ./out/test/runTest.js"
-	},
-	"devDependencies": {
-		"@types/glob": "^7.1.3",
-		"@types/jszip": "^3.4.1",
-		"@types/mkdirp": "^1.0.1",
-		"@types/mocha": "^8.0.0",
-		"@types/node": "^14.0.24",
-		"@types/rimraf": "^3.0.0",
-		"@types/vscode": "^1.47.0",
-		"@types/xml-formatter": "^2.1.1",
-		"glob": "^7.1.6",
-		"mocha": "^8.1.1",
-		"ts-loader": "^8.0.1",
-		"tslint": "^6.1.2",
-		"typescript": "^3.9.7",
-		"vsce": "^1.77.0",
-		"vscode-test": "^1.4.0",
-		"webpack": "^4.43.0",
-		"webpack-cli": "^3.3.12"
-	},
-	"dependencies": {
-		"jszip": "^3.5.0",
-		"mkdirp": "^1.0.4",
-		"rimraf": "^3.0.2",
-		"xml-formatter": "^2.1.2"
-	}
+  "name": "ooxml-viewer",
+  "displayName": "OOXML Viewer",
+  "description": "Displays the contents of OOXML files",
+  "version": "0.0.1",
+  "license": "MIT",
+  "publisher": "yuenm18",
+  "homepage": "https://github.com/yuenm18/ooxml-viewer-vscode/blob/master/README.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yuenm18/ooxml-viewer-vscode.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yuenm18/ooxml-viewer-vscode/issues"
+  },
+  "icon": "images/icon.png",
+  "keywords": [
+    "ooxml"
+  ],
+  "engines": {
+    "vscode": "^1.47.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:ooxmlViewer.viewContents",
+    "onView:ooxmlViewer"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "ooxmlViewer.viewContents",
+        "title": "View Contents",
+        "when": "resourceLangId == ooxml"
+      },
+      {
+        "command": "ooxmlViewer.clear",
+        "title": "Clear",
+        "when": "view == ooxmlViewer"
+      }
+    ],
+    "languages": [
+      {
+        "id": "ooxml",
+        "extensions": [
+          ".docx",
+          ".xlsx",
+          ".pptx"
+        ]
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "ooxmlViewer.viewContents",
+          "group": "navigation",
+          "when": "resourceLangId == ooxml"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "ooxmlViewer.clear",
+          "group": "navigation",
+          "when": "view == ooxmlViewer"
+        }
+      ]
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "ooxmlViewer",
+          "name": "OOXML Viewer"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "webpack --mode production",
+    "compile": "webpack --mode development",
+    "watch": "webpack --mode development --watch",
+    "test-watch": "tsc -watch -p ./",
+    "pretest": "tsc -p ./",
+    "test": "node ./out/test/runTest.js",
+    "lint": "eslint -c .eslintrc.js --ext .ts ./src"
+  },
+  "devDependencies": {
+    "@types/glob": "^7.1.3",
+    "@types/jszip": "^3.4.1",
+    "@types/mkdirp": "^1.0.1",
+    "@types/mocha": "^8.0.0",
+    "@types/node": "^14.0.24",
+    "@types/rimraf": "^3.0.0",
+    "@types/vscode": "^1.47.0",
+    "@types/xml-formatter": "^2.1.1",
+    "@typescript-eslint/eslint-plugin": "^3.10.1",
+    "@typescript-eslint/parser": "^3.10.1",
+    "eslint": "^7.7.0",
+    "glob": "^7.1.6",
+    "mocha": "^8.1.1",
+    "prettier": "^2.1.1",
+    "ts-loader": "^8.0.1",
+    "typescript": "^3.9.7",
+    "vsce": "^1.77.0",
+    "vscode-test": "^1.4.0",
+    "webpack": "^4.43.0",
+    "webpack-cli": "^3.3.12"
+  },
+  "dependencies": {
+    "jszip": "^3.5.0",
+    "mkdirp": "^1.0.4",
+    "rimraf": "^3.0.2",
+    "xml-formatter": "^2.1.2"
+  }
 }

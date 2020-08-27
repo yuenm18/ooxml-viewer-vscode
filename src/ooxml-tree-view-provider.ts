@@ -1,4 +1,4 @@
-import vscode from 'vscode';
+import vscode, { TreeItemCollapsibleState, Command, ThemeIcon } from 'vscode';
 
 /**
  * OOXML tree data provider
@@ -19,7 +19,7 @@ export class OOXMLTreeDataProvider implements vscode.TreeDataProvider<FileNode> 
     this.rootFileNode = new FileNode();
   }
 
-  refresh() {
+  refresh(): void {
     this._onDidChangeTreeData.fire(undefined);
   }
 
@@ -61,15 +61,15 @@ export class OOXMLTreeDataProvider implements vscode.TreeDataProvider<FileNode> 
  * File tree node
  */
 export class FileNode implements vscode.TreeItem {
-  get description() {
+  get description(): string {
     return this.fileName;
   }
 
-  get collapsibleState() {
+  get collapsibleState(): TreeItemCollapsibleState | undefined {
     return this.children.length ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None;
   }
 
-  get command() {
+  get command(): Command | undefined {
     if (this.fullPath) {
       return {
         command: 'ooxmlViewer.viewFile',
@@ -78,13 +78,14 @@ export class FileNode implements vscode.TreeItem {
         arguments: [this]
       };
     }
+    return;
   }
 
-  get iconPath() {
+  get iconPath(): ThemeIcon {
     return this.children.length ? vscode.ThemeIcon.Folder : vscode.ThemeIcon.File;
   }
 
-  get tooltip() {
+  get tooltip(): string {
     return this.fullPath;
   }
 
@@ -96,12 +97,12 @@ export class FileNode implements vscode.TreeItem {
   /**
    * Full path of the file
    */
-  fullPath: string = '';
+  fullPath = '';
 
   /**
    * Name of the file
    */
-  fileName: string = '';
+  fileName = '';
 
   /**
    * Parent file node
