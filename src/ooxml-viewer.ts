@@ -11,7 +11,7 @@ import rimraf from 'rimraf';
 const execPromise = promisify(exec);
 const readFilePromise = promisify(readFile);
 const writeFilePromise = promisify(writeFile);
-const rmrafPromise = promisify(rimraf);
+const rimrafPromise = promisify(rimraf);
 
 /**
  * The OOXML Viewer
@@ -19,12 +19,11 @@ const rmrafPromise = promisify(rimraf);
 export class OOXMLViewer {
     treeDataProvider: OOXMLTreeDataProvider;
     zip: JSZip;
-    fileCachePath: string;
+    static fileCachePath: string = join(vscode.workspace.rootPath ?? parse(process.cwd()).root, '.ooxml-temp-file-folder-78kIPsmTq5TK');
 
     constructor() {
         this.treeDataProvider = new OOXMLTreeDataProvider();
         this.zip = new JSZip();
-        this.fileCachePath = join(vscode.workspace.rootPath ?? parse(process.cwd()).root, '.ooxml-temp-file-folder-78kIPsmTq5TK');
     }
 
     /**
@@ -62,13 +61,12 @@ export class OOXMLViewer {
             const file: JSZipObject | null = this.zip.file(fileNode.fullPath);
             const text: string = await file?.async('text') ?? '';
             const formattedXml: string = format(text);
-            // const root: string = vscode.workspace.rootPath ?? parse(process.cwd()).root;
-            const folderPath = join(this.fileCachePath, dirname(fileNode.fullPath));
+            const folderPath = join(OOXMLViewer.fileCachePath, dirname(fileNode.fullPath));
             const filePath: string = join(folderPath, fileNode.fileName);
             const created: string | void = await mkdirp(folderPath);
             // On Windows hide the folder
             if (process.platform.startsWith('win')) {
-                const { stdout, stderr } = await execPromise('attrib +h ' + this.fileCachePath);
+                const { stdout, stderr } = await execPromise('attrib +h ' + OOXMLViewer.fileCachePath);
                 if (stderr) {
                     throw new Error(stderr);
                 }
@@ -89,34 +87,29 @@ export class OOXMLViewer {
     clear() {
         this.resetOOXMLViewer();
     }
+    private static closeDoc(tempDirectoryName: string): void {
+        const tds = vscode.workspace.textDocuments.filter(t => t.fileName.includes(tempDirectoryName));
+        if (tds.length) {
+            const td: TextDocument | undefined = tds.pop();
+            if (td) {
+                vscode.window.showTextDocument(td, { preview: true, preserveFocus: false })
+                    .then(() => {
+                        vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+                    })
+                    .then(() => {
+                        OOXMLViewer.closeDoc(tempDirectoryName);
+                    });
+            }
+        }
+    }
 
     private async resetOOXMLViewer() {
-        const closeDoc = (tds: TextDocument[], tempDirectoryName: string): void => {
-            if (tds.length) {
-                const td: TextDocument | undefined = tds.pop();
-                if (td) {
-                    vscode.window.showTextDocument(td, { preview: true, preserveFocus: false })
-                        .then(d => {
-                            if (td.fileName.includes(tempDirectoryName)) {
-                                return vscode.commands.executeCommand('workbench.action.closeActiveEditor');
-                            } else {
-                                return;
-                            }
-                        })
-                        .then(() => {
-                            closeDoc(tds, tempDirectoryName);
-                        });
-                }
-            }
-        };
-
         try {
             this.zip = new JSZip();
             this.treeDataProvider.rootFileNode = new FileNode();
             this.treeDataProvider.refresh();
-            await rmrafPromise(this.fileCachePath);
-            const textDocuments: TextDocument[] = [...vscode.workspace.textDocuments];
-            closeDoc(textDocuments, this.fileCachePath);
+            await rimrafPromise(OOXMLViewer.fileCachePath);
+            OOXMLViewer.closeDoc(OOXMLViewer.fileCachePath);
         } catch (err) {
             console.error(err);
             vscode.window.showErrorMessage('Could not remove ooxml file viewer cache');

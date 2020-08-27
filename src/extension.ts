@@ -1,8 +1,12 @@
 import * as vscode from 'vscode';
 import { FileNode } from './ooxml-tree-view-provider';
 import { OOXMLViewer } from './ooxml-viewer';
+import rimraf from 'rimraf';
+import { promisify } from 'util';
 
-export function activate(context: vscode.ExtensionContext) {
+const rimrafPromise = promisify(rimraf);
+
+export function activate(context: vscode.ExtensionContext): void {
 	const ooxmlViewer = new OOXMLViewer();
 	context.subscriptions.push(vscode.window.registerTreeDataProvider('ooxmlViewer', ooxmlViewer.treeDataProvider));
 	context.subscriptions.push(vscode.commands.registerCommand('ooxmlViewer.viewContents', async (file: vscode.Uri) => ooxmlViewer.viewContents(file)));
@@ -10,4 +14,6 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('ooxmlViewer.clear', () => ooxmlViewer.clear()));
 }
 
-export function deactivate() {}
+export async function deactivate(): Promise<void> {
+	return rimrafPromise(OOXMLViewer.fileCachePath);
+}
