@@ -87,8 +87,8 @@ export class OOXMLViewer {
   clear() {
     this.resetOOXMLViewer();
   }
-  private static closeDoc(tempDirectoryName: string): void {
-    const tds = vscode.workspace.textDocuments.filter(t => t.fileName.includes(tempDirectoryName));
+  private static closeDoc(): void {
+    const tds = vscode.workspace.textDocuments.filter(t => t.fileName.includes(OOXMLViewer.fileCachePath));
     if (tds.length) {
       const td: TextDocument | undefined = tds.pop();
       if (td) {
@@ -97,7 +97,7 @@ export class OOXMLViewer {
             vscode.commands.executeCommand('workbench.action.closeActiveEditor');
           })
           .then(() => {
-            OOXMLViewer.closeDoc(tempDirectoryName);
+            OOXMLViewer.closeDoc();
           });
       }
     }
@@ -109,7 +109,7 @@ export class OOXMLViewer {
       this.treeDataProvider.rootFileNode = new FileNode();
       this.treeDataProvider.refresh();
       await rimrafPromise(OOXMLViewer.fileCachePath);
-      OOXMLViewer.closeDoc(OOXMLViewer.fileCachePath);
+      OOXMLViewer.closeDoc();
     } catch (err) {
       console.error(err);
       vscode.window.showErrorMessage('Could not remove ooxml file viewer cache');
