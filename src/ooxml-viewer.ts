@@ -1,13 +1,13 @@
-import { readFile, writeFile/**, watch */ } from 'fs';
-import { join, parse, dirname } from 'path';
-import JSZip, { JSZipObject } from 'jszip';
-import format from 'xml-formatter';
-import { OOXMLTreeDataProvider, FileNode } from './ooxml-tree-view-provider';
-import vscode, { Uri, TextDocument } from 'vscode';
-import mkdirp from 'mkdirp';
-import { promisify } from 'util';
 import { exec } from 'child_process';
+import { existsSync, readFile, writeFile } from 'fs';
+import JSZip, { JSZipObject } from 'jszip';
+import mkdirp from 'mkdirp';
+import { dirname, join, parse } from 'path';
 import rimraf from 'rimraf';
+import { promisify } from 'util';
+import vscode, { TextDocument, Uri } from 'vscode';
+import format from 'xml-formatter';
+import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
 const execPromise = promisify(exec);
 const readFilePromise = promisify(readFile);
 const writeFilePromise = promisify(writeFile);
@@ -19,7 +19,12 @@ const rimrafPromise = promisify(rimraf);
 export class OOXMLViewer {
   treeDataProvider: OOXMLTreeDataProvider;
   zip: JSZip;
-  static fileCachePath: string = join(vscode.workspace.rootPath ?? parse(process.cwd()).root, '.ooxml-temp-file-folder-78kIPsmTq5TK');
+  static p = parse(process.cwd());
+  static fileCachePath: string = join(vscode.workspace.rootPath == undefined ? OOXMLViewer.p.root : vscode.workspace.rootPath, '.ooxml-temp-file-folder-78kIPsmTq5TK');
+  static existsSync = existsSync;
+  static mkdirp = mkdirp;
+  static execPromise = execPromise;
+  static writeFilePromise = writeFilePromise;
 
   constructor() {
     this.treeDataProvider = new OOXMLTreeDataProvider();
@@ -63,16 +68,16 @@ export class OOXMLViewer {
       const formattedXml: string = format(text);
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fileNode.fullPath));
       const filePath: string = join(folderPath, fileNode.fileName);
-      await mkdirp(folderPath);
+      await OOXMLViewer.mkdirp(folderPath);
       // On Windows hide the folder
       if (process.platform.startsWith('win')) {
-        const { stderr } = await execPromise('attrib +h ' + OOXMLViewer.fileCachePath);
+        const { stderr } = await OOXMLViewer.execPromise('attrib +h ' + OOXMLViewer.fileCachePath);
         if (stderr) {
           throw new Error(stderr);
         }
       }
-      await writeFilePromise(filePath, formattedXml, 'utf8');
-      const xmlDoc: TextDocument = await vscode.workspace.openTextDocument(Uri.parse("file:///" + filePath));
+      await OOXMLViewer.writeFilePromise(filePath, formattedXml, 'utf8');
+      const xmlDoc: TextDocument = await vscode.workspace.openTextDocument(Uri.parse('file:///' + filePath));
 
       vscode.window.showTextDocument(xmlDoc);
     } catch (e) {
@@ -84,8 +89,8 @@ export class OOXMLViewer {
   /**
    * Clears the OOXML viewer
    */
-  clear(): void {
-    this.resetOOXMLViewer();
+  clear(): Promise<void> {
+    return this.resetOOXMLViewer();
   }
   private static closeEditors(tds: TextDocument[]): void {
     if (tds.length) {
@@ -107,8 +112,10 @@ export class OOXMLViewer {
       this.zip = new JSZip();
       this.treeDataProvider.rootFileNode = new FileNode();
       this.treeDataProvider.refresh();
-      await rimrafPromise(OOXMLViewer.fileCachePath);
-      OOXMLViewer.closeEditors(vscode.workspace.textDocuments.filter(t => t.fileName.includes(OOXMLViewer.fileCachePath)));
+      if (OOXMLViewer.existsSync(OOXMLViewer.fileCachePath)) {
+        await rimrafPromise(OOXMLViewer.fileCachePath);
+      }
+      OOXMLViewer.closeEditors(vscode.workspace.textDocuments.filter(t => t.fileName.toLowerCase().includes(OOXMLViewer.fileCachePath.toLowerCase())));
     } catch (err) {
       console.error(err);
       vscode.window.showErrorMessage('Could not remove ooxml file viewer cache');
