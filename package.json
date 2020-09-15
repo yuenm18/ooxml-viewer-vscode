@@ -47,7 +47,10 @@
         "extensions": [
           ".docx",
           ".xlsx",
-          ".pptx"
+          ".pptx",
+          ".odt",
+          ".ods",
+          ".odp"
         ]
       }
     ],
