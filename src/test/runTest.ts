@@ -1,6 +1,6 @@
 import * as path from 'path';
-
 import { runTests } from 'vscode-test';
+
 
 async function main() {
   try {
@@ -17,7 +17,7 @@ async function main() {
     await runTests({
       extensionDevelopmentPath,
       extensionTestsPath,
-      version: 'insiders'
+      version: 'insiders',
     });
   } catch (err) {
     console.error('Failed to run tests');

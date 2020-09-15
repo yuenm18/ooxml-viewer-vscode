@@ -1,4 +1,4 @@
-import vscode, { TreeItemCollapsibleState, Command, ThemeIcon } from 'vscode';
+import vscode, { Command, ThemeIcon, TreeItemCollapsibleState } from 'vscode';
 
 /**
  * OOXML tree data provider
@@ -75,7 +75,7 @@ export class FileNode implements vscode.TreeItem {
         command: 'ooxmlViewer.viewFile',
         title: 'View file',
         tooltip: 'View file tooltip',
-        arguments: [this]
+        arguments: [this],
       };
     }
     return;

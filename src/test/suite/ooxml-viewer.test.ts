@@ -35,9 +35,10 @@ suite('OOXMLViewer', function () {
       expect(command.includes('attrib +h')).to.be.true;
       expect(command.includes(OOXMLViewer.fileCachePath)).to.be.true;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return Promise.resolve({ stdout: '', stderr: '', }) as PromiseWithChild<any>;
+      return Promise.resolve({ stdout: '', stderr: '' }) as PromiseWithChild<any>;
     }));
     stubs.push(stub(vscode.workspace, 'openTextDocument').callsFake(function (options?: { language?: string | undefined; content?: string | undefined; } | undefined) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const opts: any = options as any;
       expect(opts?.path.includes(OOXMLViewer.fileCachePath));
       return Promise.resolve('foobar') as Thenable<vscode.TextDocument>;

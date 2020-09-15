@@ -7,7 +7,7 @@ module.exports = {
   rules: {
     quotes: [2, 'single', { avoidEscape: true }],
     'no-unused-vars': 'off',
-    '@typescript-eslint/no-unused-vars': ['error', { args: 'none' }],
+    '@typescript-eslint/no-unused-vars': ['warn', { args: 'none' }],
     'comma-dangle': [
       'error',
       {
@@ -16,6 +16,16 @@ module.exports = {
         imports: 'always-multiline',
         exports: 'always-multiline',
         functions: 'always-multiline',
+      },
+    ],
+    'max-len': [
+      'warn',
+      {
+        code: 140,
+        tabWidth: 2,
+        ignoreComments: true,
+        ignoreUrls: true,
+        // ignoreStrings: true,
       },
     ],
   },
