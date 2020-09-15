@@ -1,5 +1,5 @@
 import { exec } from 'child_process';
-import { existsSync, readFile, writeFile } from 'fs';
+import { existsSync, FSWatcher, readFile, stat, Stats, watch, writeFile } from 'fs';
 import JSZip, { JSZipObject } from 'jszip';
 import mkdirp from 'mkdirp';
 import { dirname, join, parse } from 'path';
@@ -12,6 +12,7 @@ const execPromise = promisify(exec);
 const readFilePromise = promisify(readFile);
 const writeFilePromise = promisify(writeFile);
 const rimrafPromise = promisify(rimraf);
+const statPromise = promisify(stat);
 
 /**
  * The OOXML Viewer
@@ -19,8 +20,10 @@ const rimrafPromise = promisify(rimraf);
 export class OOXMLViewer {
   treeDataProvider: OOXMLTreeDataProvider;
   zip: JSZip;
-  static p = parse(process.cwd());
-  static fileCachePath: string = join(vscode.workspace.rootPath == undefined ? OOXMLViewer.p.root : vscode.workspace.rootPath, '.ooxml-temp-file-folder-78kIPsmTq5TK');
+  static watchers: FSWatcher[] = [];
+  static cacheFolderName = '.ooxml-temp-file-folder-78kIPsmTq5TK';
+  static rootPath: string = vscode.workspace.rootPath == undefined ? parse(process.cwd()).root : vscode.workspace.rootPath;
+  static fileCachePath: string = join(OOXMLViewer.rootPath, OOXMLViewer.cacheFolderName);
   static existsSync = existsSync;
   static mkdirp = mkdirp;
   static execPromise = execPromise;
@@ -38,10 +41,15 @@ export class OOXMLViewer {
    */
   async viewContents(file: vscode.Uri): Promise<void> {
     try {
-      this.resetOOXMLViewer();
+      if (OOXMLViewer.watchers.length) {
+        OOXMLViewer.watchers.forEach(w => w.close());
+        OOXMLViewer.watchers = [];
+      }
+      await this.resetOOXMLViewer();
       const data = await readFilePromise(file.fsPath);
       await this.zip.loadAsync(data);
       this.populateOOXMLViewer(this.zip.files);
+      await OOXMLViewer.mkdirp(OOXMLViewer.fileCachePath);
       // TODO: Use this watch to update the ooxml file when the file is changed from outside vscode. i.e. in PowerPoint
       // watch(file.fsPath, { encoding: 'buffer' }, (eventType: string, filename: Buffer): void => {
       //     vscode.window.showWarningMessage('I am a warning', { modal: true }, ...['Save', 'Discard']);
@@ -50,6 +58,22 @@ export class OOXMLViewer {
       //         // Prints: <Buffer ...>
       //     }
       // });
+
+      OOXMLViewer.watchers.push(watch(OOXMLViewer.fileCachePath, { encoding: 'buffer', recursive: true },
+        async (eventType: string, fileName: Buffer): Promise<void> => {
+          const name: string | undefined = fileName == undefined ? undefined : fileName.toString('utf-8');
+          const filePath: string | undefined = name ? join(OOXMLViewer.fileCachePath, name) : undefined;
+          if (name && filePath && existsSync(filePath)) {
+            const stats: Stats = await statPromise(filePath);
+            if (!stats.isDirectory() && eventType === 'change') {
+              const data: Buffer = await readFilePromise(filePath);
+              const normalizedPath: string = name.replace(/\\/g, '/');
+              await this.zip.file(normalizedPath, data, { binary: true });
+              const zipFile = await this.zip.generateAsync({ type: 'nodebuffer' });
+              await writeFilePromise(file.fsPath, zipFile);
+            }
+          }
+        }));
     } catch (e) {
       console.error(e);
       vscode.window.showErrorMessage(`Could not load ${file.fsPath}`, e);

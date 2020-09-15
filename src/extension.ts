@@ -15,5 +15,8 @@ export function activate(context: vscode.ExtensionContext): void {
 }
 
 export async function deactivate(): Promise<void> {
+  if (OOXMLViewer.watchers.length) {
+    OOXMLViewer.watchers.forEach(w => w.close());
+  }
   return rimrafPromise(OOXMLViewer.fileCachePath);
 }
