@@ -5,7 +5,7 @@ import mkdirp from 'mkdirp';
 import { dirname, join, parse } from 'path';
 import rimraf from 'rimraf';
 import { promisify } from 'util';
-import vscode, { TextDocument, Uri } from 'vscode';
+import vscode, { Position, TextDocument, TextEditorEdit, Uri } from 'vscode';
 import format from 'xml-formatter';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
 const execPromise = promisify(exec);
@@ -61,22 +61,31 @@ export class OOXMLViewer {
 
       OOXMLViewer.watchers.push(watch(OOXMLViewer.fileCachePath, { encoding: 'buffer', recursive: true },
         async (eventType: string, fileName: Buffer): Promise<void> => {
-          const name: string | undefined = fileName == undefined ? undefined : fileName.toString('utf-8');
-          const filePath: string | undefined = name ? join(OOXMLViewer.fileCachePath, name) : undefined;
-          if (name && filePath && existsSync(filePath)) {
-            const stats: Stats = await statPromise(filePath);
-            if (!stats.isDirectory() && eventType === 'change') {
-              const data: Buffer = await readFilePromise(filePath);
-              const normalizedPath: string = name.replace(/\\/g, '/');
-              await this.zip.file(normalizedPath, data, { binary: true });
-              const zipFile = await this.zip.generateAsync({ type: 'nodebuffer' });
-              await writeFilePromise(file.fsPath, zipFile);
+          try {
+            const name: string | undefined = fileName == undefined ? undefined : fileName.toString('utf-8');
+            const filePath: string | undefined = name ? join(OOXMLViewer.fileCachePath, name) : undefined;
+            if (name && filePath && existsSync(filePath)) {
+              const stats: Stats = await statPromise(filePath);
+              if (!stats.isDirectory() && eventType === 'change') {
+                const data: Buffer = await readFilePromise(filePath);
+                const normalizedPath: string = name.replace(/\\/g, '/');
+                const zipFile = await this.zip.file(normalizedPath, data, { binary: true }).generateAsync({ type: 'nodebuffer' });
+                await writeFilePromise(file.fsPath, zipFile);
+              }
+            }
+          } catch (err) {
+            if (err && err.code === 'EBUSY') {
+              vscode.window.showWarningMessage(
+                `${file.fsPath} is open in another program.\nClose it before making any changes.`,
+                { modal: true },
+              );
+              OOXMLViewer.makeDirty();
             }
           }
         }));
-    } catch (e) {
-      console.error(e);
-      vscode.window.showErrorMessage(`Could not load ${file.fsPath}`, e);
+    } catch (err) {
+      console.error(err);
+      vscode.window.showErrorMessage(`Could not load ${file.fsPath}`, err);
     }
   }
 
@@ -174,5 +183,47 @@ export class OOXMLViewer {
     }
 
     this.treeDataProvider.refresh();
+  }
+
+  private static async makeDirty(): Promise<void> {
+    vscode.window.activeTextEditor?.edit(async (textEditorEdit: TextEditorEdit) => {
+      if (vscode.window.activeTextEditor?.selection) {
+        const { activeTextEditor } = vscode.window;
+
+        if (activeTextEditor && activeTextEditor.document.lineCount >= 2) {
+          const lineNumber = activeTextEditor.document.lineCount - 2;
+          const lastLineRange = new vscode.Range(
+            new Position(lineNumber, 0),
+            new Position(lineNumber + 1, 0));
+          const lastLineText = activeTextEditor.document.getText(lastLineRange);
+          textEditorEdit.replace(lastLineRange, lastLineText);
+          return;
+        }
+
+        // Try to replace the first character.
+        const range = new vscode.Range(new Position(0, 0), new Position(0, 1));
+        const text: string | undefined = activeTextEditor?.document.getText(range);
+        if (text) {
+          textEditorEdit.replace(range, text);
+          return;
+        }
+
+        // With an empty file, we first add a character and then remove it.
+        // This has to be done as two edits, which can cause the cursor to
+        // visibly move and then return, but we can at least combine them
+        // into a single undo step.
+        await activeTextEditor?.edit(
+          (innerEditBuilder: TextEditorEdit) => {
+            innerEditBuilder.replace(range, ' ');
+          },
+          { undoStopBefore: true, undoStopAfter: false });
+
+        await activeTextEditor?.edit(
+          (innerEditBuilder: TextEditorEdit) => {
+            innerEditBuilder.replace(range, '');
+          },
+          { undoStopBefore: false, undoStopAfter: true });
+      }
+    });
   }
 }
