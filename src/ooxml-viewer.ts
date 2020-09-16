@@ -2,11 +2,11 @@ import { exec } from 'child_process';
 import { existsSync, FSWatcher, readFile, stat, Stats, watch, writeFile } from 'fs';
 import JSZip, { JSZipObject } from 'jszip';
 import mkdirp from 'mkdirp';
-import { dirname, join, parse } from 'path';
+import { dirname, format, join, parse } from 'path';
 import rimraf from 'rimraf';
 import { promisify } from 'util';
 import vscode, { Position, TextDocument, TextEditorEdit, Uri } from 'vscode';
-import format from 'xml-formatter';
+import formatXml from 'xml-formatter';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
 const execPromise = promisify(exec);
 const readFilePromise = promisify(readFile);
@@ -21,6 +21,7 @@ export class OOXMLViewer {
   treeDataProvider: OOXMLTreeDataProvider;
   zip: JSZip;
   static watchers: FSWatcher[] = [];
+  static watchActions: { [key: string]: number; } = {};
   static cacheFolderName = '.ooxml-temp-file-folder-78kIPsmTq5TK';
   static rootPath: string = vscode.workspace.rootPath == undefined ? parse(process.cwd()).root : vscode.workspace.rootPath;
   static fileCachePath: string = join(OOXMLViewer.rootPath, OOXMLViewer.cacheFolderName);
@@ -60,17 +61,32 @@ export class OOXMLViewer {
       // });
 
       OOXMLViewer.watchers.push(watch(OOXMLViewer.fileCachePath, { encoding: 'buffer', recursive: true },
-        async (eventType: string, fileName: Buffer): Promise<void> => {
+        async (eventType: string, fileNameBuffer: Buffer): Promise<void> => {
+          const now: Date = new Date();
+          console.log('OOXMLViewer -> now', now);
           try {
-            const name: string | undefined = fileName == undefined ? undefined : fileName.toString('utf-8');
+            const name: string | undefined = fileNameBuffer == undefined ? undefined : fileNameBuffer.toString('utf-8');
+            const foo = parse(name || '');
+            console.log('OOXMLViewer -> foo', foo);
             const filePath: string | undefined = name ? join(OOXMLViewer.fileCachePath, name) : undefined;
-            if (name && filePath && existsSync(filePath)) {
+            let prevFilePath = '';
+            if (filePath) {
+              const { dir, base } = parse(filePath);
+              prevFilePath = format({ dir, base: `prev.${base}` });
+            }
+            if (name && filePath && existsSync(filePath) && prevFilePath && existsSync(prevFilePath)) {
               const stats: Stats = await statPromise(filePath);
-              if (!stats.isDirectory() && eventType === 'change') {
+              const time = stats.mtime.getTime();
+              if (!stats.isDirectory() && eventType === 'change' && OOXMLViewer.watchActions[name] !== time) {
+                OOXMLViewer.watchActions[name] = time;
                 const data: Buffer = await readFilePromise(filePath);
-                const normalizedPath: string = name.replace(/\\/g, '/');
-                const zipFile = await this.zip.file(normalizedPath, data, { binary: true }).generateAsync({ type: 'nodebuffer' });
-                await writeFilePromise(file.fsPath, zipFile);
+                const prevData: Buffer = await readFilePromise(prevFilePath);
+                if (!data.equals(prevData)) {
+                  const normalizedPath: string = name.replace(/\\/g, '/');
+                  const zipFile = await this.zip.file(normalizedPath, data, { binary: true }).generateAsync({ type: 'nodebuffer' });
+                  await writeFilePromise(file.fsPath, zipFile);
+                  await writeFilePromise(prevFilePath, data);
+                }
               }
             }
           } catch (err) {
@@ -98,9 +114,10 @@ export class OOXMLViewer {
     try {
       const file: JSZipObject | null = this.zip.file(fileNode.fullPath);
       const text: string = await file?.async('text') ?? '';
-      const formattedXml: string = format(text);
+      const formattedXml: string = formatXml(text);
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fileNode.fullPath));
       const filePath: string = join(folderPath, fileNode.fileName);
+      const prevFilePath: string = join(folderPath, `prev.${fileNode.fileName}`);
       await OOXMLViewer.mkdirp(folderPath);
       // On Windows hide the folder
       if (process.platform.startsWith('win')) {
@@ -110,6 +127,7 @@ export class OOXMLViewer {
         }
       }
       await OOXMLViewer.writeFilePromise(filePath, formattedXml, 'utf8');
+      await OOXMLViewer.writeFilePromise(prevFilePath, formattedXml, 'utf8');
       const xmlDoc: TextDocument = await vscode.workspace.openTextDocument(Uri.parse('file:///' + filePath));
 
       vscode.window.showTextDocument(xmlDoc);
