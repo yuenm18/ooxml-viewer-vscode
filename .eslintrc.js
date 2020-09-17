@@ -28,5 +28,6 @@ module.exports = {
         // ignoreStrings: true,
       },
     ],
+    'no-console': ['warn', { allow: ['warn', 'error'] }],
   },
 };
