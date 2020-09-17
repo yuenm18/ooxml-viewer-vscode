@@ -42,32 +42,24 @@ export class OOXMLViewer {
    */
   async viewContents(file: vscode.Uri): Promise<void> {
     try {
-      if (OOXMLViewer.watchers.length) {
-        OOXMLViewer.watchers.forEach(w => w.close());
-        OOXMLViewer.watchers = [];
-      }
       await this.resetOOXMLViewer();
       const data = await readFilePromise(file.fsPath);
       await this.zip.loadAsync(data);
       this.populateOOXMLViewer(this.zip.files);
       await OOXMLViewer.mkdirp(OOXMLViewer.fileCachePath);
-      // TODO: Use this watch to update the ooxml file when the file is changed from outside vscode. i.e. in PowerPoint
-      // watch(file.fsPath, { encoding: 'buffer' }, (eventType: string, filename: Buffer): void => {
-      //     vscode.window.showWarningMessage('I am a warning', { modal: true }, ...['Save', 'Discard']);
-      //     if (filename) {
-      //         console.log(filename);
-      //         // Prints: <Buffer ...>
-      //     }
-      // });
+      // TODO: Use this watch to update the ooxml file when the file is changed from outside vscode. e.g. in PowerPoint
+      OOXMLViewer.watchers.push(watch(file.fsPath, { encoding: 'buffer' }, (eventType: string, filename: Buffer): void => {
+        // vscode.window.showWarningMessage('I am a warning', { modal: true }, ...['Save', 'Discard']);
+        if (filename) {
+          console.log(filename.toString('utf-8'));
+          // Prints: <Buffer ...>
+        }
+      }));
 
       OOXMLViewer.watchers.push(watch(OOXMLViewer.fileCachePath, { encoding: 'buffer', recursive: true },
         async (eventType: string, fileNameBuffer: Buffer): Promise<void> => {
-          const now: Date = new Date();
-          console.log('OOXMLViewer -> now', now);
           try {
             const name: string | undefined = fileNameBuffer == undefined ? undefined : fileNameBuffer.toString('utf-8');
-            const foo = parse(name || '');
-            console.log('OOXMLViewer -> foo', foo);
             const filePath: string | undefined = name ? join(OOXMLViewer.fileCachePath, name) : undefined;
             let prevFilePath = '';
             if (filePath) {
@@ -92,7 +84,7 @@ export class OOXMLViewer {
           } catch (err) {
             if (err && err.code === 'EBUSY') {
               vscode.window.showWarningMessage(
-                `${file.fsPath} is open in another program.\nClose it before making any changes.`,
+                `File not saved.\n${file.fsPath} is open in another program.\nClose that program before making any changes.`,
                 { modal: true },
               );
               OOXMLViewer.makeDirty();
@@ -166,6 +158,7 @@ export class OOXMLViewer {
       if (OOXMLViewer.existsSync(OOXMLViewer.fileCachePath)) {
         await rimrafPromise(OOXMLViewer.fileCachePath);
       }
+      await OOXMLViewer.closeWatchers();
       OOXMLViewer.closeEditors(vscode.workspace.textDocuments.filter(t => t.fileName.toLowerCase().includes(OOXMLViewer.fileCachePath.toLowerCase())));
     } catch (err) {
       console.error(err);
@@ -243,5 +236,12 @@ export class OOXMLViewer {
           { undoStopBefore: false, undoStopAfter: true });
       }
     });
+  }
+
+  static async closeWatchers(): Promise<void> {
+    if (OOXMLViewer.watchers.length) {
+      OOXMLViewer.watchers.forEach(w => w.close());
+      OOXMLViewer.watchers = [];
+    }
   }
 }
