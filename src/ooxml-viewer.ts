@@ -106,7 +106,7 @@ export class OOXMLViewer {
     try {
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fileNode.fullPath));
       const filePath: string = join(folderPath, fileNode.fileName);
-      await this.createFile(fileNode, fileNode.fileName);
+      await this.createFile(fileNode.fullPath, fileNode.fileName);
       const xmlDoc: TextDocument = await vscode.workspace.openTextDocument(Uri.parse('file:///' + filePath));
 
       vscode.window.showTextDocument(xmlDoc);
@@ -175,7 +175,7 @@ export class OOXMLViewer {
           newFileNode.parent = currentFileNode;
           currentFileNode.children.push(newFileNode);
           currentFileNode = newFileNode;
-          this.createFile(newFileNode, `prev.${newFileNode.fileName}`);
+          this.createFile(newFileNode.fullPath, `prev.${newFileNode.fileName}`);
         }
       }
 
@@ -185,21 +185,27 @@ export class OOXMLViewer {
     this.treeDataProvider.refresh();
   }
 
-  private async createFile(fileNode: FileNode, fileName: string): Promise<void> {
-    const folderPath = join(OOXMLViewer.fileCachePath, dirname(fileNode.fullPath));
-    const filePath: string = join(folderPath, fileName);
-    await OOXMLViewer.mkdirp(folderPath);
-    // On Windows hide the folder
-    if (process.platform.startsWith('win')) {
-      const { stderr } = await OOXMLViewer.execPromise('attrib +h ' + OOXMLViewer.fileCachePath);
-      if (stderr) {
-        throw new Error(stderr);
+  private async createFile(fullPath: string, fileName: string): Promise<void> {
+    try {
+      const folderPath = join(OOXMLViewer.fileCachePath, dirname(fullPath));
+      const filePath: string = join(folderPath, fileName);
+      await OOXMLViewer.mkdirp(folderPath);
+      // On Windows hide the folder
+      if (process.platform.startsWith('win')) {
+        const { stderr } = await OOXMLViewer.execPromise('attrib +h ' + OOXMLViewer.fileCachePath);
+        if (stderr) {
+          throw new Error(stderr);
+        }
       }
+      const file: JSZipObject | null = this.zip.file(fullPath);
+      const text: string = await file?.async('text') ?? '';
+      if (text.startsWith('<?xml')) {
+        const formattedXml: string = formatXml(text);
+        await OOXMLViewer.writeFilePromise(filePath, formattedXml, 'utf8');
+      }
+    } catch (err) {
+      console.error(err);
     }
-    const file: JSZipObject | null = this.zip.file(fileNode.fullPath);
-    const text: string = await file?.async('text') ?? '';
-    const formattedXml: string = formatXml(text);
-    await OOXMLViewer.writeFilePromise(filePath, formattedXml, 'utf8');
   }
 
   private static async makeDirty(): Promise<void> {
