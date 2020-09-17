@@ -45,7 +45,7 @@ export class OOXMLViewer {
       await this.resetOOXMLViewer();
       const data = await readFilePromise(file.fsPath);
       await this.zip.loadAsync(data);
-      this.populateOOXMLViewer(this.zip.files);
+      await this.populateOOXMLViewer(this.zip.files);
       await OOXMLViewer.mkdirp(OOXMLViewer.fileCachePath);
       // TODO: Use this watch to update the ooxml file when the file is changed from outside vscode. e.g. in PowerPoint
       OOXMLViewer.watchers.push(watch(file.fsPath, { encoding: 'buffer' }, (eventType: string, filename: Buffer): void => {
@@ -104,22 +104,9 @@ export class OOXMLViewer {
    */
   async viewFile(fileNode: FileNode): Promise<void> {
     try {
-      const file: JSZipObject | null = this.zip.file(fileNode.fullPath);
-      const text: string = await file?.async('text') ?? '';
-      const formattedXml: string = formatXml(text);
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fileNode.fullPath));
       const filePath: string = join(folderPath, fileNode.fileName);
-      const prevFilePath: string = join(folderPath, `prev.${fileNode.fileName}`);
-      await OOXMLViewer.mkdirp(folderPath);
-      // On Windows hide the folder
-      if (process.platform.startsWith('win')) {
-        const { stderr } = await OOXMLViewer.execPromise('attrib +h ' + OOXMLViewer.fileCachePath);
-        if (stderr) {
-          throw new Error(stderr);
-        }
-      }
-      await OOXMLViewer.writeFilePromise(filePath, formattedXml, 'utf8');
-      await OOXMLViewer.writeFilePromise(prevFilePath, formattedXml, 'utf8');
+      await this.createFile(fileNode, fileNode.fileName);
       const xmlDoc: TextDocument = await vscode.workspace.openTextDocument(Uri.parse('file:///' + filePath));
 
       vscode.window.showTextDocument(xmlDoc);
@@ -166,7 +153,7 @@ export class OOXMLViewer {
     }
   }
 
-  private populateOOXMLViewer(files: { [key: string]: JSZip.JSZipObject; }) {
+  private async populateOOXMLViewer(files: { [key: string]: JSZip.JSZipObject; }) {
     for (const fileWithPath of Object.keys(files)) {
       // ignore folder files
       if (files[fileWithPath].dir) {
@@ -184,9 +171,11 @@ export class OOXMLViewer {
         } else {
           const newFileNode = new FileNode();
           newFileNode.fileName = fileOrFolderName;
+          newFileNode.fullPath = fileWithPath;
           newFileNode.parent = currentFileNode;
           currentFileNode.children.push(newFileNode);
           currentFileNode = newFileNode;
+          this.createFile(newFileNode, `prev.${newFileNode.fileName}`);
         }
       }
 
@@ -194,6 +183,23 @@ export class OOXMLViewer {
     }
 
     this.treeDataProvider.refresh();
+  }
+
+  private async createFile(fileNode: FileNode, fileName: string): Promise<void> {
+    const folderPath = join(OOXMLViewer.fileCachePath, dirname(fileNode.fullPath));
+    const filePath: string = join(folderPath, fileName);
+    await OOXMLViewer.mkdirp(folderPath);
+    // On Windows hide the folder
+    if (process.platform.startsWith('win')) {
+      const { stderr } = await OOXMLViewer.execPromise('attrib +h ' + OOXMLViewer.fileCachePath);
+      if (stderr) {
+        throw new Error(stderr);
+      }
+    }
+    const file: JSZipObject | null = this.zip.file(fileNode.fullPath);
+    const text: string = await file?.async('text') ?? '';
+    const formattedXml: string = formatXml(text);
+    await OOXMLViewer.writeFilePromise(filePath, formattedXml, 'utf8');
   }
 
   private static async makeDirty(): Promise<void> {
