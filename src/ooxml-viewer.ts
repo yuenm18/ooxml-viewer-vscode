@@ -48,12 +48,8 @@ export class OOXMLViewer {
       await this.populateOOXMLViewer(this.zip.files);
       await OOXMLViewer.mkdirp(OOXMLViewer.fileCachePath);
       // TODO: Use this watch to update the ooxml file when the file is changed from outside vscode. e.g. in PowerPoint
-      OOXMLViewer.watchers.push(watch(file.fsPath, { encoding: 'buffer' }, (eventType: string, filename: Buffer): void => {
-        // vscode.window.showWarningMessage('I am a warning', { modal: true }, ...['Save', 'Discard']);
-        if (filename) {
-          console.log(filename.toString('utf-8'));
-          // Prints: <Buffer ...>
-        }
+      OOXMLViewer.watchers.push(watch(file.fsPath, { encoding: 'buffer' }, async (eventType: string, filename: Buffer): Promise<void> => {
+        this.checkDiff(file.fsPath);
       }));
 
       OOXMLViewer.watchers.push(watch(OOXMLViewer.fileCachePath, { encoding: 'buffer', recursive: true },
@@ -122,7 +118,9 @@ export class OOXMLViewer {
   clear(): Promise<void> {
     return this.resetOOXMLViewer();
   }
-  private static closeEditors(tds: TextDocument[]): void {
+  private static closeEditors(textDocuments?: TextDocument[]): void {
+    const tds = textDocuments ??
+      vscode.workspace.textDocuments.filter(t => t.fileName.toLowerCase().includes(OOXMLViewer.fileCachePath.toLowerCase()));
     if (tds.length) {
       const td: TextDocument | undefined = tds.pop();
       if (td) {
@@ -146,7 +144,7 @@ export class OOXMLViewer {
         await rimrafPromise(OOXMLViewer.fileCachePath);
       }
       await OOXMLViewer.closeWatchers();
-      OOXMLViewer.closeEditors(vscode.workspace.textDocuments.filter(t => t.fileName.toLowerCase().includes(OOXMLViewer.fileCachePath.toLowerCase())));
+      OOXMLViewer.closeEditors();
     } catch (err) {
       console.error(err);
       vscode.window.showErrorMessage('Could not remove ooxml file viewer cache');
@@ -171,7 +169,6 @@ export class OOXMLViewer {
         } else {
           const newFileNode = new FileNode();
           newFileNode.fileName = fileOrFolderName;
-          newFileNode.fullPath = fileWithPath;
           newFileNode.parent = currentFileNode;
           currentFileNode.children.push(newFileNode);
           currentFileNode = newFileNode;
@@ -255,5 +252,14 @@ export class OOXMLViewer {
       OOXMLViewer.watchers.forEach(w => w.close());
       OOXMLViewer.watchers = [];
     }
+  }
+
+  private async checkDiff(filePath: string): Promise<void> {
+    const ooxmlZip: JSZip = new JSZip();
+    const data: Buffer = await readFilePromise(filePath);
+    await ooxmlZip.loadAsync(data);
+    this.zip = ooxmlZip;
+    this.populateOOXMLViewer(ooxmlZip.files);
+    OOXMLViewer.closeEditors();
   }
 }
