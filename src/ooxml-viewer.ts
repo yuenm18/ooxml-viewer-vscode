@@ -100,15 +100,33 @@ export class OOXMLViewer {
    */
   async viewFile(fileNode: FileNode): Promise<void> {
     try {
+      // OOXMLViewer.openTextEditors[fileNode.fullPath] = fileNode;
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fileNode.fullPath));
       const filePath: string = join(folderPath, fileNode.fileName);
       await this.createFile(fileNode.fullPath, fileNode.fileName);
       const xmlDoc: TextDocument = await vscode.workspace.openTextDocument(Uri.parse('file:///' + filePath));
 
-      vscode.window.showTextDocument(xmlDoc);
+      await vscode.window.showTextDocument(xmlDoc);
     } catch (e) {
       console.error(e);
       vscode.window.showErrorMessage(`Could not load ${fileNode.fullPath}`);
+    }
+  }
+
+  private async viewFiles(fileNodes: FileNode[]): Promise<void> {
+    if (fileNodes.length) {
+      const node = fileNodes.pop();
+      if (node) {
+        await this.viewFile(node);
+        await OOXMLViewer.makeDirty();
+        // const saved: boolean | undefined = await vscode.window.activeTextEditor?.document.save();
+        // console.log('saved', saved);
+        setTimeout(() => {
+          this.viewFiles(fileNodes);
+        }, 10);
+      }
+    } else {
+      // vscode.commands.executeCommand('workbench.action.files.saveAll');
     }
   }
 
@@ -118,19 +136,15 @@ export class OOXMLViewer {
   clear(): Promise<void> {
     return this.resetOOXMLViewer();
   }
-  private static closeEditors(textDocuments?: TextDocument[]): void {
+  private static async closeEditors(textDocuments?: TextDocument[]): Promise<void> {
     const tds = textDocuments ??
       vscode.workspace.textDocuments.filter(t => t.fileName.toLowerCase().includes(OOXMLViewer.fileCachePath.toLowerCase()));
     if (tds.length) {
       const td: TextDocument | undefined = tds.pop();
       if (td) {
-        vscode.window.showTextDocument(td, { preview: true, preserveFocus: false })
-          .then(() => {
-            vscode.commands.executeCommand('workbench.action.closeActiveEditor');
-          })
-          .then(() => {
-            OOXMLViewer.closeEditors(tds);
-          });
+        await vscode.window.showTextDocument(td, { preview: true, preserveFocus: false });
+        await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+        await OOXMLViewer.closeEditors(tds);
       }
     }
   }
@@ -144,7 +158,7 @@ export class OOXMLViewer {
         await rimrafPromise(OOXMLViewer.fileCachePath);
       }
       await OOXMLViewer.closeWatchers();
-      OOXMLViewer.closeEditors();
+      await OOXMLViewer.closeEditors();
     } catch (err) {
       console.error(err);
       vscode.window.showErrorMessage('Could not remove ooxml file viewer cache');
