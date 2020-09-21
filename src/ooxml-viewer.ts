@@ -52,44 +52,9 @@ export class OOXMLViewer {
       await OOXMLViewer.mkdirp(OOXMLViewer.fileCachePath);
       // TODO: Use this watch to update the ooxml file when the file is changed from outside vscode. e.g. in PowerPoint
       OOXMLViewer.watchers.push(watch(file.fsPath, { encoding: 'buffer' }, async (eventType: string, filename: Buffer): Promise<void> => {
-        this.checkDiff(file.fsPath);
+        // this.checkDiff(file.fsPath);
       }));
-
-      // OOXMLViewer.watchers.push(watch(OOXMLViewer.fileCachePath, { encoding: 'buffer', recursive: true },
-      //   async (eventType: string, fileNameBuffer: Buffer): Promise<void> => {
-      //     try {
-      //       const name: string | undefined = fileNameBuffer == undefined ? undefined : fileNameBuffer.toString('utf-8');
-      //       const filePath: string | undefined = name ? join(OOXMLViewer.fileCachePath, name) : undefined;
-      //       let prevFilePath = '';
-      //       if (filePath) {
-      //         const { dir, base } = parse(filePath);
-      //         prevFilePath = format({ dir, base: `prev.${base}` });
-      //       }
-      //       if (name && filePath && existsSync(filePath) && prevFilePath && existsSync(prevFilePath)) {
-      //         const stats: Stats = await statPromise(filePath);
-      //         const time = stats.mtime.getTime();
-      //         if (!stats.isDirectory() && eventType === 'change' && OOXMLViewer.watchActions[name] !== time) {
-      //           OOXMLViewer.watchActions[name] = time;
-      //           const data: Buffer = await readFilePromise(filePath);
-      //           const prevData: Buffer = await readFilePromise(prevFilePath);
-      //           if (!data.equals(prevData)) {
-      //             const normalizedPath: string = name.replace(/\\/g, '/');
-      //             const zipFile = await this.zip.file(normalizedPath, data, { binary: true }).generateAsync({ type: 'nodebuffer' });
-      //             // await writeFilePromise(file.fsPath, zipFile);
-      //             await writeFilePromise(prevFilePath, data);
-      //           }
-      //         }
-      //       }
-      //     } catch (err) {
-      //       if (err && err.code === 'EBUSY') {
-      //         vscode.window.showWarningMessage(
-      //           `File not saved.\n${file.fsPath} is open in another program.\nClose that program before making any changes.`,
-      //           { modal: true },
-      //         );
-      //         OOXMLViewer.makeDirty();
-      //       }
-      //     }
-      //   }));
+      vscode.workspace.onDidSaveTextDocument(OOXMLViewer.saveChanges);
     } catch (err) {
       console.error(err);
       vscode.window.showErrorMessage(`Could not load ${file.fsPath}`, err);
@@ -109,44 +74,6 @@ export class OOXMLViewer {
       await this.createFile(fileNode.fullPath, fileNode.fileName);
       const xmlDoc: TextDocument = await vscode.workspace.openTextDocument(Uri.parse('file:///' + filePath));
 
-      OOXMLViewer.watchers.push(watch(filePath, { encoding: 'buffer', recursive: true },
-        async (eventType: string, fileNameBuffer: Buffer): Promise<void> => {
-          try {
-            // const name: string | undefined = fileNameBuffer == undefined ? undefined : fileNameBuffer.toString('utf-8');
-            const name = fileNode.fullPath;
-            const newFilePath: string | undefined = name ? join(OOXMLViewer.fileCachePath, name) : undefined;
-            let prevFilePath = '';
-            if (newFilePath) {
-              const { dir, base } = parse(newFilePath);
-              prevFilePath = format({ dir, base: `prev.${base}` });
-            }
-            const newExists = existsSync(newFilePath || ''),
-              prevExists = existsSync(prevFilePath);
-            if (name && newFilePath && existsSync(newFilePath) && prevFilePath && existsSync(prevFilePath)) {
-              const stats: Stats = await statPromise(newFilePath);
-              const time = stats.mtime.getTime();
-              if (!stats.isDirectory() && eventType === 'change' && OOXMLViewer.watchActions[name] !== time) {
-                OOXMLViewer.watchActions[name] = time;
-                const data: Buffer = await readFilePromise(newFilePath);
-                const prevData: Buffer = await readFilePromise(prevFilePath);
-                if (!data.equals(prevData)) {
-                  const normalizedPath: string = name.replace(/\\/g, '/');
-                  const zipFile = await this.zip.file(normalizedPath, data, { binary: true }).generateAsync({ type: 'nodebuffer' });
-                  await writeFilePromise(OOXMLViewer.ooxmlFilePath, zipFile);
-                  await writeFilePromise(prevFilePath, data);
-                }
-              }
-            }
-          } catch (err) {
-            if (err && err.code === 'EBUSY') {
-              vscode.window.showWarningMessage(
-                `File not saved.\n${OOXMLViewer.ooxmlFilePath} is open in another program.\nClose that program before making any changes.`,
-                { modal: true },
-              );
-              OOXMLViewer.makeDirty();
-            }
-          }
-        }));
       await vscode.window.showTextDocument(xmlDoc);
     } catch (e) {
       console.error(e);
@@ -320,5 +247,41 @@ export class OOXMLViewer {
     this.populateOOXMLViewer(this.zip.files);
     await OOXMLViewer.closeEditors();
     this.viewFiles(Object.values(OOXMLViewer.openTextEditors));
+  }
+
+  private static async saveChanges(e: TextDocument): Promise<void> {
+    try {
+      const { fileName } = e;
+      let prevFilePath = '';
+      if (fileName) {
+        const { dir, base } = parse(fileName);
+        prevFilePath = format({ dir, base: `prev.${base}` });
+      }
+      if (fileName && existsSync(fileName) && prevFilePath && existsSync(prevFilePath)) {
+        const stats: Stats = await statPromise(fileName);
+        const time = stats.mtime.getTime();
+        if (!stats.isDirectory() && OOXMLViewer.watchActions[fileName] !== time) {
+          OOXMLViewer.watchActions[fileName] = time;
+          const data: Buffer = await readFilePromise(fileName);
+          const prevData: Buffer = await readFilePromise(prevFilePath);
+          if (!data.equals(prevData)) {
+            const pathArr = fileName.split(OOXMLViewer.cacheFolderName);
+            let normalizedPath: string = pathArr[pathArr.length - 1].replace(/\\/g, '/');
+            normalizedPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
+            const zipFile = await this.zip.file(normalizedPath, data, { binary: true }).generateAsync({ type: 'nodebuffer' });
+            await writeFilePromise(OOXMLViewer.ooxmlFilePath, zipFile);
+            await writeFilePromise(prevFilePath, data);
+          }
+        }
+      }
+    } catch (err) {
+      if (err?.code === 'EBUSY') {
+        vscode.window.showWarningMessage(
+          `File not saved.\n${OOXMLViewer.ooxmlFilePath} is open in another program.\nClose that program before making any changes.`,
+          { modal: true },
+        );
+        OOXMLViewer.makeDirty();
+      }
+    }
   }
 }
