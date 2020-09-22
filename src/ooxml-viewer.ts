@@ -189,9 +189,6 @@ export class OOXMLViewer {
           newFileNode.fullPath = fileWithPath;
           currentFileNode.children.push(newFileNode);
           currentFileNode = newFileNode;
-          if (!existsSync(newFileNode.fullPath) && !newFileNode.fileName.startsWith('prev.')) {
-            this.createFile(newFileNode.fullPath, `prev.${newFileNode.fileName}`);
-          }
         }
       }
 
