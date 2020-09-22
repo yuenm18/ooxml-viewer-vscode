@@ -1,11 +1,11 @@
 import { exec } from 'child_process';
-import { existsSync, FSWatcher, readFile, stat, Stats, watch, writeFile } from 'fs';
+import { existsSync, FSWatcher, readFile, stat, Stats, writeFile } from 'fs';
 import JSZip, { JSZipObject } from 'jszip';
 import mkdirp from 'mkdirp';
 import { dirname, format, join, parse } from 'path';
 import rimraf from 'rimraf';
 import { promisify } from 'util';
-import vscode, { Position, TextDocument, TextEditorEdit, Uri } from 'vscode';
+import vscode, { FileSystemWatcher, Position, TextDocument, TextEditor, TextEditorEdit, Uri } from 'vscode';
 import formatXml from 'xml-formatter';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
 const execPromise = promisify(exec);
@@ -22,7 +22,7 @@ export class OOXMLViewer {
   zip: JSZip;
   static watchers: FSWatcher[] = [];
   static watchActions: { [key: string]: number; } = {};
-  static openTextEditors: { [key: string]: FileNode; } = {};
+  static openTextEditors: { [key: string]: Uri; } = {};
   static cacheFolderName = '.ooxml-temp-file-folder-78kIPsmTq5TK';
   static ooxmlFilePath: string;
   static rootPath: string = vscode.workspace.rootPath == undefined ? parse(process.cwd()).root : vscode.workspace.rootPath;
@@ -51,9 +51,14 @@ export class OOXMLViewer {
       await this.populateOOXMLViewer(this.zip.files);
       await OOXMLViewer.mkdirp(OOXMLViewer.fileCachePath);
 
-      OOXMLViewer.watchers.push(watch(file.fsPath, { encoding: 'buffer' }, async (eventType: string, filename: Buffer): Promise<void> => {
+      // OOXMLViewer.watchers.push(watch(file.fsPath, { encoding: 'buffer' }, async (eventType: string, filename: Buffer): Promise<void> => {
+      //   this.checkDiff(file.fsPath);
+      // }));
+      const watcher: FileSystemWatcher = vscode.workspace.createFileSystemWatcher(file.fsPath);
+      watcher.onDidChange((uri: Uri) => {
+        console.log('OOXMLViewer -> uri', uri);
         this.checkDiff(file.fsPath);
-      }));
+      });
       vscode.workspace.onDidSaveTextDocument(async (e: TextDocument) => {
         try {
           const { fileName } = e;
@@ -85,7 +90,7 @@ export class OOXMLViewer {
               `File not saved.\n${OOXMLViewer.ooxmlFilePath} is open in another program.\nClose that program before making any changes.`,
               { modal: true },
             );
-            OOXMLViewer.makeDirty();
+            OOXMLViewer.makeDirty(vscode.window.activeTextEditor);
           }
         }
       });
@@ -102,11 +107,12 @@ export class OOXMLViewer {
    */
   async viewFile(fileNode: FileNode): Promise<void> {
     try {
-      // OOXMLViewer.openTextEditors[fileNode.fullPath] = fileNode;
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fileNode.fullPath));
       const filePath: string = join(folderPath, fileNode.fileName);
       await this.createFile(fileNode.fullPath, fileNode.fileName);
-      const xmlDoc: TextDocument = await vscode.workspace.openTextDocument(Uri.parse('file:///' + filePath));
+      const uri: Uri = Uri.parse('file:///' + filePath);
+      OOXMLViewer.openTextEditors[filePath] = uri;
+      const xmlDoc: TextDocument = await vscode.workspace.openTextDocument(uri);
 
       await vscode.window.showTextDocument(xmlDoc);
     } catch (e) {
@@ -115,20 +121,46 @@ export class OOXMLViewer {
     }
   }
 
-  private async viewFiles(fileNodes: FileNode[]): Promise<void> {
-    if (fileNodes.length) {
-      const node = fileNodes.pop();
-      if (node) {
-        await this.viewFile(node);
-        // await OOXMLViewer.makeDirty();
-        // const saved: boolean | undefined = await vscode.window.activeTextEditor?.document.save();
-        // console.log('saved', saved);
-        setTimeout(() => {
-          this.viewFiles(fileNodes);
-        }, 10);
+  private async viewFiles(uris: Uri[]): Promise<void> {
+    // if (fileNodes.length) {
+    //   const node = fileNodes.pop();
+    //   if (node) {
+    //     await this.viewFile(node);
+    //     await OOXMLViewer.makeDirty();
+    //     const saved: boolean | undefined = await vscode.window.activeTextEditor?.document.save();
+    //     // console.log('saved', saved);
+    //     setTimeout(() => {
+    //       this.viewFiles(fileNodes);
+    //     }, 10);
+    //   }
+    // } else {
+    //   // vscode.commands.executeCommand('workbench.action.files.saveAll');
+    // }
+    while (uris.length) {
+      const uri: Uri | undefined = uris.pop();
+      if (uri) {
+        const xmlDoc: TextDocument = await vscode.workspace.openTextDocument(uri);
+
+        await vscode.window.showTextDocument(xmlDoc);
+        await OOXMLViewer.makeDirty(vscode.window.activeTextEditor);
+      }
+
+    }
+    vscode.commands.executeCommand('workbench.action.files.saveAll');
+
+  }
+
+  private findNode(fullPath: string, fileNode: FileNode | undefined): FileNode {
+    if (fileNode) {
+      if (fileNode.fullPath === fullPath) {
+        return fileNode;
+      } else {
+        fileNode.children.forEach((node: FileNode) => {
+          return;
+        });
       }
     } else {
-      // vscode.commands.executeCommand('workbench.action.files.saveAll');
+      return this.findNode(fullPath, this.treeDataProvider.rootFileNode);
     }
   }
 
@@ -215,14 +247,20 @@ export class OOXMLViewer {
       if (text.startsWith('<?xml')) {
         const formattedXml: string = formatXml(text);
         await OOXMLViewer.writeFilePromise(filePath, formattedXml, 'utf8');
+        let prevFilePath = '';
+        const { dir, base } = parse(filePath);
+        prevFilePath = format({ dir, base: `prev.${base}` });
+        if (!existsSync(prevFilePath)) {
+          await OOXMLViewer.writeFilePromise(prevFilePath, formattedXml, 'utf8');
+        }
       }
     } catch (err) {
       console.error(err);
     }
   }
 
-  private static async makeDirty(): Promise<void> {
-    vscode.window.activeTextEditor?.edit(async (textEditorEdit: TextEditorEdit) => {
+  private static async makeDirty(activeTextEditor?: TextEditor): Promise<void> {
+    activeTextEditor?.edit(async (textEditorEdit: TextEditorEdit) => {
       if (vscode.window.activeTextEditor?.selection) {
         const { activeTextEditor } = vscode.window;
 
