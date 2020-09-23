@@ -1,5 +1,5 @@
 import { exec } from 'child_process';
-import { existsSync, FSWatcher, readFile, stat, Stats, writeFile } from 'fs';
+import { existsSync, readFile, stat, Stats, writeFile } from 'fs';
 import JSZip, { JSZipObject } from 'jszip';
 import mkdirp from 'mkdirp';
 import { dirname, format, join, parse } from 'path';
@@ -20,9 +20,9 @@ const statPromise = promisify(stat);
 export class OOXMLViewer {
   treeDataProvider: OOXMLTreeDataProvider;
   zip: JSZip;
-  static watchers: FSWatcher[] = [];
+  static watchers: FileSystemWatcher[] = [];
   static watchActions: { [key: string]: number; } = {};
-  static openTextEditors: { [key: string]: Uri; } = {};
+  static openTextEditors: { [key: string]: FileNode; } = {};
   static cacheFolderName = '.ooxml-temp-file-folder-78kIPsmTq5TK';
   static ooxmlFilePath: string;
   static rootPath: string = vscode.workspace.rootPath == undefined ? parse(process.cwd()).root : vscode.workspace.rootPath;
@@ -51,14 +51,11 @@ export class OOXMLViewer {
       await this.populateOOXMLViewer(this.zip.files);
       await OOXMLViewer.mkdirp(OOXMLViewer.fileCachePath);
 
-      // OOXMLViewer.watchers.push(watch(file.fsPath, { encoding: 'buffer' }, async (eventType: string, filename: Buffer): Promise<void> => {
-      //   this.checkDiff(file.fsPath);
-      // }));
       const watcher: FileSystemWatcher = vscode.workspace.createFileSystemWatcher(file.fsPath);
       watcher.onDidChange((uri: Uri) => {
-        console.log('OOXMLViewer -> uri', uri);
         this.checkDiff(file.fsPath);
       });
+      OOXMLViewer.watchers.push(watcher);
       vscode.workspace.onDidSaveTextDocument(async (e: TextDocument) => {
         try {
           const { fileName } = e;
@@ -111,57 +108,25 @@ export class OOXMLViewer {
       const filePath: string = join(folderPath, fileNode.fileName);
       await this.createFile(fileNode.fullPath, fileNode.fileName);
       const uri: Uri = Uri.parse('file:///' + filePath);
-      OOXMLViewer.openTextEditors[filePath] = uri;
+      OOXMLViewer.openTextEditors[filePath] = fileNode;
       const xmlDoc: TextDocument = await vscode.workspace.openTextDocument(uri);
 
-      await vscode.window.showTextDocument(xmlDoc);
+      await vscode.window.showTextDocument(xmlDoc, {preview: false});
     } catch (e) {
       console.error(e);
       vscode.window.showErrorMessage(`Could not load ${fileNode.fullPath}`);
     }
   }
 
-  private async viewFiles(uris: Uri[]): Promise<void> {
-    // if (fileNodes.length) {
-    //   const node = fileNodes.pop();
-    //   if (node) {
-    //     await this.viewFile(node);
-    //     await OOXMLViewer.makeDirty();
-    //     const saved: boolean | undefined = await vscode.window.activeTextEditor?.document.save();
-    //     // console.log('saved', saved);
-    //     setTimeout(() => {
-    //       this.viewFiles(fileNodes);
-    //     }, 10);
-    //   }
-    // } else {
-    //   // vscode.commands.executeCommand('workbench.action.files.saveAll');
-    // }
+  private async viewFiles(uris: FileNode[]): Promise<void> {
     while (uris.length) {
-      const uri: Uri | undefined = uris.pop();
+      const uri: FileNode | undefined = uris.pop();
       if (uri) {
-        const xmlDoc: TextDocument = await vscode.workspace.openTextDocument(uri);
-
-        await vscode.window.showTextDocument(xmlDoc);
-        await OOXMLViewer.makeDirty(vscode.window.activeTextEditor);
+        this.viewFile(uri);
       }
 
     }
-    vscode.commands.executeCommand('workbench.action.files.saveAll');
 
-  }
-
-  private findNode(fullPath: string, fileNode: FileNode | undefined): FileNode {
-    if (fileNode) {
-      if (fileNode.fullPath === fullPath) {
-        return fileNode;
-      } else {
-        fileNode.children.forEach((node: FileNode) => {
-          return;
-        });
-      }
-    } else {
-      return this.findNode(fullPath, this.treeDataProvider.rootFileNode);
-    }
   }
 
   /**
@@ -303,7 +268,7 @@ export class OOXMLViewer {
 
   static async closeWatchers(): Promise<void> {
     if (OOXMLViewer.watchers.length) {
-      OOXMLViewer.watchers.forEach(w => w.close());
+      OOXMLViewer.watchers.forEach(w => w.dispose());
       OOXMLViewer.watchers = [];
     }
   }
@@ -314,7 +279,6 @@ export class OOXMLViewer {
     await ooxmlZip.loadAsync(data);
     this.zip = ooxmlZip;
     this.populateOOXMLViewer(this.zip.files);
-    await OOXMLViewer.closeEditors();
     this.viewFiles(Object.values(OOXMLViewer.openTextEditors));
   }
 }
