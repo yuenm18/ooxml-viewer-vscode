@@ -29,5 +29,7 @@ module.exports = {
       },
     ],
     'no-console': ['warn', { allow: ['warn', 'error'] }],
+    semi: ['error', 'always'],
+    indent: ['error', 2],
   },
 };
