@@ -108,7 +108,7 @@ export class OOXMLViewer {
    *
    * @param fileNode The selected file node
    */
-  async viewFile(fileNode: FileNode): Promise<void> {
+  async viewFile(fileNode: FileNode, preview = true): Promise<void> {
     try {
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fileNode.fullPath));
       const filePath: string = join(folderPath, fileNode.fileName);
@@ -117,22 +117,20 @@ export class OOXMLViewer {
       OOXMLViewer.openTextEditors[filePath] = fileNode;
       const xmlDoc: TextDocument = await vscode.workspace.openTextDocument(uri);
 
-      await vscode.window.showTextDocument(xmlDoc, {preview: false});
+      await vscode.window.showTextDocument(xmlDoc, {preview});
     } catch (e) {
       console.error(e);
       vscode.window.showErrorMessage(`Could not load ${fileNode.fullPath}`);
     }
   }
 
-  private async viewFiles(uris: FileNode[]): Promise<void> {
-    while (uris.length) {
-      const uri: FileNode | undefined = uris.pop();
-      if (uri) {
-        this.viewFile(uri);
+  private async viewFiles(fileNodes: FileNode[]): Promise<void> {
+    while (fileNodes.length) {
+      const fileNode: FileNode | undefined = fileNodes.pop();
+      if (fileNode) {
+        this.viewFile(fileNode, false);
       }
-
     }
-
   }
 
   /**
