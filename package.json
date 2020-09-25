@@ -32,7 +32,7 @@
     "commands": [
       {
         "command": "ooxmlViewer.viewContents",
-        "title": "View Contents",
+        "title": "Open OOXML Parts",
         "when": "resourceLangId == ooxml"
       },
       {
