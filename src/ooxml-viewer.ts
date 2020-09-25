@@ -5,7 +5,7 @@ import mkdirp from 'mkdirp';
 import { dirname, format, join, parse } from 'path';
 import rimraf from 'rimraf';
 import { promisify } from 'util';
-import vscode, { FileSystemWatcher, Position, TextDocument, TextEditor, TextEditorEdit, Uri } from 'vscode';
+import vscode, { Disposable, FileSystemWatcher, Position, TextDocument, TextEditor, TextEditorEdit, Uri } from 'vscode';
 import formatXml from 'xml-formatter';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
 const execPromise = promisify(exec);
@@ -20,7 +20,7 @@ const statPromise = promisify(stat);
 export class OOXMLViewer {
   treeDataProvider: OOXMLTreeDataProvider;
   zip: JSZip;
-  static watchers: FileSystemWatcher[] = [];
+  static watchers: Disposable[] = [];
   static watchActions: { [key: string]: number; } = {};
   static openTextEditors: { [key: string]: FileNode; } = {};
   static cacheFolderName = '.ooxml-temp-file-folder-78kIPsmTq5TK';
@@ -52,11 +52,12 @@ export class OOXMLViewer {
       await OOXMLViewer.mkdirp(OOXMLViewer.fileCachePath);
 
       const watcher: FileSystemWatcher = vscode.workspace.createFileSystemWatcher(file.fsPath);
+
       watcher.onDidChange((uri: Uri) => {
         this.checkDiff(file.fsPath);
       });
-      OOXMLViewer.watchers.push(watcher);
-      vscode.workspace.onDidSaveTextDocument(async (e: TextDocument) => {
+
+      const textDocumentWatcher = vscode.workspace.onDidSaveTextDocument(async (e: TextDocument) => {
         try {
           const { fileName } = e;
           let prevFilePath = '';
@@ -91,6 +92,11 @@ export class OOXMLViewer {
           }
         }
       });
+
+      const closeWatcher = vscode.workspace.onDidCloseTextDocument((textDocument: TextDocument) => {
+        delete OOXMLViewer.openTextEditors[textDocument.fileName];
+      });
+      OOXMLViewer.watchers.push(watcher, textDocumentWatcher, closeWatcher);
     } catch (err) {
       console.error(err);
       vscode.window.showErrorMessage(`Could not load ${file.fsPath}`, err);
