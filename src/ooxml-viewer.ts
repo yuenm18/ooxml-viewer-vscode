@@ -62,8 +62,7 @@ export class OOXMLViewer {
           const { fileName } = e;
           let prevFilePath = '';
           if (fileName) {
-            const { dir, base } = parse(fileName);
-            prevFilePath = format({ dir, base: `prev.${base}` });
+            prevFilePath = OOXMLViewer.getPrevFilePath(fileName);
           }
           if (fileName && existsSync(fileName) && prevFilePath && existsSync(prevFilePath)) {
             const stats: Stats = await statPromise(fileName);
@@ -268,6 +267,11 @@ export class OOXMLViewer {
           { undoStopBefore: false, undoStopAfter: true });
       }
     });
+  }
+
+  private static getPrevFilePath(path: string): string {
+    const { dir, base } = parse(path);
+    return format({ dir, base: `prev.${base}` });
   }
 
   static async closeWatchers(): Promise<void> {
