@@ -25,8 +25,7 @@ export class OOXMLViewer {
   static openTextEditors: { [key: string]: FileNode; } = {};
   static cacheFolderName = '.ooxml-temp-file-folder-78kIPsmTq5TK';
   static ooxmlFilePath: string;
-  static rootPath: string = vscode.workspace.rootPath == undefined ? parse(process.cwd()).root : vscode.workspace.rootPath;
-  static fileCachePath: string = join(OOXMLViewer.rootPath, OOXMLViewer.cacheFolderName);
+  static fileCachePath: string = join(process.cwd(), OOXMLViewer.cacheFolderName);
   static existsSync = existsSync;
   static mkdirp = mkdirp;
   static execPromise = execPromise;
@@ -127,7 +126,7 @@ export class OOXMLViewer {
     while (fileNodes.length) {
       const fileNode: FileNode | undefined = fileNodes.pop();
       if (fileNode) {
-        this.viewFile(fileNode, false);
+        await this.viewFile(fileNode, false);
       }
     }
   }
