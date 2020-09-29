@@ -5,8 +5,6 @@ module.exports = {
   extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended'],
   env: { node: true },
   rules: {
-    quotes: [2, 'single', { avoidEscape: true }],
-    'no-unused-vars': 'off',
     '@typescript-eslint/no-unused-vars': ['warn', { args: 'none' }],
     'comma-dangle': [
       'error',
@@ -18,6 +16,8 @@ module.exports = {
         functions: 'always-multiline',
       },
     ],
+    'func-call-spacing': ['error', 'never'],
+    indent: ['error', 2],
     'max-len': [
       'warn',
       {
@@ -29,7 +29,9 @@ module.exports = {
       },
     ],
     'no-console': ['warn', { allow: ['warn', 'error'] }],
+    'no-unused-vars': 'off',
+    quotes: [2, 'single', { avoidEscape: true }],
     semi: ['error', 'always'],
-    indent: ['error', 2],
+    'space-in-parens': ['error', 'never'],
   },
 };
