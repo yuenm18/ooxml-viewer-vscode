@@ -7,11 +7,12 @@ import { OOXMLViewer } from './ooxml-viewer';
 const rimrafPromise = promisify(rimraf);
 
 export function activate(context: vscode.ExtensionContext): void {
-  const ooxmlViewer = new OOXMLViewer();
+  const ooxmlViewer = new OOXMLViewer(context);
   context.subscriptions.push(vscode.window.registerTreeDataProvider('ooxmlViewer', ooxmlViewer.treeDataProvider));
   context.subscriptions.push(vscode.commands.registerCommand('ooxmlViewer.viewContents', async (file: vscode.Uri) => ooxmlViewer.viewContents(file)));
   context.subscriptions.push(vscode.commands.registerCommand('ooxmlViewer.viewFile', async (fileNode: FileNode) => ooxmlViewer.viewFile(fileNode)));
   context.subscriptions.push(vscode.commands.registerCommand('ooxmlViewer.clear', () => ooxmlViewer.clear()));
+  context.subscriptions.push(vscode.commands.registerCommand('ooxmlViewer.showDiff', async (file: FileNode) => ooxmlViewer.getDiff(file)));
 }
 
 export async function deactivate(): Promise<void> {

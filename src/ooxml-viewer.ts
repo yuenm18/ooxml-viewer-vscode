@@ -2,10 +2,10 @@ import { exec } from 'child_process';
 import { existsSync, readFile, stat, Stats, writeFile } from 'fs';
 import JSZip, { JSZipObject } from 'jszip';
 import mkdirp from 'mkdirp';
-import { dirname, format, join, parse } from 'path';
+import { basename, dirname, format, join, parse } from 'path';
 import rimraf from 'rimraf';
 import { promisify } from 'util';
-import vscode, { Disposable, FileSystemWatcher, Position, TextDocument, TextEditor, TextEditorEdit, Uri } from 'vscode';
+import vscode, { Disposable, ExtensionContext, FileSystemWatcher, Position, TextDocument, TextEditor, TextEditorEdit, Uri } from 'vscode';
 import formatXml from 'xml-formatter';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
 const execPromise = promisify(exec);
@@ -32,9 +32,10 @@ export class OOXMLViewer {
   static execPromise = execPromise;
   static writeFilePromise = writeFilePromise;
 
-  constructor() {
-    this.treeDataProvider = new OOXMLTreeDataProvider();
+  constructor(context: ExtensionContext) {
+    this.treeDataProvider = new OOXMLTreeDataProvider(context);
     this.zip = new JSZip();
+    this._context = context;
   }
 
   /**
@@ -124,7 +125,30 @@ export class OOXMLViewer {
     }
   }
 
-  private async viewFiles(fileNodes: FileNode[]): Promise<void> {
+  /**
+     * Clears the OOXML viewer
+     */
+  clear(): Promise<void> {
+    return this._resetOOXMLViewer();
+  }
+
+  /**
+     * Compares the file to it's previous version
+     */
+  async getDiff(file: FileNode): Promise<void> {
+    try {
+      const filePath = join(OOXMLViewer.fileCachePath, dirname(file.fullPath), file.fileName);
+      const prevFilePath = OOXMLViewer._getPrevFilePath(filePath);
+      const leftUri = vscode.Uri.file(filePath);
+      const rightUri = vscode.Uri.file(prevFilePath);
+      const title = `${basename(filePath)} ↔ ${basename(prevFilePath)}`;
+      await vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, title);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  private async _viewFiles(fileNodes: FileNode[]): Promise<void> {
     while (fileNodes.length) {
       const fileNode: FileNode | undefined = fileNodes.pop();
       if (fileNode) {
@@ -148,7 +172,7 @@ export class OOXMLViewer {
   private async _resetOOXMLViewer(): Promise<void> {
     try {
       this.zip = new JSZip();
-      this.treeDataProvider.rootFileNode = new FileNode();
+      this.treeDataProvider.rootFileNode = new FileNode(this._context);
       this.treeDataProvider.refresh();
       if (OOXMLViewer.existsSync(OOXMLViewer.fileCachePath)) {
         await rimrafPromise(OOXMLViewer.fileCachePath);
@@ -175,14 +199,23 @@ export class OOXMLViewer {
         // Create node if it does not exist
         const existingFileNode = currentFileNode.children.find(c => c.description === fileOrFolderName);
         if (existingFileNode) {
+          const warningIcon: string = this._context.asAbsolutePath(join('images', 'exclamation.svg'));
           currentFileNode = existingFileNode;
+          const filesAreDifferent = await OOXMLViewer._filesAreDifferent(currentFileNode.fullPath);
+          currentFileNode.iconPath = filesAreDifferent ?
+            warningIcon : currentFileNode.children.length ?
+              vscode.ThemeIcon.Folder : vscode.ThemeIcon.File;
         } else {
-          const newFileNode = new FileNode();
+          const newFileNode = new FileNode(this._context);
           newFileNode.fileName = fileOrFolderName;
           newFileNode.parent = currentFileNode;
           newFileNode.fullPath = fileWithPath;
           currentFileNode.children.push(newFileNode);
           currentFileNode = newFileNode;
+          await this._createFile(newFileNode.fullPath, newFileNode.fileName);
+          if (!existsSync(newFileNode.fullPath) && !newFileNode.fileName.startsWith('prev.')) {
+            await this._createFile(newFileNode.fullPath, `prev.${newFileNode.fileName}`);
+          }
         }
       }
 
@@ -209,12 +242,6 @@ export class OOXMLViewer {
       if (text.startsWith('<?xml')) {
         const formattedXml: string = formatXml(text);
         await OOXMLViewer.writeFilePromise(filePath, formattedXml, 'utf8');
-        // let prevFilePath = '';
-        // const { dir, base } = parse(filePath);
-        // prevFilePath = format({ dir, base: `prev.${base}` });
-        // if (!existsSync(prevFilePath)) {
-        //   await OOXMLViewer.writeFilePromise(prevFilePath, formattedXml, 'utf8');
-        // }
       }
     } catch (err) {
       console.error(err);
@@ -275,12 +302,33 @@ export class OOXMLViewer {
     }
   }
 
-  private async checkDiff(filePath: string): Promise<void> {
+  private async _reloadOoxmlFile(filePath: string): Promise<void> {
     const ooxmlZip: JSZip = new JSZip();
     const data: Buffer = await readFilePromise(filePath);
     await ooxmlZip.loadAsync(data);
     this.zip = ooxmlZip;
-    this.populateOOXMLViewer(this.zip.files);
-    this.viewFiles(Object.values(OOXMLViewer.openTextEditors));
+    this._populateOOXMLViewer(this.zip.files);
+    this._viewFiles(Object.values(OOXMLViewer.openTextEditors));
+  }
+
+  private static async _filesAreDifferent(firstFile: string): Promise<boolean> {
+    try {
+      const secondFile = OOXMLViewer._getPrevFilePath(firstFile);
+      const firstFilePath = join(OOXMLViewer.fileCachePath, firstFile);
+      const secondFilePath = join(OOXMLViewer.fileCachePath, secondFile);
+      const firstStat: Stats = await statPromise(firstFilePath);
+      const secondStat: Stats = await statPromise(secondFilePath);
+      if (!firstStat.isDirectory() && !secondStat.isDirectory()) {
+        const firstBuffer: Buffer = await readFilePromise(firstFilePath);
+        const secondBuffer: Buffer = await readFilePromise(secondFilePath);
+        if (!firstBuffer.equals(secondBuffer)) {
+          return true;
+        }
+      }
+
+    } catch(err) {
+      console.error(err.message || err);
+    }
+    return false;
   }
 }

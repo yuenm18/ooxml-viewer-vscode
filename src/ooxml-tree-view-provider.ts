@@ -1,4 +1,3 @@
-import { join } from 'path';
 import vscode, { Command, ExtensionContext, ThemeIcon, TreeItemCollapsibleState, Uri } from 'vscode';
 
 /**
@@ -17,7 +16,7 @@ export class OOXMLTreeDataProvider implements vscode.TreeDataProvider<FileNode> 
   rootFileNode: FileNode;
 
   constructor(private context: ExtensionContext) {
-    this.rootFileNode = new FileNode(context, false);
+    this.rootFileNode = new FileNode(context);
   }
 
   refresh(): void {
@@ -63,11 +62,11 @@ export class OOXMLTreeDataProvider implements vscode.TreeDataProvider<FileNode> 
  */
 export class FileNode implements vscode.TreeItem {
   private _context: ExtensionContext;
-  private _changed: boolean;
+  private _iconPath: ThemeIcon | Uri | {light: Uri, dark: Uri};
 
-  constructor(private context: ExtensionContext, changed: boolean) {
+  constructor(private context: ExtensionContext) {
     this._context = context;
-    this._changed = changed;
+    this._iconPath = this.children.length ? ThemeIcon.Folder : ThemeIcon.File;
   }
   get description(): string {
     return this.fileName;
@@ -90,10 +89,11 @@ export class FileNode implements vscode.TreeItem {
   }
 
   get iconPath(): ThemeIcon | Uri | {light: Uri, dark: Uri} {
-    const changed = this._changed ?
-      this._context.asAbsolutePath(join('images', 'exclamation.svg')) :
-      this.children.length ? ThemeIcon.Folder : ThemeIcon.File;
-    return changed;
+    return this._iconPath;
+  }
+
+  set iconPath(value: ThemeIcon | Uri | {light: Uri, dark: Uri}) {
+    this._iconPath = value;
   }
 
   get tooltip(): string {

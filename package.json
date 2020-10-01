@@ -39,6 +39,11 @@
         "command": "ooxmlViewer.clear",
         "title": "Clear",
         "when": "view == ooxmlViewer"
+      },
+      {
+        "command": "ooxmlViewer.showDiff",
+        "title": "Compare with Previous",
+        "when": "view == ooxmlViewer"
       }
     ],
     "languages": [
@@ -68,13 +73,21 @@
           "group": "navigation",
           "when": "view == ooxmlViewer"
         }
+      ],
+      "view/item/context": [
+        {
+          "command": "ooxmlViewer.showDiff",
+          "group": "navigation",
+          "when": "view == ooxmlViewer"
+        }
       ]
     },
     "views": {
       "explorer": [
         {
           "id": "ooxmlViewer",
-          "name": "OOXML Viewer"
+          "name": "OOXML Viewer",
+          "visibility": "visible"
         }
       ]
     }

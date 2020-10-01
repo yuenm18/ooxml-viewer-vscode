@@ -14,7 +14,7 @@ suite('OOXMLViewer', function () {
   const stubs: SinonStub[] = [];
 
   setup(function () {
-    ooxmlViewer = new OOXMLViewer();
+    // ooxmlViewer = new OOXMLViewer();
   });
 
   test('It should have an instance of OOXMLTreeDataProvider', function () {
