@@ -20,6 +20,7 @@ const statPromise = promisify(stat);
 export class OOXMLViewer {
   treeDataProvider: OOXMLTreeDataProvider;
   zip: JSZip;
+  private _context: ExtensionContext;
   static watchers: Disposable[] = [];
   static watchActions: { [key: string]: number; } = {};
   static openTextEditors: { [key: string]: FileNode; } = {};
@@ -44,16 +45,17 @@ export class OOXMLViewer {
   async viewContents(file: vscode.Uri): Promise<void> {
     try {
       OOXMLViewer.ooxmlFilePath = file.fsPath;
-      await this.resetOOXMLViewer();
+      await this._resetOOXMLViewer();
       const data = await readFilePromise(file.fsPath);
       await this.zip.loadAsync(data);
-      await this.populateOOXMLViewer(this.zip.files);
+
+      await this._populateOOXMLViewer(this.zip.files);
       await OOXMLViewer.mkdirp(OOXMLViewer.fileCachePath);
 
       const watcher: FileSystemWatcher = vscode.workspace.createFileSystemWatcher(file.fsPath);
 
       watcher.onDidChange((uri: Uri) => {
-        this.checkDiff(file.fsPath);
+        this._reloadOoxmlFile(file.fsPath);
       });
 
       const textDocumentWatcher = vscode.workspace.onDidSaveTextDocument(async (e: TextDocument) => {
@@ -61,7 +63,7 @@ export class OOXMLViewer {
           const { fileName } = e;
           let prevFilePath = '';
           if (fileName) {
-            prevFilePath = OOXMLViewer.getPrevFilePath(fileName);
+            prevFilePath = OOXMLViewer._getPrevFilePath(fileName);
           }
           if (fileName && existsSync(fileName) && prevFilePath && existsSync(prevFilePath)) {
             const stats: Stats = await statPromise(fileName);
@@ -86,7 +88,7 @@ export class OOXMLViewer {
               `File not saved.\n${OOXMLViewer.ooxmlFilePath} is open in another program.\nClose that program before making any changes.`,
               { modal: true },
             );
-            OOXMLViewer.makeDirty(vscode.window.activeTextEditor);
+            OOXMLViewer._makeDirty(vscode.window.activeTextEditor);
           }
         }
       });
@@ -110,8 +112,8 @@ export class OOXMLViewer {
     try {
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fileNode.fullPath));
       const filePath: string = join(folderPath, fileNode.fileName);
-      await this.createFile(fileNode.fullPath, fileNode.fileName);
-      const uri: Uri = Uri.parse('file:///' + filePath);
+      await this._createFile(fileNode.fullPath, fileNode.fileName);
+      const uri: Uri = Uri.parse(`file:///${filePath}`);
       OOXMLViewer.openTextEditors[filePath] = fileNode;
       const xmlDoc: TextDocument = await vscode.workspace.openTextDocument(uri);
 
@@ -130,14 +132,7 @@ export class OOXMLViewer {
       }
     }
   }
-
-  /**
-   * Clears the OOXML viewer
-   */
-  clear(): Promise<void> {
-    return this.resetOOXMLViewer();
-  }
-  private static async closeEditors(textDocuments?: TextDocument[]): Promise<void> {
+  private static async _closeEditors(textDocuments?: TextDocument[]): Promise<void> {
     const tds = textDocuments ??
       vscode.workspace.textDocuments.filter(t => t.fileName.toLowerCase().includes(OOXMLViewer.fileCachePath.toLowerCase()));
     if (tds.length) {
@@ -145,12 +140,12 @@ export class OOXMLViewer {
       if (td) {
         await vscode.window.showTextDocument(td, { preview: true, preserveFocus: false });
         await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
-        await OOXMLViewer.closeEditors(tds);
+        await OOXMLViewer._closeEditors(tds);
       }
     }
   }
 
-  private async resetOOXMLViewer(): Promise<void> {
+  private async _resetOOXMLViewer(): Promise<void> {
     try {
       this.zip = new JSZip();
       this.treeDataProvider.rootFileNode = new FileNode();
@@ -159,14 +154,14 @@ export class OOXMLViewer {
         await rimrafPromise(OOXMLViewer.fileCachePath);
       }
       await OOXMLViewer.closeWatchers();
-      await OOXMLViewer.closeEditors();
+      await OOXMLViewer._closeEditors();
     } catch (err) {
       console.error(err);
       vscode.window.showErrorMessage('Could not remove ooxml file viewer cache');
     }
   }
 
-  private async populateOOXMLViewer(files: { [key: string]: JSZip.JSZipObject; }) {
+  private async _populateOOXMLViewer(files: { [key: string]: JSZip.JSZipObject; }) {
     for (const fileWithPath of Object.keys(files)) {
       // ignore folder files
       if (files[fileWithPath].dir) {
@@ -197,7 +192,7 @@ export class OOXMLViewer {
     this.treeDataProvider.refresh();
   }
 
-  private async createFile(fullPath: string, fileName: string): Promise<void> {
+  private async _createFile(fullPath: string, fileName: string): Promise<void> {
     try {
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fullPath));
       const filePath: string = join(folderPath, fileName);
@@ -214,19 +209,19 @@ export class OOXMLViewer {
       if (text.startsWith('<?xml')) {
         const formattedXml: string = formatXml(text);
         await OOXMLViewer.writeFilePromise(filePath, formattedXml, 'utf8');
-        let prevFilePath = '';
-        const { dir, base } = parse(filePath);
-        prevFilePath = format({ dir, base: `prev.${base}` });
-        if (!existsSync(prevFilePath)) {
-          await OOXMLViewer.writeFilePromise(prevFilePath, formattedXml, 'utf8');
-        }
+        // let prevFilePath = '';
+        // const { dir, base } = parse(filePath);
+        // prevFilePath = format({ dir, base: `prev.${base}` });
+        // if (!existsSync(prevFilePath)) {
+        //   await OOXMLViewer.writeFilePromise(prevFilePath, formattedXml, 'utf8');
+        // }
       }
     } catch (err) {
       console.error(err);
     }
   }
 
-  private static async makeDirty(activeTextEditor?: TextEditor): Promise<void> {
+  private static async _makeDirty(activeTextEditor?: TextEditor): Promise<void> {
     activeTextEditor?.edit(async (textEditorEdit: TextEditorEdit) => {
       if (vscode.window.activeTextEditor?.selection) {
         const { activeTextEditor } = vscode.window;
@@ -268,7 +263,7 @@ export class OOXMLViewer {
     });
   }
 
-  private static getPrevFilePath(path: string): string {
+  private static _getPrevFilePath(path: string): string {
     const { dir, base } = parse(path);
     return format({ dir, base: `prev.${base}` });
   }
