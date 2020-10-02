@@ -1,7 +1,6 @@
 import { exec } from 'child_process';
-import { existsSync, readFile, stat, Stats, writeFile } from 'fs';
+import { existsSync, mkdir, readFile, stat, Stats, writeFile } from 'fs';
 import JSZip, { JSZipObject } from 'jszip';
-import mkdirp from 'mkdirp';
 import { basename, dirname, format, join, parse } from 'path';
 import rimraf from 'rimraf';
 import { promisify } from 'util';
@@ -28,6 +27,7 @@ const readFilePromise = promisify(readFile);
 const writeFilePromise = promisify(writeFile);
 const rimrafPromise = promisify(rimraf);
 const statPromise = promisify(stat);
+const mkdirPromise = promisify(mkdir);
 
 /**
  * The OOXML Viewer
@@ -43,7 +43,6 @@ export class OOXMLViewer {
   static ooxmlFilePath: string;
   static fileCachePath: string = join(process.cwd(), OOXMLViewer.cacheFolderName);
   static existsSync = existsSync;
-  static mkdirp = mkdirp;
   static execPromise = execPromise;
   static writeFilePromise = writeFilePromise;
 
@@ -66,7 +65,7 @@ export class OOXMLViewer {
       await this.zip.loadAsync(data);
 
       await this._populateOOXMLViewer(this.zip.files);
-      await OOXMLViewer.mkdirp(OOXMLViewer.fileCachePath);
+      await mkdirPromise(OOXMLViewer.fileCachePath, {recursive: true});
 
       const watcher: FileSystemWatcher = workspace.createFileSystemWatcher(file.fsPath);
 
@@ -238,14 +237,14 @@ export class OOXMLViewer {
     }
 
     this.treeDataProvider.refresh();
+    const end = Date.now();
   }
 
   private async _createFile(fullPath: string, fileName: string): Promise<void> {
     try {
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fullPath));
       const filePath: string = join(folderPath, fileName);
-      await OOXMLViewer.mkdirp(folderPath);
-      // On Windows hide the folder
+      await mkdirPromise(folderPath, {recursive: true});
       if (process.platform.startsWith('win')) {
         const { stderr } = await OOXMLViewer.execPromise('attrib +h ' + OOXMLViewer.fileCachePath);
         if (stderr) {
