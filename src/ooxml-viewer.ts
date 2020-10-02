@@ -5,6 +5,7 @@ import mkdirp from 'mkdirp';
 import { basename, dirname, format, join, parse } from 'path';
 import rimraf from 'rimraf';
 import { promisify } from 'util';
+import { v4 as uuidv4 } from 'uuid';
 import {
   commands,
   Disposable,
@@ -38,7 +39,7 @@ export class OOXMLViewer {
   static watchers: Disposable[] = [];
   static watchActions: { [key: string]: number; } = {};
   static openTextEditors: { [key: string]: FileNode; } = {};
-  static cacheFolderName = '.ooxml-temp-file-folder-78kIPsmTq5TK';
+  static cacheFolderName = `.${uuidv4()}`;
   static ooxmlFilePath: string;
   static fileCachePath: string = join(process.cwd(), OOXMLViewer.cacheFolderName);
   static existsSync = existsSync;
