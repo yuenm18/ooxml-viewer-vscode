@@ -1,7 +1,6 @@
 import { expect } from 'chai';
 import { ExecOptions, PromiseWithChild } from 'child_process';
 import { BaseEncodingOptions, PathLike } from 'fs';
-import { Options } from 'mkdirp';
 import { join } from 'path';
 import { SinonStub, stub } from 'sinon';
 import * as vscode from 'vscode';
@@ -28,9 +27,9 @@ suite('OOXMLViewer', function () {
     return;
   });
   suiteSetup(function () {
-    stubs.push(stub(OOXMLViewer, 'mkdirp').callsFake(function (dir: string, opts?: string | number | Options | undefined) {
-      return Promise.resolve(undefined);
-    }));
+    // stubs.push(stub(OOXMLViewer, 'mkdirp').callsFake(function (dir: string, opts?: string | number | Options | undefined) {
+    //   return Promise.resolve(undefined);
+    // }));
     stubs.push(stub(OOXMLViewer, 'execPromise').callsFake(function (command: string, options?: (BaseEncodingOptions & ExecOptions) | null | undefined) {
       expect(command.includes('attrib +h')).to.be.true;
       expect(command.includes(OOXMLViewer.fileCachePath)).to.be.true;

@@ -237,7 +237,6 @@ export class OOXMLViewer {
     }
 
     this.treeDataProvider.refresh();
-    const end = Date.now();
   }
 
   private async _createFile(fullPath: string, fileName: string): Promise<void> {
@@ -254,8 +253,11 @@ export class OOXMLViewer {
       const file: JSZipObject | null = this.zip.file(fullPath);
       const text: string = await file?.async('text') ?? '';
       if (text.startsWith('<?xml')) {
-        const formattedXml: string = formatXml(text);
-        await OOXMLViewer.writeFilePromise(filePath, formattedXml, 'utf8');
+        let formattedXml = '';
+        if (text.length < 100000){
+          formattedXml = formatXml(text);
+        }
+        await OOXMLViewer.writeFilePromise(filePath, formattedXml || text, 'utf8');
       }
     } catch (err) {
       console.error(err);
