@@ -5,7 +5,21 @@ import mkdirp from 'mkdirp';
 import { basename, dirname, format, join, parse } from 'path';
 import rimraf from 'rimraf';
 import { promisify } from 'util';
-import vscode, { Disposable, ExtensionContext, FileSystemWatcher, Position, TextDocument, TextEditor, TextEditorEdit, Uri } from 'vscode';
+import {
+  commands,
+  Disposable,
+  ExtensionContext,
+  FileSystemWatcher,
+  Position,
+  Range,
+  TextDocument,
+  TextEditor,
+  TextEditorEdit,
+  ThemeIcon,
+  Uri,
+  window,
+  workspace,
+} from 'vscode';
 import formatXml from 'xml-formatter';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
 const execPromise = promisify(exec);
@@ -43,7 +57,7 @@ export class OOXMLViewer {
    *
    * @param file The OOXML file
    */
-  async viewContents(file: vscode.Uri): Promise<void> {
+  async viewContents(file: Uri): Promise<void> {
     try {
       OOXMLViewer.ooxmlFilePath = file.fsPath;
       await this._resetOOXMLViewer();
@@ -53,13 +67,13 @@ export class OOXMLViewer {
       await this._populateOOXMLViewer(this.zip.files);
       await OOXMLViewer.mkdirp(OOXMLViewer.fileCachePath);
 
-      const watcher: FileSystemWatcher = vscode.workspace.createFileSystemWatcher(file.fsPath);
+      const watcher: FileSystemWatcher = workspace.createFileSystemWatcher(file.fsPath);
 
       watcher.onDidChange((uri: Uri) => {
         this._reloadOoxmlFile(file.fsPath);
       });
 
-      const textDocumentWatcher = vscode.workspace.onDidSaveTextDocument(async (e: TextDocument) => {
+      const textDocumentWatcher = workspace.onDidSaveTextDocument(async (e: TextDocument) => {
         try {
           const { fileName } = e;
           let prevFilePath = '';
@@ -85,22 +99,22 @@ export class OOXMLViewer {
           }
         } catch (err) {
           if (err?.code === 'EBUSY') {
-            vscode.window.showWarningMessage(
+            window.showWarningMessage(
               `File not saved.\n${OOXMLViewer.ooxmlFilePath} is open in another program.\nClose that program before making any changes.`,
               { modal: true },
             );
-            OOXMLViewer._makeDirty(vscode.window.activeTextEditor);
+            OOXMLViewer._makeDirty(window.activeTextEditor);
           }
         }
       });
 
-      const closeWatcher = vscode.workspace.onDidCloseTextDocument((textDocument: TextDocument) => {
+      const closeWatcher = workspace.onDidCloseTextDocument((textDocument: TextDocument) => {
         delete OOXMLViewer.openTextEditors[textDocument.fileName];
       });
       OOXMLViewer.watchers.push(watcher, textDocumentWatcher, closeWatcher);
     } catch (err) {
       console.error(err);
-      vscode.window.showErrorMessage(`Could not load ${file.fsPath}`, err);
+      window.showErrorMessage(`Could not load ${file.fsPath}`, err);
     }
   }
 
@@ -116,12 +130,12 @@ export class OOXMLViewer {
       await this._createFile(fileNode.fullPath, fileNode.fileName);
       const uri: Uri = Uri.parse(`file:///${filePath}`);
       OOXMLViewer.openTextEditors[filePath] = fileNode;
-      const xmlDoc: TextDocument = await vscode.workspace.openTextDocument(uri);
+      const xmlDoc: TextDocument = await workspace.openTextDocument(uri);
 
-      await vscode.window.showTextDocument(xmlDoc, {preview});
+      await window.showTextDocument(xmlDoc, {preview});
     } catch (e) {
       console.error(e);
-      vscode.window.showErrorMessage(`Could not load ${fileNode.fullPath}`);
+      window.showErrorMessage(`Could not load ${fileNode.fullPath}`);
     }
   }
 
@@ -139,10 +153,10 @@ export class OOXMLViewer {
     try {
       const filePath = join(OOXMLViewer.fileCachePath, dirname(file.fullPath), file.fileName);
       const prevFilePath = OOXMLViewer._getPrevFilePath(filePath);
-      const leftUri = vscode.Uri.file(filePath);
-      const rightUri = vscode.Uri.file(prevFilePath);
+      const leftUri = Uri.file(filePath);
+      const rightUri = Uri.file(prevFilePath);
       const title = `${basename(filePath)} ↔ ${basename(prevFilePath)}`;
-      await vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, title);
+      await commands.executeCommand('vscode.diff', leftUri, rightUri, title);
     } catch (err) {
       console.error(err);
     }
@@ -158,12 +172,12 @@ export class OOXMLViewer {
   }
   private static async _closeEditors(textDocuments?: TextDocument[]): Promise<void> {
     const tds = textDocuments ??
-      vscode.workspace.textDocuments.filter(t => t.fileName.toLowerCase().includes(OOXMLViewer.fileCachePath.toLowerCase()));
+      workspace.textDocuments.filter(t => t.fileName.toLowerCase().includes(OOXMLViewer.fileCachePath.toLowerCase()));
     if (tds.length) {
       const td: TextDocument | undefined = tds.pop();
       if (td) {
-        await vscode.window.showTextDocument(td, { preview: true, preserveFocus: false });
-        await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+        await window.showTextDocument(td, { preview: true, preserveFocus: false });
+        await commands.executeCommand('workbench.action.closeActiveEditor');
         await OOXMLViewer._closeEditors(tds);
       }
     }
@@ -181,7 +195,7 @@ export class OOXMLViewer {
       await OOXMLViewer._closeEditors();
     } catch (err) {
       console.error(err);
-      vscode.window.showErrorMessage('Could not remove ooxml file viewer cache');
+      window.showErrorMessage('Could not remove ooxml file viewer cache');
     }
   }
 
@@ -201,10 +215,10 @@ export class OOXMLViewer {
         if (existingFileNode) {
           const warningIcon: string = this._context.asAbsolutePath(join('images', 'asterisk.svg'));
           currentFileNode = existingFileNode;
-          const filesAreDifferent = await OOXMLViewer._filesAreDifferent(currentFileNode.fullPath);
+          const filesAreDifferent = await OOXMLViewer._fileHasBeenChangedFromOutside(currentFileNode.fullPath);
           currentFileNode.iconPath = filesAreDifferent ?
             warningIcon : currentFileNode.children.length ?
-              vscode.ThemeIcon.Folder : vscode.ThemeIcon.File;
+              ThemeIcon.Folder : ThemeIcon.File;
         } else {
           const newFileNode = new FileNode(this._context);
           newFileNode.fileName = fileOrFolderName;
@@ -250,12 +264,12 @@ export class OOXMLViewer {
 
   private static async _makeDirty(activeTextEditor?: TextEditor): Promise<void> {
     activeTextEditor?.edit(async (textEditorEdit: TextEditorEdit) => {
-      if (vscode.window.activeTextEditor?.selection) {
-        const { activeTextEditor } = vscode.window;
+      if (window.activeTextEditor?.selection) {
+        const { activeTextEditor } = window;
 
         if (activeTextEditor && activeTextEditor.document.lineCount >= 2) {
           const lineNumber = activeTextEditor.document.lineCount - 2;
-          const lastLineRange = new vscode.Range(
+          const lastLineRange = new Range(
             new Position(lineNumber, 0),
             new Position(lineNumber + 1, 0));
           const lastLineText = activeTextEditor.document.getText(lastLineRange);
@@ -264,7 +278,7 @@ export class OOXMLViewer {
         }
 
         // Try to replace the first character.
-        const range = new vscode.Range(new Position(0, 0), new Position(0, 1));
+        const range = new Range(new Position(0, 0), new Position(0, 1));
         const text: string | undefined = activeTextEditor?.document.getText(range);
         if (text) {
           textEditorEdit.replace(range, text);
@@ -311,7 +325,7 @@ export class OOXMLViewer {
     this._viewFiles(Object.values(OOXMLViewer.openTextEditors));
   }
 
-  private static async _filesAreDifferent(firstFile: string): Promise<boolean> {
+  private static async _fileHasBeenChangedFromOutside(firstFile: string): Promise<boolean> {
     try {
       const secondFile = OOXMLViewer._getPrevFilePath(firstFile);
       const firstFilePath = join(OOXMLViewer.fileCachePath, firstFile);
