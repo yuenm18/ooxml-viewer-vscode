@@ -4,7 +4,6 @@ import JSZip, { JSZipObject } from 'jszip';
 import { basename, dirname, format, join, parse } from 'path';
 import rimraf from 'rimraf';
 import { promisify } from 'util';
-import { v4 as uuidv4 } from 'uuid';
 import {
   commands,
   Disposable,
@@ -39,7 +38,7 @@ export class OOXMLViewer {
   static watchers: Disposable[] = [];
   static watchActions: { [key: string]: number; } = {};
   static openTextEditors: { [key: string]: FileNode; } = {};
-  static cacheFolderName = `.${uuidv4()}`;
+  static cacheFolderName = '.53d3a0ba-37e3-41cf-a068-b10b392cf8ca';
   static ooxmlFilePath: string;
   static fileCachePath: string = join(process.cwd(), OOXMLViewer.cacheFolderName);
   static existsSync = existsSync;
@@ -215,10 +214,13 @@ export class OOXMLViewer {
         if (existingFileNode) {
           const warningIcon: string = this._context.asAbsolutePath(join('images', 'asterisk.svg'));
           currentFileNode = existingFileNode;
+          await this._createFile(currentFileNode.fullPath, currentFileNode.fileName);
           const filesAreDifferent = await OOXMLViewer._fileHasBeenChangedFromOutside(currentFileNode.fullPath);
-          currentFileNode.iconPath = filesAreDifferent ?
-            warningIcon : currentFileNode.children.length ?
-              ThemeIcon.Folder : ThemeIcon.File;
+          if (filesAreDifferent){
+            currentFileNode.iconPath = warningIcon;
+          } else {
+            currentFileNode.iconPath = currentFileNode.children.length ? ThemeIcon.Folder : ThemeIcon.File;
+          }
         } else {
           const newFileNode = new FileNode(this._context);
           newFileNode.fileName = fileOrFolderName;
@@ -227,9 +229,7 @@ export class OOXMLViewer {
           currentFileNode.children.push(newFileNode);
           currentFileNode = newFileNode;
           await this._createFile(newFileNode.fullPath, newFileNode.fileName);
-          if (!existsSync(newFileNode.fullPath) && !newFileNode.fileName.startsWith('prev.')) {
-            await this._createFile(newFileNode.fullPath, `prev.${newFileNode.fileName}`);
-          }
+          await this._createFile(newFileNode.fullPath, `prev.${newFileNode.fileName}`);
         }
       }
 
