@@ -247,6 +247,7 @@ export class OOXMLViewer {
   private async _createFile(fullPath: string, fileName: string): Promise<void> {
     try {
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fullPath));
+      const preFilePath = join(OOXMLViewer.fileCachePath, fullPath);
       const filePath: string = join(folderPath, fileName);
       await mkdirPromise(folderPath, {recursive: true});
       if (process.platform.startsWith('win')) {
@@ -256,7 +257,7 @@ export class OOXMLViewer {
         }
       }
       const file: JSZipObject | null = this.zip.file(fullPath);
-      const text: string = await file?.async('text') ?? '';
+      const text: string = await file?.async('text') ?? await (await readFilePromise(preFilePath)).toString();
       if (text.startsWith('<?xml')) {
         let formattedXml = '';
         if (text.length < 100000){
