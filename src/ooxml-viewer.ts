@@ -92,6 +92,7 @@ export class OOXMLViewer {
                 normalizedPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
                 const zipFile = await this.zip.file(normalizedPath, data, { binary: true }).generateAsync({ type: 'nodebuffer' });
                 await writeFilePromise(OOXMLViewer.ooxmlFilePath, zipFile);
+                await writeFilePromise(join(dirname(prevFilePath), `compare.${basename(fileName)}`), prevData);
                 await writeFilePromise(prevFilePath, data);
               }
             }
@@ -151,10 +152,10 @@ export class OOXMLViewer {
   async getDiff(file: FileNode): Promise<void> {
     try {
       const filePath = join(OOXMLViewer.fileCachePath, dirname(file.fullPath), file.fileName);
-      const prevFilePath = OOXMLViewer._getPrevFilePath(filePath);
+      const compareFilePath = join(OOXMLViewer.fileCachePath, dirname(file.fullPath), `compare.${file.fileName}`);
       const leftUri = Uri.file(filePath);
-      const rightUri = Uri.file(prevFilePath);
-      const title = `${basename(filePath)} ↔ ${basename(prevFilePath)}`;
+      const rightUri = Uri.file(compareFilePath);
+      const title = `${basename(filePath)} ↔ ${basename(compareFilePath)}`;
       await commands.executeCommand('vscode.diff', leftUri, rightUri, title);
     } catch (err) {
       console.error(err);
@@ -218,6 +219,9 @@ export class OOXMLViewer {
           const filesAreDifferent = await OOXMLViewer._fileHasBeenChangedFromOutside(currentFileNode.fullPath);
           if (filesAreDifferent){
             currentFileNode.iconPath = warningIcon;
+            const path = OOXMLViewer._getPrevFilePath(currentFileNode.fullPath);
+            await this._createFile(path, `compare.${currentFileNode.fileName}`);
+            await this._createFile(currentFileNode.fullPath, `prev.${currentFileNode.fileName}`);
           } else {
             currentFileNode.iconPath = currentFileNode.children.length ? ThemeIcon.Folder : ThemeIcon.File;
           }
@@ -230,6 +234,7 @@ export class OOXMLViewer {
           currentFileNode = newFileNode;
           await this._createFile(newFileNode.fullPath, newFileNode.fileName);
           await this._createFile(newFileNode.fullPath, `prev.${newFileNode.fileName}`);
+          await this._createFile(newFileNode.fullPath, `compare.${newFileNode.fileName}`);
         }
       }
 
