@@ -153,8 +153,8 @@ export class OOXMLViewer {
     try {
       const filePath = join(OOXMLViewer.fileCachePath, dirname(file.fullPath), file.fileName);
       const compareFilePath = join(OOXMLViewer.fileCachePath, dirname(file.fullPath), `compare.${file.fileName}`);
-      const leftUri = Uri.file(filePath);
-      const rightUri = Uri.file(compareFilePath);
+      const rightUri = Uri.file(filePath);
+      const leftUri = Uri.file(compareFilePath);
       const title = `${basename(filePath)} ↔ ${basename(compareFilePath)}`;
       await commands.executeCommand('vscode.diff', leftUri, rightUri, title);
     } catch (err) {
