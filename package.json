@@ -130,7 +130,6 @@
   "dependencies": {
     "jszip": "^3.5.0",
     "rimraf": "^3.0.2",
-    "uuid": "^8.3.0",
     "xml-formatter": "^2.1.2"
   }
 }
