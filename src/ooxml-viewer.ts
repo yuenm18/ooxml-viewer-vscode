@@ -36,8 +36,8 @@ export class OOXMLViewer {
   zip: JSZip;
   private _context: ExtensionContext;
   static watchers: Disposable[] = [];
-  static watchActions: { [key: string]: number; } = {};
-  static openTextEditors: { [key: string]: FileNode; } = {};
+  static watchActions: { [key: string]: number } = {};
+  static openTextEditors: { [key: string]: FileNode } = {};
   static cacheFolderName = '.53d3a0ba-37e3-41cf-a068-b10b392cf8ca';
   static ooxmlFilePath: string;
   static fileCachePath: string = join(process.cwd(), OOXMLViewer.cacheFolderName);
@@ -64,7 +64,7 @@ export class OOXMLViewer {
       await this.zip.loadAsync(data);
 
       await this._populateOOXMLViewer(this.zip.files);
-      await mkdirPromise(OOXMLViewer.fileCachePath, {recursive: true});
+      await mkdirPromise(OOXMLViewer.fileCachePath, { recursive: true });
 
       const watcher: FileSystemWatcher = workspace.createFileSystemWatcher(file.fsPath);
 
@@ -140,15 +140,15 @@ export class OOXMLViewer {
   }
 
   /**
-     * Clears the OOXML viewer
-     */
+   * Clears the OOXML viewer
+   */
   clear(): Promise<void> {
     return this._resetOOXMLViewer();
   }
 
   /**
-     * Compares the file to it's previous version
-     */
+   * Compares the file to it's previous version
+   */
   async getDiff(file: FileNode): Promise<void> {
     try {
       const filePath = join(OOXMLViewer.fileCachePath, dirname(file.fullPath), file.fileName);
@@ -171,8 +171,8 @@ export class OOXMLViewer {
     }
   }
   private static async _closeEditors(textDocuments?: TextDocument[]): Promise<void> {
-    const tds = textDocuments ??
-      workspace.textDocuments.filter(t => t.fileName.toLowerCase().includes(OOXMLViewer.fileCachePath.toLowerCase()));
+    const tds =
+      textDocuments ?? workspace.textDocuments.filter(t => t.fileName.toLowerCase().includes(OOXMLViewer.fileCachePath.toLowerCase()));
     if (tds.length) {
       const td: TextDocument | undefined = tds.pop();
       if (td) {
@@ -199,7 +199,7 @@ export class OOXMLViewer {
     }
   }
 
-  private async _populateOOXMLViewer(files: { [key: string]: JSZip.JSZipObject; }) {
+  private async _populateOOXMLViewer(files: { [key: string]: JSZip.JSZipObject }) {
     for (const fileWithPath of Object.keys(files)) {
       // ignore folder files
       if (files[fileWithPath].dir) {
@@ -209,7 +209,6 @@ export class OOXMLViewer {
       // Build nodes for each file
       let currentFileNode = this.treeDataProvider.rootFileNode;
       for (const fileOrFolderName of fileWithPath.split('/')) {
-
         // Create node if it does not exist
         const existingFileNode = currentFileNode.children.find(c => c.description === fileOrFolderName);
         if (existingFileNode) {
@@ -217,7 +216,7 @@ export class OOXMLViewer {
           currentFileNode = existingFileNode;
           await this._createFile(currentFileNode.fullPath, currentFileNode.fileName);
           const filesAreDifferent = await OOXMLViewer._fileHasBeenChangedFromOutside(currentFileNode.fullPath);
-          if (filesAreDifferent){
+          if (filesAreDifferent) {
             currentFileNode.iconPath = warningIcon;
             const path = OOXMLViewer._getPrevFilePath(currentFileNode.fullPath);
             await this._createFile(path, `compare.${currentFileNode.fileName}`);
@@ -247,9 +246,8 @@ export class OOXMLViewer {
   private async _createFile(fullPath: string, fileName: string): Promise<void> {
     try {
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fullPath));
-      const preFilePath = join(OOXMLViewer.fileCachePath, fullPath);
       const filePath: string = join(folderPath, fileName);
-      await mkdirPromise(folderPath, {recursive: true});
+      await mkdirPromise(folderPath, { recursive: true });
       if (process.platform.startsWith('win')) {
         const { stderr } = await OOXMLViewer.execPromise('attrib +h ' + OOXMLViewer.fileCachePath);
         if (stderr) {
@@ -277,9 +275,7 @@ export class OOXMLViewer {
 
         if (activeTextEditor && activeTextEditor.document.lineCount >= 2) {
           const lineNumber = activeTextEditor.document.lineCount - 2;
-          const lastLineRange = new Range(
-            new Position(lineNumber, 0),
-            new Position(lineNumber + 1, 0));
+          const lastLineRange = new Range(new Position(lineNumber, 0), new Position(lineNumber + 1, 0));
           const lastLineText = activeTextEditor.document.getText(lastLineRange);
           textEditorEdit.replace(lastLineRange, lastLineText);
           return;
@@ -301,13 +297,15 @@ export class OOXMLViewer {
           (innerEditBuilder: TextEditorEdit) => {
             innerEditBuilder.replace(range, ' ');
           },
-          { undoStopBefore: true, undoStopAfter: false });
+          { undoStopBefore: true, undoStopAfter: false },
+        );
 
         await activeTextEditor?.edit(
           (innerEditBuilder: TextEditorEdit) => {
             innerEditBuilder.replace(range, '');
           },
-          { undoStopBefore: false, undoStopAfter: true });
+          { undoStopBefore: false, undoStopAfter: true },
+        );
       }
     });
   }
@@ -347,8 +345,7 @@ export class OOXMLViewer {
           return true;
         }
       }
-
-    } catch(err) {
+    } catch (err) {
       console.error(err.message || err);
     }
     return false;
