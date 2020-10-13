@@ -1,5 +1,5 @@
 import { exec } from 'child_process';
-import { existsSync, mkdir, readFile, stat, Stats, writeFile } from 'fs';
+import { existsSync, mkdir, PathLike, readFile, stat, Stats, writeFile } from 'fs';
 import JSZip, { JSZipObject } from 'jszip';
 import { basename, dirname, format, join, parse } from 'path';
 import rimraf from 'rimraf';
@@ -63,7 +63,7 @@ export class OOXMLViewer {
       const data = await readFilePromise(file.fsPath);
       await this.zip.loadAsync(data);
 
-      await this._populateOOXMLViewer(this.zip.files);
+      await this._populateOOXMLViewer(this.zip.files, false);
       await mkdirPromise(OOXMLViewer.fileCachePath, { recursive: true });
 
       const watcher: FileSystemWatcher = workspace.createFileSystemWatcher(file.fsPath);
@@ -199,7 +199,7 @@ export class OOXMLViewer {
     }
   }
 
-  private async _populateOOXMLViewer(files: { [key: string]: JSZip.JSZipObject }) {
+  private async _populateOOXMLViewer(files: { [key: string]: JSZip.JSZipObject }, showNewFileLabel: boolean) {
     for (const fileWithPath of Object.keys(files)) {
       // ignore folder files
       if (files[fileWithPath].dir) {
@@ -233,7 +233,18 @@ export class OOXMLViewer {
           currentFileNode = newFileNode;
           await this._createFile(newFileNode.fullPath, newFileNode.fileName);
           await this._createFile(newFileNode.fullPath, `prev.${newFileNode.fileName}`);
-          await this._createFile(newFileNode.fullPath, `compare.${newFileNode.fileName}`);
+          if (showNewFileLabel) {
+            const warningIconGreen: string = this._context.asAbsolutePath(join('images', 'asterisk.green.svg'));
+            const compareFilePath: PathLike = join(
+              OOXMLViewer.fileCachePath,
+              dirname(newFileNode.fullPath),
+              `compare.${newFileNode.fileName}`,
+            );
+            currentFileNode.iconPath = warningIconGreen;
+            await writeFilePromise(compareFilePath, '');
+          } else {
+            await this._createFile(newFileNode.fullPath, `compare.${newFileNode.fileName}`);
+          }
         }
       }
 
@@ -327,7 +338,7 @@ export class OOXMLViewer {
     const data: Buffer = await readFilePromise(filePath);
     await ooxmlZip.loadAsync(data);
     this.zip = ooxmlZip;
-    this._populateOOXMLViewer(this.zip.files);
+    this._populateOOXMLViewer(this.zip.files, true);
     this._viewFiles(Object.values(OOXMLViewer.openTextEditors));
   }
 
