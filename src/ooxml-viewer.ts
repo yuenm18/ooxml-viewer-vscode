@@ -163,21 +163,30 @@ export class OOXMLViewer {
   private async _viewFiles(fileNodes: FileNode[]): Promise<void> {
     while (fileNodes.length) {
       const fileNode: FileNode | undefined = fileNodes.pop();
-      if (fileNode) {
-        await this.viewFile(fileNode, false);
+      const filePath: string | undefined = fileNode
+        ? join(OOXMLViewer.fileCachePath, dirname(fileNode.fullPath), fileNode.fileName)
+        : undefined;
+      if (fileNode && filePath && existsSync(filePath)) {
+        await this.viewFile(fileNode);
       }
     }
   }
   private static async _closeEditors(textDocuments?: TextDocument[]): Promise<void> {
-    const tds =
-      textDocuments ?? workspace.textDocuments.filter(t => t.fileName.toLowerCase().includes(OOXMLViewer.fileCachePath.toLowerCase()));
-    if (tds.length) {
-      const td: TextDocument | undefined = tds.pop();
-      if (td) {
-        await window.showTextDocument(td, { preview: true, preserveFocus: false });
-        await commands.executeCommand('workbench.action.closeActiveEditor');
-        await OOXMLViewer._closeEditors(tds);
+    try {
+      const tds =
+        textDocuments ?? workspace.textDocuments.filter(t => t.fileName.toLowerCase().includes(OOXMLViewer.fileCachePath.toLowerCase()));
+      if (tds.length) {
+        const td: TextDocument | undefined = tds.pop();
+        if (td) {
+          if (existsSync(td.fileName)) {
+            await window.showTextDocument(td, { preview: true, preserveFocus: false });
+            await commands.executeCommand('workbench.action.closeActiveEditor');
+          }
+          await OOXMLViewer._closeEditors(tds);
+        }
       }
+    } catch (err) {
+      console.error(err);
     }
   }
 
