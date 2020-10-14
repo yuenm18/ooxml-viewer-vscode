@@ -123,16 +123,14 @@ export class OOXMLViewer {
    *
    * @param fileNode The selected file node
    */
-  async viewFile(fileNode: FileNode, preview = true): Promise<void> {
+  async viewFile(fileNode: FileNode): Promise<void> {
     try {
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fileNode.fullPath));
       const filePath: string = join(folderPath, fileNode.fileName);
       await this._createFile(fileNode.fullPath, fileNode.fileName);
       const uri: Uri = Uri.parse(`file:///${filePath}`);
       OOXMLViewer.openTextEditors[filePath] = fileNode;
-      const xmlDoc: TextDocument = await workspace.openTextDocument(uri);
-
-      await window.showTextDocument(xmlDoc, {preview});
+      commands.executeCommand('vscode.open', uri);
     } catch (e) {
       console.error(e);
       window.showErrorMessage(`Could not load ${fileNode.fullPath}`);
@@ -257,6 +255,7 @@ export class OOXMLViewer {
   private async _createFile(fullPath: string, fileName: string): Promise<void> {
     try {
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fullPath));
+      const preFilePath = join(OOXMLViewer.fileCachePath, fullPath);
       const filePath: string = join(folderPath, fileName);
       await mkdirPromise(folderPath, { recursive: true });
       if (process.platform.startsWith('win')) {
@@ -266,13 +265,18 @@ export class OOXMLViewer {
         }
       }
       const file: JSZipObject | null = this.zip.file(fullPath);
-      const text: string = await file?.async('text') ?? await (await readFilePromise(preFilePath)).toString();
+      const text: string = (await file?.async('text')) ?? (await (await readFilePromise(preFilePath)).toString());
       if (text.startsWith('<?xml')) {
         let formattedXml = '';
-        if (text.length < 100000){
+        if (text.length < 100000) {
           formattedXml = formatXml(text);
         }
         await OOXMLViewer.writeFilePromise(filePath, formattedXml || text, 'utf8');
+      } else {
+        const buf: Buffer | undefined = await file?.async('nodebuffer');
+        if (buf) {
+          await OOXMLViewer.writeFilePromise(filePath, buf);
+        }
       }
     } catch (err) {
       console.error(err);
