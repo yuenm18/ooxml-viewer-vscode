@@ -223,6 +223,8 @@ export class OOXMLViewer {
           currentFileNode = existingFileNode;
           await this._createFile(currentFileNode.fullPath, currentFileNode.fileName);
           const filesAreDifferent = await OOXMLViewer._fileHasBeenChangedFromOutside(currentFileNode.fullPath);
+          // If the files are different replace copy prev to compare and copy current part to prev and add the warning icon,
+          // else don't edit the files and use a folder or file icon
           if (filesAreDifferent) {
             currentFileNode.iconPath = warningIcon;
             const path = OOXMLViewer._getPrevFilePath(currentFileNode.fullPath);
@@ -232,14 +234,19 @@ export class OOXMLViewer {
             currentFileNode.iconPath = currentFileNode.children.length ? ThemeIcon.Folder : ThemeIcon.File;
           }
         } else {
+          // create a new FileNode with the currentFileNode as parent and add it to the currentFileNode children
           const newFileNode = new FileNode(this._context);
           newFileNode.fileName = fileOrFolderName;
           newFileNode.parent = currentFileNode;
           newFileNode.fullPath = fileWithPath;
           currentFileNode.children.push(newFileNode);
           currentFileNode = newFileNode;
+          // create a copy of the file and a prev copy with the same data i.e. no changes have been made
           await this._createFile(newFileNode.fullPath, newFileNode.fileName);
           await this._createFile(newFileNode.fullPath, `prev.${newFileNode.fileName}`);
+          // if showNewFileLabel is true (meaning this is a refresh of the tree) then this is a new file so
+          // add a green asterisk as the icon and create an empty compare file
+          // else create the compare file from the newFileNode.fullPath
           if (showNewFileLabel) {
             const warningIconGreen: string = this._context.asAbsolutePath(join('images', 'asterisk.green.svg'));
             const compareFilePath: PathLike = join(
@@ -254,10 +261,10 @@ export class OOXMLViewer {
           }
         }
       }
-
+      // set the current node fullPath (either new or existing) to fileWithPath
       currentFileNode.fullPath = fileWithPath;
     }
-
+    // tell vscode the tree has changed
     this.treeDataProvider.refresh();
   }
 
