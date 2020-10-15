@@ -71,7 +71,7 @@ export class OOXMLViewer {
       watcher.onDidChange((uri: Uri) => {
         this._reloadOoxmlFile(file.fsPath);
       });
-
+      // TODO: Figure out why this doesn't work as a named method
       const textDocumentWatcher = workspace.onDidSaveTextDocument(async (e: TextDocument) => {
         try {
           const { fileName } = e;
