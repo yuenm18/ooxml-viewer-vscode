@@ -67,7 +67,6 @@ export class OOXMLViewer {
         },
         async progress => {
           progress.report({ message: 'Unpacking OOXML Parts' });
-          // reset any previous OOXML Tree Views that are open
           await this._resetOOXMLViewer();
           const data = await readFilePromise(file.fsPath);
           await this.zip.loadAsync(data);
@@ -81,7 +80,7 @@ export class OOXMLViewer {
           });
 
           const textDocumentWatcher = workspace.onDidSaveTextDocument(this._updateOOXMLFile);
-
+          // TODO: find a better way to remove closed text editors from the openTextEditors. The onDidCloseTextDocument takes more than 3 minutes to fire.
           const closeWatcher = workspace.onDidCloseTextDocument((textDocument: TextDocument) => {
             delete OOXMLViewer.openTextEditors[textDocument.fileName];
           });
