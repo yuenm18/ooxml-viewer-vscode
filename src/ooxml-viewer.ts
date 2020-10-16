@@ -145,15 +145,22 @@ export class OOXMLViewer {
   }
 
   /**
-   * Compares the file to it's previous version
+   * @method getDiff
+   * @async
+   * @param  {FileNode} file the FileNode of the file to be diffed
+   * @returns {Promise} Promise object returns void
+   * @description Opens tab showing the difference between the just the primary xml part and the compare xml part
    */
   async getDiff(file: FileNode): Promise<void> {
     try {
+      // get the full path for the primary file and the compare files
       const filePath = join(OOXMLViewer.fileCachePath, dirname(file.fullPath), file.fileName);
       const compareFilePath = join(OOXMLViewer.fileCachePath, dirname(file.fullPath), `compare.${file.fileName}`);
+      // create URIs and title
       const rightUri = Uri.file(filePath);
       const leftUri = Uri.file(compareFilePath);
       const title = `${basename(filePath)} ↔ ${basename(compareFilePath)}`;
+      // diff the primary and compare files
       await commands.executeCommand('vscode.diff', leftUri, rightUri, title);
     } catch (err) {
       console.error(err);
