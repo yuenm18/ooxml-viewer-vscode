@@ -15,8 +15,8 @@ export class OOXMLTreeDataProvider implements vscode.TreeDataProvider<FileNode> 
 
   rootFileNode: FileNode;
 
-  constructor(private context: ExtensionContext) {
-    this.rootFileNode = new FileNode(context);
+  constructor(private _context: ExtensionContext) {
+    this.rootFileNode = new FileNode(this._context);
   }
 
   refresh(): void {
@@ -62,7 +62,7 @@ export class OOXMLTreeDataProvider implements vscode.TreeDataProvider<FileNode> 
  */
 export class FileNode implements vscode.TreeItem {
   private _context: ExtensionContext;
-  private _iconPath: ThemeIcon | Uri | {light: Uri, dark: Uri};
+  private _iconPath: ThemeIcon | Uri | { light: Uri; dark: Uri };
 
   constructor(private context: ExtensionContext) {
     this._context = context;
@@ -88,11 +88,11 @@ export class FileNode implements vscode.TreeItem {
     return;
   }
 
-  get iconPath(): ThemeIcon | Uri | {light: Uri, dark: Uri} {
+  get iconPath(): ThemeIcon | Uri | { light: Uri; dark: Uri } {
     return this._iconPath;
   }
 
-  set iconPath(value: ThemeIcon | Uri | {light: Uri, dark: Uri}) {
+  set iconPath(value: ThemeIcon | Uri | { light: Uri; dark: Uri }) {
     this._iconPath = value;
   }
 

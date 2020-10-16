@@ -1,5 +1,5 @@
 import { exec } from 'child_process';
-import { existsSync, mkdir, PathLike, readFile, stat, Stats, writeFile } from 'fs';
+import { existsSync, mkdir, PathLike, readFile, stat, Stats, unlink, writeFile } from 'fs';
 import JSZip, { JSZipObject } from 'jszip';
 import { basename, dirname, format, join, parse } from 'path';
 import rimraf from 'rimraf';
@@ -27,6 +27,7 @@ const writeFilePromise = promisify(writeFile);
 const rimrafPromise = promisify(rimraf);
 const statPromise = promisify(stat);
 const mkdirPromise = promisify(mkdir);
+const unlinkPromise = promisify(unlink);
 
 /**
  * The OOXML Viewer
@@ -34,21 +35,20 @@ const mkdirPromise = promisify(mkdir);
 export class OOXMLViewer {
   treeDataProvider: OOXMLTreeDataProvider;
   zip: JSZip;
-  private _context: ExtensionContext;
   static watchers: Disposable[] = [];
   static watchActions: { [key: string]: number } = {};
   static openTextEditors: { [key: string]: FileNode } = {};
   static cacheFolderName = '.53d3a0ba-37e3-41cf-a068-b10b392cf8ca';
   static ooxmlFilePath: string;
   static fileCachePath: string = join(process.cwd(), OOXMLViewer.cacheFolderName);
+  static deletedParts: string[] = [];
   static existsSync = existsSync;
   static execPromise = execPromise;
   static writeFilePromise = writeFilePromise;
 
-  constructor(context: ExtensionContext) {
-    this.treeDataProvider = new OOXMLTreeDataProvider(context);
+  constructor(private _context: ExtensionContext) {
+    this.treeDataProvider = new OOXMLTreeDataProvider(this._context);
     this.zip = new JSZip();
-    this._context = context;
   }
 
   /**
@@ -207,7 +207,8 @@ export class OOXMLViewer {
   }
 
   private async _populateOOXMLViewer(files: { [key: string]: JSZip.JSZipObject }, showNewFileLabel: boolean) {
-    for (const fileWithPath of Object.keys(files)) {
+    const fileKeys: string[] = Object.keys(files);
+    for (const fileWithPath of fileKeys) {
       // ignore folder files
       if (files[fileWithPath].dir) {
         continue;
@@ -215,7 +216,8 @@ export class OOXMLViewer {
 
       // Build nodes for each file
       let currentFileNode = this.treeDataProvider.rootFileNode;
-      for (const fileOrFolderName of fileWithPath.split('/')) {
+      const names: string[] = fileWithPath.split('/');
+      for (const fileOrFolderName of names) {
         // Create node if it does not exist
         const existingFileNode = currentFileNode.children.find(c => c.description === fileOrFolderName);
         if (existingFileNode) {
@@ -263,6 +265,10 @@ export class OOXMLViewer {
       }
       // set the current node fullPath (either new or existing) to fileWithPath
       currentFileNode.fullPath = fileWithPath;
+    }
+    // remove parts deleted from file if it's not the first time the file is opened
+    if (showNewFileLabel) {
+      await this._deleteDeletedParts();
     }
     // tell vscode the tree has changed
     this.treeDataProvider.refresh();
@@ -357,9 +363,39 @@ export class OOXMLViewer {
     const ooxmlZip: JSZip = new JSZip();
     const data: Buffer = await readFilePromise(filePath);
     await ooxmlZip.loadAsync(data);
+    const newKeys: string[] = Object.keys(ooxmlZip.files);
+    const oldKeys: string[] = Object.keys(this.zip.files);
+    const eq = newKeys.length === oldKeys.length && newKeys.every(k => Object.prototype.hasOwnProperty.call(this.zip.files, k));
+    if (!eq && oldKeys.length > newKeys.length) {
+      OOXMLViewer.deletedParts = oldKeys.filter(k => !newKeys.includes(k));
+    }
     this.zip = ooxmlZip;
-    this._populateOOXMLViewer(this.zip.files, true);
-    this._viewFiles(Object.values(OOXMLViewer.openTextEditors));
+    await this._populateOOXMLViewer(this.zip.files, true);
+    await this._viewFiles(Object.values(OOXMLViewer.openTextEditors));
+  }
+
+  private async _deleteDeletedParts(node?: FileNode): Promise<void> {
+    if (!node) {
+      await this._deleteDeletedParts(this.treeDataProvider.rootFileNode);
+    } else {
+      node.children.forEach(async (n, i, arr) => {
+        const path = join(OOXMLViewer.fileCachePath, n.fullPath);
+        if (OOXMLViewer.deletedParts.includes(n.fullPath)) {
+          const file: string = await (await readFilePromise(path)).toString();
+          if (file) {
+            n.iconPath = this._context.asAbsolutePath(join('images', 'asterisk.red.svg'));
+            await writeFilePromise(join(OOXMLViewer.fileCachePath, n.fullPath), '', 'utf8');
+          } else {
+            await unlinkPromise(path);
+            await unlinkPromise(join(dirname(path), `prev.${basename(path)}`));
+            await unlinkPromise(join(dirname(path), `compare.${basename(path)}`));
+            arr.splice(i, 1);
+          }
+        } else if (n.children.length) {
+          n.children.forEach(async nn => await this._deleteDeletedParts(nn));
+        }
+      });
+    }
   }
 
   private static async _fileHasBeenChangedFromOutside(firstFile: string): Promise<boolean> {
