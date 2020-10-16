@@ -79,43 +79,8 @@ export class OOXMLViewer {
           watcher.onDidChange((uri: Uri) => {
             this._reloadOoxmlFile(file.fsPath);
           });
-          // TODO: Figure out why this doesn't work as a named method
-          const textDocumentWatcher = workspace.onDidSaveTextDocument(async (e: TextDocument) => {
-            try {
-              const { fileName } = e;
-              let prevFilePath = '';
-              if (fileName) {
-                prevFilePath = OOXMLViewer._getPrevFilePath(fileName);
-              }
-              if (fileName && existsSync(fileName) && prevFilePath && existsSync(prevFilePath)) {
-                const stats: Stats = await statPromise(fileName);
-                const time = stats.mtime.getTime();
-                if (!stats.isDirectory() && OOXMLViewer.watchActions[fileName] !== time) {
-                  OOXMLViewer.watchActions[fileName] = time;
-                  const data: Buffer = await readFilePromise(fileName);
-                  const prevData: Buffer = await readFilePromise(prevFilePath);
-                  if (!data.equals(prevData)) {
-                    const pathArr = fileName.split(OOXMLViewer.cacheFolderName);
-                    let normalizedPath: string = pathArr[pathArr.length - 1].replace(/\\/g, '/');
-                    normalizedPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
-                    const zipFile = await this.zip.file(normalizedPath, data, { binary: true }).generateAsync({ type: 'nodebuffer' });
-                    await writeFilePromise(OOXMLViewer.ooxmlFilePath, zipFile);
-                    await writeFilePromise(join(dirname(prevFilePath), `compare.${basename(fileName)}`), prevData);
-                    await writeFilePromise(prevFilePath, data);
-                  }
-                }
-              }
-            } catch (err) {
-              if (err?.code === 'EBUSY') {
-                window.showWarningMessage(
-                  `File not saved.\n${OOXMLViewer.ooxmlFilePath} is open in another program.\n
-                  Close that program before making any changes.`,
-                  { modal: true },
-                );
-                OOXMLViewer._makeDirty(window.activeTextEditor);
-              }
-            }
-          });
+
+          const textDocumentWatcher = workspace.onDidSaveTextDocument(this._updateOOXMLFile);
 
           const closeWatcher = workspace.onDidCloseTextDocument((textDocument: TextDocument) => {
             delete OOXMLViewer.openTextEditors[textDocument.fileName];
@@ -322,6 +287,43 @@ export class OOXMLViewer {
       console.error(err);
     }
   }
+
+  private _updateOOXMLFile = async (e: TextDocument) => {
+    try {
+      const { fileName } = e;
+      let prevFilePath = '';
+      if (fileName) {
+        prevFilePath = OOXMLViewer._getPrevFilePath(fileName);
+      }
+      if (fileName && existsSync(fileName) && prevFilePath && existsSync(prevFilePath)) {
+        const stats: Stats = await statPromise(fileName);
+        const time = stats.mtime.getTime();
+        if (!stats.isDirectory() && OOXMLViewer.watchActions[fileName] !== time) {
+          OOXMLViewer.watchActions[fileName] = time;
+          const data: Buffer = await readFilePromise(fileName);
+          const prevData: Buffer = await readFilePromise(prevFilePath);
+          if (!data.equals(prevData)) {
+            const pathArr = fileName.split(OOXMLViewer.cacheFolderName);
+            let normalizedPath: string = pathArr[pathArr.length - 1].replace(/\\/g, '/');
+            normalizedPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
+            const zipFile = await this.zip.file(normalizedPath, data, { binary: true }).generateAsync({ type: 'nodebuffer' });
+            await writeFilePromise(OOXMLViewer.ooxmlFilePath, zipFile);
+            await writeFilePromise(join(dirname(prevFilePath), `compare.${basename(fileName)}`), prevData);
+            await writeFilePromise(prevFilePath, data);
+          }
+        }
+      }
+    } catch (err) {
+      if (err?.code === 'EBUSY') {
+        window.showWarningMessage(
+          `File not saved.\n${OOXMLViewer.ooxmlFilePath} is open in another program.\n
+                  Close that program before making any changes.`,
+          { modal: true },
+        );
+        OOXMLViewer._makeDirty(window.activeTextEditor);
+      }
+    }
+  };
 
   private static async _makeDirty(activeTextEditor?: TextEditor): Promise<void> {
     activeTextEditor?.edit(async (textEditorEdit: TextEditorEdit) => {
