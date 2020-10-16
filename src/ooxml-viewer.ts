@@ -60,9 +60,6 @@ export class OOXMLViewer {
   async viewContents(file: Uri): Promise<void> {
     try {
       OOXMLViewer.ooxmlFilePath = file.fsPath;
-      await this._resetOOXMLViewer();
-      const data = await readFilePromise(file.fsPath);
-      await this.zip.loadAsync(data);
       await window.withProgress(
         {
           location: ProgressLocation.Notification,
@@ -70,6 +67,10 @@ export class OOXMLViewer {
         },
         async progress => {
           progress.report({ message: 'Unpacking OOXML Parts' });
+          // reset any previous OOXML Tree Views that are open
+          await this._resetOOXMLViewer();
+          const data = await readFilePromise(file.fsPath);
+          await this.zip.loadAsync(data);
           await this._populateOOXMLViewer(this.zip.files, false);
           await mkdirPromise(OOXMLViewer.fileCachePath, { recursive: true });
 
