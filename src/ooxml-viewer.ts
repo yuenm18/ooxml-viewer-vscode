@@ -10,6 +10,7 @@ import {
   ExtensionContext,
   FileSystemWatcher,
   Position,
+  ProgressLocation,
   Range,
   TextDocument,
   TextEditor,
@@ -62,56 +63,65 @@ export class OOXMLViewer {
       await this._resetOOXMLViewer();
       const data = await readFilePromise(file.fsPath);
       await this.zip.loadAsync(data);
+      await window.withProgress(
+        {
+          location: ProgressLocation.Notification,
+          title: 'OOXML Viewer',
+        },
+        async progress => {
+          progress.report({ message: 'Unpacking OOXML Parts' });
+          await this._populateOOXMLViewer(this.zip.files, false);
+          await mkdirPromise(OOXMLViewer.fileCachePath, { recursive: true });
 
-      await this._populateOOXMLViewer(this.zip.files, false);
-      await mkdirPromise(OOXMLViewer.fileCachePath, { recursive: true });
+          const watcher: FileSystemWatcher = workspace.createFileSystemWatcher(file.fsPath);
 
-      const watcher: FileSystemWatcher = workspace.createFileSystemWatcher(file.fsPath);
-
-      watcher.onDidChange((uri: Uri) => {
-        this._reloadOoxmlFile(file.fsPath);
-      });
-      // TODO: Figure out why this doesn't work as a named method
-      const textDocumentWatcher = workspace.onDidSaveTextDocument(async (e: TextDocument) => {
-        try {
-          const { fileName } = e;
-          let prevFilePath = '';
-          if (fileName) {
-            prevFilePath = OOXMLViewer._getPrevFilePath(fileName);
-          }
-          if (fileName && existsSync(fileName) && prevFilePath && existsSync(prevFilePath)) {
-            const stats: Stats = await statPromise(fileName);
-            const time = stats.mtime.getTime();
-            if (!stats.isDirectory() && OOXMLViewer.watchActions[fileName] !== time) {
-              OOXMLViewer.watchActions[fileName] = time;
-              const data: Buffer = await readFilePromise(fileName);
-              const prevData: Buffer = await readFilePromise(prevFilePath);
-              if (!data.equals(prevData)) {
-                const pathArr = fileName.split(OOXMLViewer.cacheFolderName);
-                let normalizedPath: string = pathArr[pathArr.length - 1].replace(/\\/g, '/');
-                normalizedPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
-                const zipFile = await this.zip.file(normalizedPath, data, { binary: true }).generateAsync({ type: 'nodebuffer' });
-                await writeFilePromise(OOXMLViewer.ooxmlFilePath, zipFile);
-                await writeFilePromise(join(dirname(prevFilePath), `compare.${basename(fileName)}`), prevData);
-                await writeFilePromise(prevFilePath, data);
+          watcher.onDidChange((uri: Uri) => {
+            this._reloadOoxmlFile(file.fsPath);
+          });
+          // TODO: Figure out why this doesn't work as a named method
+          const textDocumentWatcher = workspace.onDidSaveTextDocument(async (e: TextDocument) => {
+            try {
+              const { fileName } = e;
+              let prevFilePath = '';
+              if (fileName) {
+                prevFilePath = OOXMLViewer._getPrevFilePath(fileName);
+              }
+              if (fileName && existsSync(fileName) && prevFilePath && existsSync(prevFilePath)) {
+                const stats: Stats = await statPromise(fileName);
+                const time = stats.mtime.getTime();
+                if (!stats.isDirectory() && OOXMLViewer.watchActions[fileName] !== time) {
+                  OOXMLViewer.watchActions[fileName] = time;
+                  const data: Buffer = await readFilePromise(fileName);
+                  const prevData: Buffer = await readFilePromise(prevFilePath);
+                  if (!data.equals(prevData)) {
+                    const pathArr = fileName.split(OOXMLViewer.cacheFolderName);
+                    let normalizedPath: string = pathArr[pathArr.length - 1].replace(/\\/g, '/');
+                    normalizedPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
+                    const zipFile = await this.zip.file(normalizedPath, data, { binary: true }).generateAsync({ type: 'nodebuffer' });
+                    await writeFilePromise(OOXMLViewer.ooxmlFilePath, zipFile);
+                    await writeFilePromise(join(dirname(prevFilePath), `compare.${basename(fileName)}`), prevData);
+                    await writeFilePromise(prevFilePath, data);
+                  }
+                }
+              }
+            } catch (err) {
+              if (err?.code === 'EBUSY') {
+                window.showWarningMessage(
+                  `File not saved.\n${OOXMLViewer.ooxmlFilePath} is open in another program.\n
+                  Close that program before making any changes.`,
+                  { modal: true },
+                );
+                OOXMLViewer._makeDirty(window.activeTextEditor);
               }
             }
-          }
-        } catch (err) {
-          if (err?.code === 'EBUSY') {
-            window.showWarningMessage(
-              `File not saved.\n${OOXMLViewer.ooxmlFilePath} is open in another program.\nClose that program before making any changes.`,
-              { modal: true },
-            );
-            OOXMLViewer._makeDirty(window.activeTextEditor);
-          }
-        }
-      });
+          });
 
-      const closeWatcher = workspace.onDidCloseTextDocument((textDocument: TextDocument) => {
-        delete OOXMLViewer.openTextEditors[textDocument.fileName];
-      });
-      OOXMLViewer.watchers.push(watcher, textDocumentWatcher, closeWatcher);
+          const closeWatcher = workspace.onDidCloseTextDocument((textDocument: TextDocument) => {
+            delete OOXMLViewer.openTextEditors[textDocument.fileName];
+          });
+          OOXMLViewer.watchers.push(watcher, textDocumentWatcher, closeWatcher);
+        },
+      );
     } catch (err) {
       console.error(err);
       window.showErrorMessage(`Could not load ${file.fsPath}`, err);
@@ -377,7 +387,16 @@ export class OOXMLViewer {
       OOXMLViewer.deletedParts = oldKeys.filter(k => !newKeys.includes(k));
     }
     this.zip = ooxmlZip;
-    await this._populateOOXMLViewer(this.zip.files, true);
+    await window.withProgress(
+      {
+        location: ProgressLocation.Notification,
+        title: 'OOXML Viewer',
+      },
+      async progress => {
+        progress.report({ message: 'Updating OOXML Parts' });
+        await this._populateOOXMLViewer(this.zip.files, true);
+      },
+    );
     await this._viewFiles(Object.values(OOXMLViewer.openTextEditors));
   }
 
