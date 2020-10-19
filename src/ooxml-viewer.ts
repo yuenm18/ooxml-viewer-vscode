@@ -46,7 +46,12 @@ export class OOXMLViewer {
   static existsSync = existsSync;
   static execPromise = execPromise;
   static writeFilePromise = writeFilePromise;
-
+  /**
+   * Constructs an instance of OOXMLViewer
+   * @constructor OOXMLViewer
+   * @param  ExtensionContext _context
+   * @returns {OOXMLViewer} instance
+   */
   constructor(private _context: ExtensionContext) {
     this.treeDataProvider = new OOXMLTreeDataProvider(this._context);
     this.zip = new JSZip();
@@ -54,8 +59,11 @@ export class OOXMLViewer {
 
   /**
    * Loads the selected OOXML file into the tree view
-   *
+   * and add file listeners
+   * @method viewContents
+   * @async
    * @param file The OOXML file
+   * @returns {Promise} Promise that returns void
    */
   async viewContents(file: Uri): Promise<void> {
     try {
@@ -95,8 +103,10 @@ export class OOXMLViewer {
 
   /**
    * Displays the selected file
-   *
+   * @async
+   * @method viewFile
    * @param fileNode The selected file node
+   * @returns {Promise} Promise that returns void
    */
   async viewFile(fileNode: FileNode): Promise<void> {
     try {
@@ -114,6 +124,8 @@ export class OOXMLViewer {
 
   /**
    * Clears the OOXML viewer
+   * @method clear
+   * @returns {Promise} Promise that returns void
    */
   clear(): Promise<void> {
     return this._resetOOXMLViewer();
@@ -123,7 +135,7 @@ export class OOXMLViewer {
    * @method getDiff
    * @async
    * @param  {FileNode} file the FileNode of the file to be diffed
-   * @returns {Promise} Promise object returns void
+   * @returns {Promise} Promise that returns void
    * @description Opens tab showing the difference between the just the primary xml part and the compare xml part
    */
   async getDiff(file: FileNode): Promise<void> {
@@ -141,7 +153,14 @@ export class OOXMLViewer {
       console.error(err);
     }
   }
-
+  /**
+   * Receives an array of FileNode instances and calls viewFile on each and empties the array
+   * @method _viewFiles
+   * @private
+   * @async
+   * @param  {FileNode[]} fileNodes
+   * @returns Promise
+   */
   private async _viewFiles(fileNodes: FileNode[]): Promise<void> {
     while (fileNodes.length) {
       const fileNode: FileNode | undefined = fileNodes.pop();
@@ -153,6 +172,14 @@ export class OOXMLViewer {
       }
     }
   }
+  /**
+   * Closes all active editor tabs
+   * @method _closeEditors
+   * @private
+   * @async
+   * @param  {TextDocument[]} textDocuments?
+   * @returns Promise
+   */
   private static async _closeEditors(textDocuments?: TextDocument[]): Promise<void> {
     try {
       const tds =
@@ -171,7 +198,13 @@ export class OOXMLViewer {
       console.error(err);
     }
   }
-
+  /**
+   * Sets this.zip to an empty zip file, deletes the cache folder, closes all watchers, and closes all editor tabs
+   * @method _resetOOXMLViewer
+   * @private
+   * @async
+   * @returns Promise
+   */
   private async _resetOOXMLViewer(): Promise<void> {
     try {
       this.zip = new JSZip();
@@ -187,7 +220,14 @@ export class OOXMLViewer {
       window.showErrorMessage('Could not remove ooxml file viewer cache');
     }
   }
-
+  /**
+   * Create or update tree view File Nodes and create cache files for comparison
+   * @method _populateOOXMLViewer
+   * @private
+   * @async
+   * @param  {{[key:string]:JSZip.JSZipObject}} files
+   * @param  {boolean} showNewFileLabel
+   */
   private async _populateOOXMLViewer(files: { [key: string]: JSZip.JSZipObject }, showNewFileLabel: boolean) {
     const fileKeys: string[] = Object.keys(files);
     for (const fileWithPath of fileKeys) {
@@ -250,12 +290,20 @@ export class OOXMLViewer {
     }
     // remove parts deleted from file if it's not the first time the file is opened
     if (showNewFileLabel) {
-      await this._deleteDeletedParts();
+      await this._removeDeletedParts();
     }
     // tell vscode the tree has changed
     this.treeDataProvider.refresh();
   }
-
+  /**
+   * Create a file from a part of the zip file
+   * @method _createFile
+   * @private
+   * @async
+   * @param  {string} fullPath the path to the folder in the zip file
+   * @param  {string} fileName the name of the file
+   * @returns Promise
+   */
   private async _createFile(fullPath: string, fileName: string): Promise<void> {
     try {
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fullPath));
@@ -286,8 +334,15 @@ export class OOXMLViewer {
       console.error(err);
     }
   }
-
-  private _updateOOXMLFile = async (e: TextDocument) => {
+  /**
+   * Writes changes to OOXML file being inspected
+   * @method _updateOOXMLFile
+   * @async
+   * @private
+   * @param  {TextDocument} e
+   * @returns Promise
+   */
+  private _updateOOXMLFile = async (e: TextDocument): Promise<void> => {
     try {
       const { fileName } = e;
       let prevFilePath = '';
@@ -323,7 +378,14 @@ export class OOXMLViewer {
       }
     }
   };
-
+  /**
+   * Make a text editor tab dirty
+   * @method _makeDirty
+   * @async
+   * @private
+   * @param  {TextEditor} activeTextEditor? the text editor to be made dirty
+   * @returns Promise
+   */
   private static async _makeDirty(activeTextEditor?: TextEditor): Promise<void> {
     activeTextEditor?.edit(async (textEditorEdit: TextEditorEdit) => {
       if (window.activeTextEditor?.selection) {
@@ -365,19 +427,38 @@ export class OOXMLViewer {
       }
     });
   }
-
+  /**
+   * Get the file path for the prev version of a file
+   * @method _getPrevFilePath
+   * @private
+   * @async
+   * @param  {string} path
+   * @returns string
+   */
   private static _getPrevFilePath(path: string): string {
     const { dir, base } = parse(path);
     return format({ dir, base: `prev.${base}` });
   }
-
+  /**
+   * Close all file watchers
+   * @method closeWatchers
+   * @async
+   * @returns Promise
+   */
   static async closeWatchers(): Promise<void> {
     if (OOXMLViewer.watchers.length) {
       OOXMLViewer.watchers.forEach(w => w.dispose());
       OOXMLViewer.watchers = [];
     }
   }
-
+  /**
+   * Update the OOXML cache files
+   * @method _reloadOoxmlFile
+   * @async
+   * @private
+   * @param  {string} filePath Path to the OOXML file to load
+   * @returns Promise
+   */
   private async _reloadOoxmlFile(filePath: string): Promise<void> {
     const ooxmlZip: JSZip = new JSZip();
     const data: Buffer = await readFilePromise(filePath);
@@ -401,10 +482,17 @@ export class OOXMLViewer {
     );
     await this._viewFiles(Object.values(OOXMLViewer.openTextEditors));
   }
-
-  private async _deleteDeletedParts(node?: FileNode): Promise<void> {
+  /**
+   * Delete cache files for parts deleted from OOXML file
+   * @method _removeDeletedParts
+   * @async
+   * @private
+   * @param  {FileNode} node?
+   * @returns Promise
+   */
+  private async _removeDeletedParts(node?: FileNode): Promise<void> {
     if (!node) {
-      await this._deleteDeletedParts(this.treeDataProvider.rootFileNode);
+      await this._removeDeletedParts(this.treeDataProvider.rootFileNode);
     } else {
       node.children.forEach(async (n, i, arr) => {
         const path = join(OOXMLViewer.fileCachePath, n.fullPath);
@@ -420,12 +508,19 @@ export class OOXMLViewer {
             arr.splice(i, 1);
           }
         } else if (n.children.length) {
-          n.children.forEach(async nn => await this._deleteDeletedParts(nn));
+          n.children.forEach(async nn => await this._removeDeletedParts(nn));
         }
       });
     }
   }
-
+  /**
+   * Check if an OOXML part is different from its cached version
+   * @method _fileHasBeenChangedFromOutside
+   * @async
+   * @private
+   * @param  {string} firstFile
+   * @returns Promise
+   */
   private static async _fileHasBeenChangedFromOutside(firstFile: string): Promise<boolean> {
     try {
       const secondFile = OOXMLViewer._getPrevFilePath(firstFile);
