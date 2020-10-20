@@ -113,6 +113,14 @@ export class OOXMLViewer {
       const filePath: string = join(folderPath, fileNode.fileName);
       await this._createFile(fileNode.fullPath, fileNode.fileName);
       const uri: Uri = Uri.parse(`file:///${filePath}`);
+      const text: string = await (await readFilePromise(uri.fsPath)).toString('utf8');
+      if (text.startsWith('<?xml')) {
+        let formattedXml = '';
+        if (text.length < 100000) {
+          formattedXml = formatXml(text);
+        }
+        await OOXMLViewer.writeFilePromise(filePath, formattedXml || text, 'utf8');
+      }
       OOXMLViewer.openTextEditors[filePath] = fileNode;
       commands.executeCommand('vscode.open', uri);
     } catch (e) {
@@ -316,18 +324,9 @@ export class OOXMLViewer {
         }
       }
       const file: JSZipObject | null = this.zip.file(fullPath);
-      const text: string = (await file?.async('text')) ?? (await (await readFilePromise(preFilePath)).toString());
-      if (text.startsWith('<?xml')) {
-        let formattedXml = '';
-        if (text.length < 100000) {
-          formattedXml = formatXml(text);
-        }
-        await OOXMLViewer.writeFilePromise(filePath, formattedXml || text, 'utf8');
-      } else {
-        const buf: Buffer | undefined = await file?.async('nodebuffer');
-        if (buf) {
-          await OOXMLViewer.writeFilePromise(filePath, buf);
-        }
+      const buf: Buffer | undefined = await file?.async('nodebuffer');
+      if (buf) {
+        await OOXMLViewer.writeFilePromise(filePath, buf);
       }
     } catch (err) {
       console.error(err);
