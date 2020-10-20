@@ -242,7 +242,7 @@ export class OOXMLViewer {
         // Create node if it does not exist
         const existingFileNode = currentFileNode.children.find(c => c.description === fileOrFolderName);
         if (existingFileNode) {
-          const warningIcon: string = this._context.asAbsolutePath(join('images', 'asterisk.svg'));
+          const warningIcon: string = this._context.asAbsolutePath(join('images', 'asterisk.yellow.svg'));
           currentFileNode = existingFileNode;
           await this._createFile(currentFileNode.fullPath, currentFileNode.fileName);
           const filesAreDifferent = await OOXMLViewer._fileHasBeenChangedFromOutside(currentFileNode.fullPath);
