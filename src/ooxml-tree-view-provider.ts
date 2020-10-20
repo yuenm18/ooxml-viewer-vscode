@@ -1,22 +1,22 @@
-import vscode, { Command, ExtensionContext, ThemeIcon, TreeItemCollapsibleState, Uri } from 'vscode';
+import { Command, Event, EventEmitter, ProviderResult, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri } from 'vscode';
 
 /**
  * OOXML tree data provider
  */
-export class OOXMLTreeDataProvider implements vscode.TreeDataProvider<FileNode> {
-  private _onDidChangeTreeData: vscode.EventEmitter<FileNode | undefined | null> = new vscode.EventEmitter<FileNode | undefined | null>();
+export class OOXMLTreeDataProvider implements TreeDataProvider<FileNode> {
+  private _onDidChangeTreeData: EventEmitter<FileNode | undefined | null> = new EventEmitter<FileNode | undefined | null>();
 
   /**
    * An optional event to signal that an element or root has changed.
    * This will trigger the view to update the changed element/root and its children recursively (if shown).
    * To signal that root has changed, do not pass any argument or pass `undefined` or `null`.
    */
-  onDidChangeTreeData?: vscode.Event<FileNode | undefined | null> = this._onDidChangeTreeData.event;
+  onDidChangeTreeData?: Event<FileNode | undefined | null> = this._onDidChangeTreeData.event;
 
   rootFileNode: FileNode;
 
-  constructor(private _context: ExtensionContext) {
-    this.rootFileNode = new FileNode(this._context);
+  constructor() {
+    this.rootFileNode = new FileNode();
   }
 
   refresh(): void {
@@ -29,7 +29,7 @@ export class OOXMLTreeDataProvider implements vscode.TreeDataProvider<FileNode> 
    * @param element The element for which [TreeItem](#TreeItem) representation is asked for.
    * @return [TreeItem](#TreeItem) representation of the element
    */
-  getTreeItem(element: FileNode): vscode.TreeItem | Thenable<vscode.TreeItem> {
+  getTreeItem(element: FileNode): TreeItem | Thenable<TreeItem> {
     return element;
   }
 
@@ -39,7 +39,7 @@ export class OOXMLTreeDataProvider implements vscode.TreeDataProvider<FileNode> 
    * @param element The element from which the provider gets children. Can be `undefined`.
    * @return Children of `element` or root if no element is passed.
    */
-  getChildren(element?: FileNode): vscode.ProviderResult<FileNode[]> {
+  getChildren(element?: FileNode): ProviderResult<FileNode[]> {
     return element ? element.children : this.rootFileNode.children;
   }
 
@@ -52,7 +52,7 @@ export class OOXMLTreeDataProvider implements vscode.TreeDataProvider<FileNode> 
    * @param element The element for which the parent has to be returned.
    * @return Parent of `element`.
    */
-  getParent?(element: FileNode): vscode.ProviderResult<FileNode> {
+  getParent?(element: FileNode): ProviderResult<FileNode> {
     return element.parent;
   }
 }
@@ -60,12 +60,10 @@ export class OOXMLTreeDataProvider implements vscode.TreeDataProvider<FileNode> 
 /**
  * File tree node
  */
-export class FileNode implements vscode.TreeItem {
-  private _context: ExtensionContext;
+export class FileNode implements TreeItem {
   private _iconPath: ThemeIcon | Uri | { light: Uri; dark: Uri };
 
-  constructor(private context: ExtensionContext) {
-    this._context = context;
+  constructor() {
     this._iconPath = this.children.length ? ThemeIcon.Folder : ThemeIcon.File;
   }
   get description(): string {
@@ -73,7 +71,7 @@ export class FileNode implements vscode.TreeItem {
   }
 
   get collapsibleState(): TreeItemCollapsibleState | undefined {
-    return this.children.length ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None;
+    return this.children.length ? TreeItemCollapsibleState.Collapsed : TreeItemCollapsibleState.None;
   }
 
   get command(): Command | undefined {

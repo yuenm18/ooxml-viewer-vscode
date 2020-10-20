@@ -42,7 +42,6 @@ export class OOXMLViewer {
   static cacheFolderName = '.53d3a0ba-37e3-41cf-a068-b10b392cf8ca';
   static ooxmlFilePath: string;
   static fileCachePath: string = join(process.cwd(), OOXMLViewer.cacheFolderName);
-  static deletedParts: string[] = [];
   static existsSync = existsSync;
   static execPromise = execPromise;
   static writeFilePromise = writeFilePromise;
@@ -53,7 +52,7 @@ export class OOXMLViewer {
    * @returns {OOXMLViewer} instance
    */
   constructor(private _context: ExtensionContext) {
-    this.treeDataProvider = new OOXMLTreeDataProvider(this._context);
+    this.treeDataProvider = new OOXMLTreeDataProvider();
     this.zip = new JSZip();
   }
 
@@ -208,7 +207,7 @@ export class OOXMLViewer {
   private async _resetOOXMLViewer(): Promise<void> {
     try {
       this.zip = new JSZip();
-      this.treeDataProvider.rootFileNode = new FileNode(this._context);
+      this.treeDataProvider.rootFileNode = new FileNode();
       this.treeDataProvider.refresh();
       if (OOXMLViewer.existsSync(OOXMLViewer.fileCachePath)) {
         await rimrafPromise(OOXMLViewer.fileCachePath);
@@ -259,7 +258,7 @@ export class OOXMLViewer {
           }
         } else {
           // create a new FileNode with the currentFileNode as parent and add it to the currentFileNode children
-          const newFileNode = new FileNode(this._context);
+          const newFileNode = new FileNode();
           newFileNode.fileName = fileOrFolderName;
           newFileNode.parent = currentFileNode;
           newFileNode.fullPath = fileWithPath;
@@ -460,16 +459,6 @@ export class OOXMLViewer {
    * @returns Promise
    */
   private async _reloadOoxmlFile(filePath: string): Promise<void> {
-    const ooxmlZip: JSZip = new JSZip();
-    const data: Buffer = await readFilePromise(filePath);
-    await ooxmlZip.loadAsync(data);
-    const newKeys: string[] = Object.keys(ooxmlZip.files);
-    const oldKeys: string[] = Object.keys(this.zip.files);
-    const eq = newKeys.length === oldKeys.length && newKeys.every(k => Object.prototype.hasOwnProperty.call(this.zip.files, k));
-    if (!eq && oldKeys.length > newKeys.length) {
-      OOXMLViewer.deletedParts = oldKeys.filter(k => !newKeys.includes(k));
-    }
-    this.zip = ooxmlZip;
     await window.withProgress(
       {
         location: ProgressLocation.Notification,
@@ -477,10 +466,14 @@ export class OOXMLViewer {
       },
       async progress => {
         progress.report({ message: 'Updating OOXML Parts' });
+        const ooxmlZip: JSZip = new JSZip();
+        const data: Buffer = await readFilePromise(filePath);
+        await ooxmlZip.loadAsync(data);
+        this.zip = ooxmlZip;
         await this._populateOOXMLViewer(this.zip.files, true);
+        await this._viewFiles(Object.values(OOXMLViewer.openTextEditors));
       },
     );
-    await this._viewFiles(Object.values(OOXMLViewer.openTextEditors));
   }
   /**
    * Delete cache files for parts deleted from OOXML file
@@ -496,7 +489,8 @@ export class OOXMLViewer {
     } else {
       node.children.forEach(async (n, i, arr) => {
         const path = join(OOXMLViewer.fileCachePath, n.fullPath);
-        if (OOXMLViewer.deletedParts.includes(n.fullPath)) {
+        const fileNames = Object.keys(this.zip.files);
+        if (!fileNames.includes(n.fullPath)) {
           const file: string = await (await readFilePromise(path)).toString();
           if (file) {
             n.iconPath = this._context.asAbsolutePath(join('images', 'asterisk.red.svg'));
