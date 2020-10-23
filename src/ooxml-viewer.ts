@@ -111,14 +111,6 @@ export class OOXMLViewer {
       const filePath: string = join(folderPath, fileNode.fileName);
       await this._createFile(fileNode.fullPath, fileNode.fileName);
       const uri: Uri = Uri.parse(`file:///${filePath}`);
-      const text: string = await (await OOXMLViewer._readFilePromise(uri.fsPath)).toString('utf8');
-      if (text.startsWith('<?xml')) {
-        let formattedXml = '';
-        if (text.length < 100000) {
-          formattedXml = formatXml(text);
-        }
-        await OOXMLViewer._writeFilePromise(filePath, formattedXml || text, 'utf8');
-      }
       OOXMLViewer.openTextEditors[filePath] = fileNode;
       commands.executeCommand('vscode.open', uri);
     } catch (e) {
@@ -313,6 +305,7 @@ export class OOXMLViewer {
     try {
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fullPath));
       const filePath: string = join(folderPath, fileName);
+      const preFilePath = join(OOXMLViewer.fileCachePath, fullPath);
       await OOXMLViewer._mkdirPromise(folderPath, { recursive: true });
       if (process.platform.startsWith('win')) {
         const { stderr } = await OOXMLViewer._execPromise('attrib +h ' + OOXMLViewer.fileCachePath);
@@ -321,9 +314,18 @@ export class OOXMLViewer {
         }
       }
       const file: JSZipObject | null = this.zip.file(fullPath);
-      const buf: Buffer | undefined = await file?.async('nodebuffer');
-      if (buf) {
-        await OOXMLViewer._writeFilePromise(filePath, buf);
+      const text: string = (await file?.async('text')) ?? (await (await workspace.fs.readFile(Uri.file(preFilePath))).toString());
+      if (text.startsWith('<?xml')) {
+        let formattedXml = '';
+        if (text.length < 100000) {
+          formattedXml = formatXml(text);
+        }
+        await OOXMLViewer._writeFilePromise(filePath, formattedXml || text, 'utf8');
+      } else {
+        const buf: Buffer | undefined = await file?.async('nodebuffer');
+        if (buf) {
+          await OOXMLViewer._writeFilePromise(filePath, buf);
+        }
       }
     } catch (err) {
       console.error(err);
