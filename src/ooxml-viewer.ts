@@ -1,5 +1,5 @@
 import { exec } from 'child_process';
-import { existsSync, mkdir, PathLike, stat, Stats, unlink, writeFile } from 'fs';
+import { existsSync, mkdir, PathLike, stat, Stats, unlink } from 'fs';
 import JSZip, { JSZipObject } from 'jszip';
 import { basename, dirname, format, join, parse } from 'path';
 import rimraf from 'rimraf';
@@ -22,7 +22,7 @@ import {
 } from 'vscode';
 import formatXml from 'xml-formatter';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
-
+const rimrafPromise = promisify(rimraf);
 /**
  * The OOXML Viewer
  */
@@ -35,10 +35,7 @@ export class OOXMLViewer {
   static cacheFolderName = '.53d3a0ba-37e3-41cf-a068-b10b392cf8ca';
   static ooxmlFilePath: string;
   static fileCachePath: string = join(process.cwd(), OOXMLViewer.cacheFolderName);
-  static existsSync = existsSync;
   private static _execPromise = promisify(exec);
-  private static _writeFilePromise = promisify(writeFile);
-  private static _rimrafPromise = promisify(rimraf);
   private static _statPromise = promisify(stat);
   private static _mkdirPromise = promisify(mkdir);
   private static _unlinkPromise = promisify(unlink);
@@ -206,8 +203,8 @@ export class OOXMLViewer {
       this.zip = new JSZip();
       this.treeDataProvider.rootFileNode = new FileNode();
       this.treeDataProvider.refresh();
-      if (OOXMLViewer.existsSync(OOXMLViewer.fileCachePath)) {
-        await OOXMLViewer._rimrafPromise(OOXMLViewer.fileCachePath);
+      if (existsSync(OOXMLViewer.fileCachePath)) {
+        await rimrafPromise(OOXMLViewer.fileCachePath);
       }
       OOXMLViewer.closeWatchers();
       await OOXMLViewer._closeEditors();
@@ -275,7 +272,7 @@ export class OOXMLViewer {
               `compare.${newFileNode.fileName}`,
             );
             currentFileNode.iconPath = warningIconGreen;
-            await OOXMLViewer._writeFilePromise(compareFilePath, '');
+            await workspace.fs.writeFile(Uri.file(compareFilePath), new Uint8Array());
           } else {
             await this._createFile(newFileNode.fullPath, `compare.${newFileNode.fileName}`);
           }
@@ -319,11 +316,12 @@ export class OOXMLViewer {
         if (text.length < 100000) {
           formattedXml = formatXml(text);
         }
-        await OOXMLViewer._writeFilePromise(filePath, formattedXml || text, 'utf8');
+        const enc = new TextEncoder();
+        await workspace.fs.writeFile(Uri.file(filePath), enc.encode(formattedXml || text));
       } else {
-        const buf: Buffer | undefined = await file?.async('nodebuffer');
-        if (buf) {
-          await OOXMLViewer._writeFilePromise(filePath, buf);
+        const u8a: Uint8Array | undefined = await file?.async('uint8array');
+        if (u8a) {
+          await workspace.fs.writeFile(Uri.file(filePath), u8a);
         }
       }
     } catch (err) {
@@ -350,16 +348,18 @@ export class OOXMLViewer {
         const time = stats.mtime.getTime();
         if (!stats.isDirectory() && OOXMLViewer.watchActions[fileName] !== time) {
           OOXMLViewer.watchActions[fileName] = time;
-          const data: Buffer = Buffer.from(await workspace.fs.readFile(Uri.file(fileName)));
-          const prevData: Buffer = Buffer.from(await workspace.fs.readFile(Uri.file(prevFilePath)));
+          const cur = await workspace.fs.readFile(Uri.file(fileName));
+          const prev = await workspace.fs.readFile(Uri.file(prevFilePath));
+          const data: Buffer = Buffer.from(cur);
+          const prevData: Buffer = Buffer.from(prev);
           if (!data.equals(prevData)) {
             const pathArr = fileName.split(OOXMLViewer.cacheFolderName);
             let normalizedPath: string = pathArr[pathArr.length - 1].replace(/\\/g, '/');
             normalizedPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
-            const zipFile = await this.zip.file(normalizedPath, data, { binary: true }).generateAsync({ type: 'nodebuffer' });
-            await OOXMLViewer._writeFilePromise(OOXMLViewer.ooxmlFilePath, zipFile);
-            await OOXMLViewer._writeFilePromise(join(dirname(prevFilePath), `compare.${basename(fileName)}`), prevData);
-            await OOXMLViewer._writeFilePromise(prevFilePath, data);
+            const zipFile = await this.zip.file(normalizedPath, data, { binary: true }).generateAsync({ type: 'uint8array' });
+            await workspace.fs.writeFile(Uri.file(OOXMLViewer.ooxmlFilePath), zipFile);
+            await workspace.fs.writeFile(Uri.file(join(dirname(prevFilePath), `compare.${basename(fileName)}`)), prev);
+            await workspace.fs.writeFile(Uri.file(prevFilePath), cur);
           }
         }
       }
@@ -491,7 +491,7 @@ export class OOXMLViewer {
           const file: string = await (await workspace.fs.readFile(Uri.file(path))).toString();
           if (file) {
             n.iconPath = this._context.asAbsolutePath(join('images', 'asterisk.red.svg'));
-            await OOXMLViewer._writeFilePromise(join(OOXMLViewer.fileCachePath, n.fullPath), '', 'utf8');
+            await workspace.fs.writeFile(Uri.file(join(OOXMLViewer.fileCachePath, n.fullPath)), new Uint8Array());
           } else {
             await OOXMLViewer._unlinkPromise(path);
             await OOXMLViewer._unlinkPromise(join(dirname(path), `prev.${basename(path)}`));
