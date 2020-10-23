@@ -1,5 +1,5 @@
 import { exec } from 'child_process';
-import { existsSync, mkdir, PathLike, readFile, stat, Stats, unlink, writeFile } from 'fs';
+import { existsSync, mkdir, PathLike, stat, Stats, unlink, writeFile } from 'fs';
 import JSZip, { JSZipObject } from 'jszip';
 import { basename, dirname, format, join, parse } from 'path';
 import rimraf from 'rimraf';
@@ -37,7 +37,6 @@ export class OOXMLViewer {
   static fileCachePath: string = join(process.cwd(), OOXMLViewer.cacheFolderName);
   static existsSync = existsSync;
   private static _execPromise = promisify(exec);
-  private static _readFilePromise = promisify(readFile);
   private static _writeFilePromise = promisify(writeFile);
   private static _rimrafPromise = promisify(rimraf);
   private static _statPromise = promisify(stat);
@@ -73,7 +72,7 @@ export class OOXMLViewer {
         async progress => {
           progress.report({ message: 'Unpacking OOXML Parts' });
           await this._resetOOXMLViewer();
-          const data = await OOXMLViewer._readFilePromise(file.fsPath);
+          const data = await workspace.fs.readFile(Uri.file(file.fsPath));
           await this.zip.loadAsync(data);
           await this._populateOOXMLViewer(this.zip.files, false);
           await OOXMLViewer._mkdirPromise(OOXMLViewer.fileCachePath, { recursive: true });
@@ -351,8 +350,8 @@ export class OOXMLViewer {
         const time = stats.mtime.getTime();
         if (!stats.isDirectory() && OOXMLViewer.watchActions[fileName] !== time) {
           OOXMLViewer.watchActions[fileName] = time;
-          const data: Buffer = await OOXMLViewer._readFilePromise(fileName);
-          const prevData: Buffer = await OOXMLViewer._readFilePromise(prevFilePath);
+          const data: Buffer = Buffer.from(await workspace.fs.readFile(Uri.file(fileName)));
+          const prevData: Buffer = Buffer.from(await workspace.fs.readFile(Uri.file(prevFilePath)));
           if (!data.equals(prevData)) {
             const pathArr = fileName.split(OOXMLViewer.cacheFolderName);
             let normalizedPath: string = pathArr[pathArr.length - 1].replace(/\\/g, '/');
@@ -465,7 +464,7 @@ export class OOXMLViewer {
       async progress => {
         progress.report({ message: 'Updating OOXML Parts' });
         const ooxmlZip: JSZip = new JSZip();
-        const data: Buffer = await OOXMLViewer._readFilePromise(filePath);
+        const data: Buffer = Buffer.from(await workspace.fs.readFile(Uri.file(filePath)));
         await ooxmlZip.loadAsync(data);
         this.zip = ooxmlZip;
         await this._populateOOXMLViewer(this.zip.files, true);
@@ -489,7 +488,7 @@ export class OOXMLViewer {
         const path = join(OOXMLViewer.fileCachePath, n.fullPath);
         const fileNames = Object.keys(this.zip.files);
         if (!fileNames.includes(n.fullPath)) {
-          const file: string = await (await OOXMLViewer._readFilePromise(path)).toString();
+          const file: string = await (await workspace.fs.readFile(Uri.file(path))).toString();
           if (file) {
             n.iconPath = this._context.asAbsolutePath(join('images', 'asterisk.red.svg'));
             await OOXMLViewer._writeFilePromise(join(OOXMLViewer.fileCachePath, n.fullPath), '', 'utf8');
@@ -521,8 +520,8 @@ export class OOXMLViewer {
       const firstStat: Stats = await OOXMLViewer._statPromise(firstFilePath);
       const secondStat: Stats = await OOXMLViewer._statPromise(secondFilePath);
       if (!firstStat.isDirectory() && !secondStat.isDirectory()) {
-        const firstBuffer: Buffer = await OOXMLViewer._readFilePromise(firstFilePath);
-        const secondBuffer: Buffer = await OOXMLViewer._readFilePromise(secondFilePath);
+        const firstBuffer: Buffer = Buffer.from(await workspace.fs.readFile(Uri.file(firstFilePath)));
+        const secondBuffer: Buffer = Buffer.from(await workspace.fs.readFile(Uri.file(secondFilePath)));
         if (!firstBuffer.equals(secondBuffer)) {
           return true;
         }
