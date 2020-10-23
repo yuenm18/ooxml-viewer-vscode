@@ -22,13 +22,6 @@ import {
 } from 'vscode';
 import formatXml from 'xml-formatter';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
-const execPromise = promisify(exec);
-const readFilePromise = promisify(readFile);
-const writeFilePromise = promisify(writeFile);
-const rimrafPromise = promisify(rimraf);
-const statPromise = promisify(stat);
-const mkdirPromise = promisify(mkdir);
-const unlinkPromise = promisify(unlink);
 
 /**
  * The OOXML Viewer
@@ -43,8 +36,13 @@ export class OOXMLViewer {
   static ooxmlFilePath: string;
   static fileCachePath: string = join(process.cwd(), OOXMLViewer.cacheFolderName);
   static existsSync = existsSync;
-  static execPromise = execPromise;
-  static writeFilePromise = writeFilePromise;
+  private static _execPromise = promisify(exec);
+  private static _readFilePromise = promisify(readFile);
+  private static _writeFilePromise = promisify(writeFile);
+  private static _rimrafPromise = promisify(rimraf);
+  private static _statPromise = promisify(stat);
+  private static _mkdirPromise = promisify(mkdir);
+  private static _unlinkPromise = promisify(unlink);
   /**
    * Constructs an instance of OOXMLViewer
    * @constructor OOXMLViewer
@@ -75,10 +73,10 @@ export class OOXMLViewer {
         async progress => {
           progress.report({ message: 'Unpacking OOXML Parts' });
           await this._resetOOXMLViewer();
-          const data = await readFilePromise(file.fsPath);
+          const data = await OOXMLViewer._readFilePromise(file.fsPath);
           await this.zip.loadAsync(data);
           await this._populateOOXMLViewer(this.zip.files, false);
-          await mkdirPromise(OOXMLViewer.fileCachePath, { recursive: true });
+          await OOXMLViewer._mkdirPromise(OOXMLViewer.fileCachePath, { recursive: true });
 
           const watcher: FileSystemWatcher = workspace.createFileSystemWatcher(file.fsPath);
 
@@ -87,7 +85,7 @@ export class OOXMLViewer {
           });
 
           const textDocumentWatcher = workspace.onDidSaveTextDocument(this._updateOOXMLFile);
-          // TODO: find a better way to remove closed text editors from the openTextEditors. The onDidCloseTextDocument takes more than 3 minutes to fire.
+          // TODO: find a better way to remove closed text editors from the openTextEditors. The onDidCloseTextDocument takes more than 3+ minutes to fire.
           const closeWatcher = workspace.onDidCloseTextDocument((textDocument: TextDocument) => {
             delete OOXMLViewer.openTextEditors[textDocument.fileName];
           });
@@ -113,13 +111,13 @@ export class OOXMLViewer {
       const filePath: string = join(folderPath, fileNode.fileName);
       await this._createFile(fileNode.fullPath, fileNode.fileName);
       const uri: Uri = Uri.parse(`file:///${filePath}`);
-      const text: string = await (await readFilePromise(uri.fsPath)).toString('utf8');
+      const text: string = await (await OOXMLViewer._readFilePromise(uri.fsPath)).toString('utf8');
       if (text.startsWith('<?xml')) {
         let formattedXml = '';
         if (text.length < 100000) {
           formattedXml = formatXml(text);
         }
-        await OOXMLViewer.writeFilePromise(filePath, formattedXml || text, 'utf8');
+        await OOXMLViewer._writeFilePromise(filePath, formattedXml || text, 'utf8');
       }
       OOXMLViewer.openTextEditors[filePath] = fileNode;
       commands.executeCommand('vscode.open', uri);
@@ -218,9 +216,9 @@ export class OOXMLViewer {
       this.treeDataProvider.rootFileNode = new FileNode();
       this.treeDataProvider.refresh();
       if (OOXMLViewer.existsSync(OOXMLViewer.fileCachePath)) {
-        await rimrafPromise(OOXMLViewer.fileCachePath);
+        await OOXMLViewer._rimrafPromise(OOXMLViewer.fileCachePath);
       }
-      await OOXMLViewer.closeWatchers();
+      OOXMLViewer.closeWatchers();
       await OOXMLViewer._closeEditors();
     } catch (err) {
       console.error(err);
@@ -286,7 +284,7 @@ export class OOXMLViewer {
               `compare.${newFileNode.fileName}`,
             );
             currentFileNode.iconPath = warningIconGreen;
-            await writeFilePromise(compareFilePath, '');
+            await OOXMLViewer._writeFilePromise(compareFilePath, '');
           } else {
             await this._createFile(newFileNode.fullPath, `compare.${newFileNode.fileName}`);
           }
@@ -314,11 +312,10 @@ export class OOXMLViewer {
   private async _createFile(fullPath: string, fileName: string): Promise<void> {
     try {
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fullPath));
-      const preFilePath = join(OOXMLViewer.fileCachePath, fullPath);
       const filePath: string = join(folderPath, fileName);
-      await mkdirPromise(folderPath, { recursive: true });
+      await OOXMLViewer._mkdirPromise(folderPath, { recursive: true });
       if (process.platform.startsWith('win')) {
-        const { stderr } = await OOXMLViewer.execPromise('attrib +h ' + OOXMLViewer.fileCachePath);
+        const { stderr } = await OOXMLViewer._execPromise('attrib +h ' + OOXMLViewer.fileCachePath);
         if (stderr) {
           throw new Error(stderr);
         }
@@ -326,7 +323,7 @@ export class OOXMLViewer {
       const file: JSZipObject | null = this.zip.file(fullPath);
       const buf: Buffer | undefined = await file?.async('nodebuffer');
       if (buf) {
-        await OOXMLViewer.writeFilePromise(filePath, buf);
+        await OOXMLViewer._writeFilePromise(filePath, buf);
       }
     } catch (err) {
       console.error(err);
@@ -348,20 +345,20 @@ export class OOXMLViewer {
         prevFilePath = OOXMLViewer._getPrevFilePath(fileName);
       }
       if (fileName && existsSync(fileName) && prevFilePath && existsSync(prevFilePath)) {
-        const stats: Stats = await statPromise(fileName);
+        const stats: Stats = await OOXMLViewer._statPromise(fileName);
         const time = stats.mtime.getTime();
         if (!stats.isDirectory() && OOXMLViewer.watchActions[fileName] !== time) {
           OOXMLViewer.watchActions[fileName] = time;
-          const data: Buffer = await readFilePromise(fileName);
-          const prevData: Buffer = await readFilePromise(prevFilePath);
+          const data: Buffer = await OOXMLViewer._readFilePromise(fileName);
+          const prevData: Buffer = await OOXMLViewer._readFilePromise(prevFilePath);
           if (!data.equals(prevData)) {
             const pathArr = fileName.split(OOXMLViewer.cacheFolderName);
             let normalizedPath: string = pathArr[pathArr.length - 1].replace(/\\/g, '/');
             normalizedPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
             const zipFile = await this.zip.file(normalizedPath, data, { binary: true }).generateAsync({ type: 'nodebuffer' });
-            await writeFilePromise(OOXMLViewer.ooxmlFilePath, zipFile);
-            await writeFilePromise(join(dirname(prevFilePath), `compare.${basename(fileName)}`), prevData);
-            await writeFilePromise(prevFilePath, data);
+            await OOXMLViewer._writeFilePromise(OOXMLViewer.ooxmlFilePath, zipFile);
+            await OOXMLViewer._writeFilePromise(join(dirname(prevFilePath), `compare.${basename(fileName)}`), prevData);
+            await OOXMLViewer._writeFilePromise(prevFilePath, data);
           }
         }
       }
@@ -443,7 +440,7 @@ export class OOXMLViewer {
    * @async
    * @returns Promise
    */
-  static async closeWatchers(): Promise<void> {
+  static closeWatchers(): void {
     if (OOXMLViewer.watchers.length) {
       OOXMLViewer.watchers.forEach(w => w.dispose());
       OOXMLViewer.watchers = [];
@@ -466,7 +463,7 @@ export class OOXMLViewer {
       async progress => {
         progress.report({ message: 'Updating OOXML Parts' });
         const ooxmlZip: JSZip = new JSZip();
-        const data: Buffer = await readFilePromise(filePath);
+        const data: Buffer = await OOXMLViewer._readFilePromise(filePath);
         await ooxmlZip.loadAsync(data);
         this.zip = ooxmlZip;
         await this._populateOOXMLViewer(this.zip.files, true);
@@ -490,14 +487,14 @@ export class OOXMLViewer {
         const path = join(OOXMLViewer.fileCachePath, n.fullPath);
         const fileNames = Object.keys(this.zip.files);
         if (!fileNames.includes(n.fullPath)) {
-          const file: string = await (await readFilePromise(path)).toString();
+          const file: string = await (await OOXMLViewer._readFilePromise(path)).toString();
           if (file) {
             n.iconPath = this._context.asAbsolutePath(join('images', 'asterisk.red.svg'));
-            await writeFilePromise(join(OOXMLViewer.fileCachePath, n.fullPath), '', 'utf8');
+            await OOXMLViewer._writeFilePromise(join(OOXMLViewer.fileCachePath, n.fullPath), '', 'utf8');
           } else {
-            await unlinkPromise(path);
-            await unlinkPromise(join(dirname(path), `prev.${basename(path)}`));
-            await unlinkPromise(join(dirname(path), `compare.${basename(path)}`));
+            await OOXMLViewer._unlinkPromise(path);
+            await OOXMLViewer._unlinkPromise(join(dirname(path), `prev.${basename(path)}`));
+            await OOXMLViewer._unlinkPromise(join(dirname(path), `compare.${basename(path)}`));
             arr.splice(i, 1);
           }
         } else if (n.children.length) {
@@ -519,11 +516,11 @@ export class OOXMLViewer {
       const secondFile = OOXMLViewer._getPrevFilePath(firstFile);
       const firstFilePath = join(OOXMLViewer.fileCachePath, firstFile);
       const secondFilePath = join(OOXMLViewer.fileCachePath, secondFile);
-      const firstStat: Stats = await statPromise(firstFilePath);
-      const secondStat: Stats = await statPromise(secondFilePath);
+      const firstStat: Stats = await OOXMLViewer._statPromise(firstFilePath);
+      const secondStat: Stats = await OOXMLViewer._statPromise(secondFilePath);
       if (!firstStat.isDirectory() && !secondStat.isDirectory()) {
-        const firstBuffer: Buffer = await readFilePromise(firstFilePath);
-        const secondBuffer: Buffer = await readFilePromise(secondFilePath);
+        const firstBuffer: Buffer = await OOXMLViewer._readFilePromise(firstFilePath);
+        const secondBuffer: Buffer = await OOXMLViewer._readFilePromise(secondFilePath);
         if (!firstBuffer.equals(secondBuffer)) {
           return true;
         }

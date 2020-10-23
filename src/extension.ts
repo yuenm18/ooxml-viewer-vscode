@@ -18,6 +18,6 @@ export function activate(context: ExtensionContext): void {
 }
 
 export async function deactivate(): Promise<void> {
-  await OOXMLViewer.closeWatchers();
+  OOXMLViewer.closeWatchers();
   return rimrafPromise(OOXMLViewer.fileCachePath);
 }
