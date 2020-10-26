@@ -1,5 +1,5 @@
 import { exec } from 'child_process';
-import { existsSync, mkdir, PathLike, stat, Stats, unlink } from 'fs';
+import { existsSync, PathLike } from 'fs';
 import JSZip, { JSZipObject } from 'jszip';
 import { basename, dirname, format, join, parse } from 'path';
 import rimraf from 'rimraf';
@@ -8,7 +8,9 @@ import {
   commands,
   Disposable,
   ExtensionContext,
+  FileStat,
   FileSystemWatcher,
+  FileType,
   Position,
   ProgressLocation,
   Range,
@@ -23,6 +25,7 @@ import {
 import formatXml from 'xml-formatter';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
 const rimrafPromise = promisify(rimraf);
+const execPromise = promisify(exec);
 /**
  * The OOXML Viewer
  */
@@ -35,10 +38,6 @@ export class OOXMLViewer {
   static cacheFolderName = '.53d3a0ba-37e3-41cf-a068-b10b392cf8ca';
   static ooxmlFilePath: string;
   static fileCachePath: string = join(process.cwd(), OOXMLViewer.cacheFolderName);
-  private static _execPromise = promisify(exec);
-  private static _statPromise = promisify(stat);
-  private static _mkdirPromise = promisify(mkdir);
-  private static _unlinkPromise = promisify(unlink);
   /**
    * Constructs an instance of OOXMLViewer
    * @constructor OOXMLViewer
@@ -72,7 +71,7 @@ export class OOXMLViewer {
           const data = await workspace.fs.readFile(Uri.file(file.fsPath));
           await this.zip.loadAsync(data);
           await this._populateOOXMLViewer(this.zip.files, false);
-          await OOXMLViewer._mkdirPromise(OOXMLViewer.fileCachePath, { recursive: true });
+          await workspace.fs.createDirectory(Uri.file(OOXMLViewer.fileCachePath));
 
           const watcher: FileSystemWatcher = workspace.createFileSystemWatcher(file.fsPath);
 
@@ -302,9 +301,9 @@ export class OOXMLViewer {
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fullPath));
       const filePath: string = join(folderPath, fileName);
       const preFilePath = join(OOXMLViewer.fileCachePath, fullPath);
-      await OOXMLViewer._mkdirPromise(folderPath, { recursive: true });
+      await workspace.fs.createDirectory(Uri.file(folderPath));
       if (process.platform.startsWith('win')) {
-        const { stderr } = await OOXMLViewer._execPromise('attrib +h ' + OOXMLViewer.fileCachePath);
+        const { stderr } = await execPromise('attrib +h ' + OOXMLViewer.fileCachePath);
         if (stderr) {
           throw new Error(stderr);
         }
@@ -344,9 +343,9 @@ export class OOXMLViewer {
         prevFilePath = OOXMLViewer._getPrevFilePath(fileName);
       }
       if (fileName && existsSync(fileName) && prevFilePath && existsSync(prevFilePath)) {
-        const stats: Stats = await OOXMLViewer._statPromise(fileName);
-        const time = stats.mtime.getTime();
-        if (!stats.isDirectory() && OOXMLViewer.watchActions[fileName] !== time) {
+        const stats: FileStat = await workspace.fs.stat(Uri.file(fileName));
+        const time = stats.mtime;
+        if (stats.type !== FileType.Directory && OOXMLViewer.watchActions[fileName] !== time) {
           OOXMLViewer.watchActions[fileName] = time;
           const cur = await workspace.fs.readFile(Uri.file(fileName));
           const prev = await workspace.fs.readFile(Uri.file(prevFilePath));
@@ -493,9 +492,9 @@ export class OOXMLViewer {
             n.iconPath = this._context.asAbsolutePath(join('images', 'asterisk.red.svg'));
             await workspace.fs.writeFile(Uri.file(join(OOXMLViewer.fileCachePath, n.fullPath)), new Uint8Array());
           } else {
-            await OOXMLViewer._unlinkPromise(path);
-            await OOXMLViewer._unlinkPromise(join(dirname(path), `prev.${basename(path)}`));
-            await OOXMLViewer._unlinkPromise(join(dirname(path), `compare.${basename(path)}`));
+            await workspace.fs.delete(Uri.file(path), { recursive: true, useTrash: false });
+            await workspace.fs.delete(Uri.file(join(dirname(path), `prev.${basename(path)}`)), { recursive: true, useTrash: false });
+            await workspace.fs.delete(Uri.file(join(dirname(path), `compare.${basename(path)}`)), { recursive: true, useTrash: false });
             arr.splice(i, 1);
           }
         } else if (n.children.length) {
@@ -517,9 +516,9 @@ export class OOXMLViewer {
       const secondFile = OOXMLViewer._getPrevFilePath(firstFile);
       const firstFilePath = join(OOXMLViewer.fileCachePath, firstFile);
       const secondFilePath = join(OOXMLViewer.fileCachePath, secondFile);
-      const firstStat: Stats = await OOXMLViewer._statPromise(firstFilePath);
-      const secondStat: Stats = await OOXMLViewer._statPromise(secondFilePath);
-      if (!firstStat.isDirectory() && !secondStat.isDirectory()) {
+      const firstStat: FileStat = await workspace.fs.stat(Uri.file(firstFilePath));
+      const secondStat: FileStat = await workspace.fs.stat(Uri.file(secondFilePath));
+      if (firstStat.type !== FileType.Directory && secondStat.type !== FileType.Directory) {
         const firstBuffer: Buffer = Buffer.from(await workspace.fs.readFile(Uri.file(firstFilePath)));
         const secondBuffer: Buffer = Buffer.from(await workspace.fs.readFile(Uri.file(secondFilePath)));
         if (!firstBuffer.equals(secondBuffer)) {
