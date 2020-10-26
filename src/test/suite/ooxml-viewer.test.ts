@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { dirname, join } from 'path';
 import { SinonStub, stub } from 'sinon';
 import { ImportMock } from 'ts-mock-imports';
-import { commands, ExtensionContext, Uri } from 'vscode';
+import { commands, ExtensionContext, Uri, workspace } from 'vscode';
 import { OOXMLTreeDataProvider } from '../../ooxml-tree-view-provider';
 import { OOXMLViewer } from '../../ooxml-viewer';
 
@@ -30,18 +30,17 @@ suite('OOXMLViewer', function () {
     expect(ooxmlViewer.treeDataProvider).to.be.instanceOf(OOXMLTreeDataProvider);
     done();
   });
-  test('It should populate the sidebar tree with the contents of an ooxml file', async function () {
-    stubs.push(
-      stub(OOXMLViewer, <never>'_mkdirPromise').returns(Promise.resolve()),
-      stub(OOXMLViewer, <never>'_execPromise').returns(Promise.resolve({ stderr: null })),
-      stub(OOXMLViewer, <never>'_writeFilePromise').returns(Promise.resolve()),
-      stub(OOXMLViewer, <never>'_fileHasBeenChangedFromOutside').returns(Promise.resolve(false)),
-    );
+  test.only('It should populate the sidebar tree with the contents of an ooxml file', async function () {
+    const mkdirMock = ImportMock.mockFunction(workspace.fs, 'createDirectory').returns(Promise.resolve());
+    const createFileMock = stub(OOXMLViewer.prototype, <never>'_createFile').returns(Promise.resolve());
+
+    stubs.push(stub(OOXMLViewer, <never>'_fileHasBeenChangedFromOutside').returns(Promise.resolve(false)), mkdirMock, createFileMock);
     expect(ooxmlViewer.treeDataProvider.rootFileNode.children.length).to.eq(0);
     await ooxmlViewer.viewContents(Uri.file(testFilePath));
     expect(ooxmlViewer.treeDataProvider.rootFileNode.children.length).to.eq(4);
+    expect(createFileMock.callCount).to.eq(225);
   });
-  test.only('viewFile should open a text editor when called with the path to an xml file', async function () {
+  test('viewFile should open a text editor when called with the path to an xml file', async function () {
     const commandsMock = ImportMock.mockFunction(commands, 'executeCommand');
     stubs.push(
       stub(OOXMLViewer.prototype, <never>'_createFile').callsFake(() => Promise.resolve()),
