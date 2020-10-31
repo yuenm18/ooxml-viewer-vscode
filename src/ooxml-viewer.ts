@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { spawn } from 'child_process';
 import { existsSync, PathLike } from 'fs';
 import JSZip, { JSZipObject } from 'jszip';
 import { basename, dirname, format, join, parse } from 'path';
@@ -25,7 +25,6 @@ import {
 import formatXml from 'xml-formatter';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
 const rimrafPromise = promisify(rimraf);
-const execPromise = promisify(exec);
 /**
  * The OOXML Viewer
  */
@@ -303,10 +302,7 @@ export class OOXMLViewer {
       const preFilePath = join(OOXMLViewer.fileCachePath, fullPath);
       await workspace.fs.createDirectory(Uri.file(folderPath));
       if (process.platform.startsWith('win')) {
-        const { stderr } = await execPromise('attrib +h ' + OOXMLViewer.fileCachePath);
-        if (stderr) {
-          throw new Error(stderr);
-        }
+        spawn('attrib', ['+h', OOXMLViewer.fileCachePath]);
       }
       const file: JSZipObject | null = this.zip.file(fullPath);
       const text: string = (await file?.async('text')) ?? (await (await workspace.fs.readFile(Uri.file(preFilePath))).toString());
