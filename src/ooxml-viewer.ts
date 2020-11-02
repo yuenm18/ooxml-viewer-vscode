@@ -301,7 +301,7 @@ export class OOXMLViewer {
       const filePath: string = join(folderPath, fileName);
       const preFilePath = join(OOXMLViewer.fileCachePath, fullPath);
       await workspace.fs.createDirectory(Uri.file(folderPath));
-      if (process.platform.startsWith('win')) {
+      if (process && (process.platform === 'win32' || (process.env && process.env.OSTYPE && /^(msys|cygwin)$/.test(process.env.OSTYPE)))) {
         spawn('attrib', ['+h', OOXMLViewer.fileCachePath]);
       }
       const file: JSZipObject | null = this.zip.file(fullPath);
