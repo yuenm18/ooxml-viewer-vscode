@@ -1,9 +1,10 @@
 import { expect } from 'chai';
 import child_process from 'child_process';
+import fs from 'fs';
 import JSZip from 'jszip';
 import { dirname, join } from 'path';
-import { SinonStub, stub } from 'sinon';
-import { commands, ExtensionContext, Uri, workspace } from 'vscode';
+import { match, SinonStub, stub } from 'sinon';
+import { commands, ExtensionContext, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window, workspace } from 'vscode';
 import formatXml from 'xml-formatter';
 import { FileNode, OOXMLTreeDataProvider } from '../../ooxml-tree-view-provider';
 import { OOXMLViewer } from '../../ooxml-viewer';
@@ -25,6 +26,7 @@ suite('OOXMLViewer', async function () {
   });
   teardown(function () {
     stubs.forEach(s => s.restore());
+    stubs.length = 0;
   });
 
   test('It should have an instance of OOXMLTreeDataProvider', function (done) {
@@ -116,5 +118,31 @@ suite('OOXMLViewer', async function () {
     if (process && (process.platform === 'win32' || (process.env && process.env.OSTYPE && /^(msys|cygwin)$/.test(process.env.OSTYPE)))) {
       expect(spawnStub.calledWith('attrib')).to.be.true;
     }
+  });
+  test('clear should reset the OOXML Viewer', async function () {
+    const textDoc = {} as TextDocument;
+    const refreshStub = stub(ooxmlViewer.treeDataProvider, 'refresh').callsFake(() => undefined);
+    const existsSyncStub = stub(fs, 'existsSync').onFirstCall().returns(false);
+    existsSyncStub.returns(true);
+    const closeWatchersStub = stub(OOXMLViewer, 'closeWatchers').callsFake(() => undefined);
+    const openEditorsStub = stub(Array.prototype, 'filter').callsFake(arg => {
+      return [textDoc];
+    });
+    const showDocStub = stub(window, 'showTextDocument').callsFake((td: Uri, config?: TextDocumentShowOptions | undefined) => {
+      expect(td).to.eq(textDoc);
+      expect(config).to.deep.eq({ preview: true, preserveFocus: false });
+      return Promise.resolve({} as TextEditor);
+    });
+    const executeStub = stub(commands, 'executeCommand').callsFake(arg => {
+      expect(arg).to.eq('workbench.action.closeActiveEditor');
+      return Promise.resolve();
+    });
+    stubs.push(refreshStub, existsSyncStub, closeWatchersStub, openEditorsStub, showDocStub, executeStub);
+    await ooxmlViewer.clear();
+    expect(refreshStub.calledOnce).to.be.true;
+    expect(existsSyncStub.called).to.be.true;
+    expect(closeWatchersStub.calledOnce).to.be.true;
+    expect(showDocStub.calledWith(match(textDoc))).to.be.true;
+    expect(executeStub.calledWith('workbench.action.closeActiveEditor')).to.be.true;
   });
 });
