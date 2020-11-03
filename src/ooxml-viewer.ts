@@ -145,6 +145,18 @@ export class OOXMLViewer {
     }
   }
   /**
+   * Close all file watchers
+   * @method closeWatchers
+   * @async
+   * @returns Promise
+   */
+  static closeWatchers(): void {
+    if (OOXMLViewer.watchers.length) {
+      OOXMLViewer.watchers.forEach(w => w.dispose());
+      OOXMLViewer.watchers = [];
+    }
+  }
+  /**
    * Receives an array of FileNode instances and calls viewFile on each and empties the array
    * @method _viewFiles
    * @private
@@ -429,18 +441,6 @@ export class OOXMLViewer {
   private static _getPrevFilePath(path: string): string {
     const { dir, base } = parse(path);
     return format({ dir, base: `prev.${base}` });
-  }
-  /**
-   * Close all file watchers
-   * @method closeWatchers
-   * @async
-   * @returns Promise
-   */
-  static closeWatchers(): void {
-    if (OOXMLViewer.watchers.length) {
-      OOXMLViewer.watchers.forEach(w => w.dispose());
-      OOXMLViewer.watchers = [];
-    }
   }
   /**
    * Update the OOXML cache files
