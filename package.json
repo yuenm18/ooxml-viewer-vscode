@@ -55,7 +55,16 @@
           ".pptx",
           ".odt",
           ".ods",
-          ".odp"
+          ".odp",
+          ".docm",
+          ".xlsm",
+          ".pptm",
+          ".dotx",
+          ".xltx",
+          ".xltm",
+          ".potx",
+          ".sldx",
+          ".ppsx"
         ]
       }
     ],
