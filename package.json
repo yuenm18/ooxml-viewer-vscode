@@ -18,7 +18,7 @@
     "ooxml"
   ],
   "engines": {
-    "vscode": "^1.47.0"
+    "vscode": "^1.50.0"
   },
   "categories": [
     "Other"
