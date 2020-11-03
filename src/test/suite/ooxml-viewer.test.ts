@@ -4,7 +4,7 @@ import fs from 'fs';
 import JSZip from 'jszip';
 import { dirname, join } from 'path';
 import { match, SinonStub, stub } from 'sinon';
-import { commands, ExtensionContext, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window, workspace } from 'vscode';
+import { commands, Disposable, ExtensionContext, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window, workspace } from 'vscode';
 import formatXml from 'xml-formatter';
 import { FileNode, OOXMLTreeDataProvider } from '../../ooxml-tree-view-provider';
 import { OOXMLViewer } from '../../ooxml-viewer';
@@ -144,5 +144,36 @@ suite('OOXMLViewer', async function () {
     expect(closeWatchersStub.calledOnce).to.be.true;
     expect(showDocStub.calledWith(match(textDoc))).to.be.true;
     expect(executeStub.calledWith('workbench.action.closeActiveEditor')).to.be.true;
+  });
+  test('getDiff should use vscode.diff to get the difference between two files', function (done) {
+    const vscodeDiffStub = stub(commands, 'executeCommand').callsFake((cmd: string, leftUri, rightUri, title) => {
+      expect(cmd).to.eq('vscode.diff');
+      expect(title).to.eq('racecar.xml ↔ compare.racecar.xml');
+      expect(leftUri).to.be.instanceof(Uri);
+      expect(rightUri).to.be.instanceof(Uri);
+      expect(leftUri.path).to.include('compare.racecar.xml');
+      expect(rightUri.path).to.include('racecar.xml');
+      expect(rightUri.path).not.to.include('compare');
+      done();
+      return Promise.resolve();
+    });
+    stubs.push(vscodeDiffStub);
+    const node = new FileNode();
+    node.fullPath = 'tacocat/racecar.xml';
+    node.fileName = 'racecar.xml';
+    ooxmlViewer.getDiff(node);
+  });
+  test('closeWatchers should call restore on the array of file system watchers', function (done) {
+    const disposeStub = stub();
+    const disposable1 = ({
+      dispose: disposeStub,
+    } as never) as Disposable;
+    const disposable2 = ({
+      dispose: disposeStub,
+    } as never) as Disposable;
+    OOXMLViewer.watchers.push(disposable1, disposable2);
+    OOXMLViewer.closeWatchers();
+    expect(disposeStub.calledTwice).to.be.true;
+    done();
   });
 });
