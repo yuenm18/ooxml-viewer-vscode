@@ -103,7 +103,7 @@ export class OOXMLViewer {
     try {
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fileNode.fullPath));
       const filePath: string = join(folderPath, fileNode.fileName);
-      await this._createFile(fileNode.fullPath, fileNode.fileName);
+      await this._createFile(fileNode.fullPath, fileNode.fileName, true);
       const uri: Uri = Uri.parse(`file:///${filePath}`);
       OOXMLViewer.openTextEditors[filePath] = fileNode;
       commands.executeCommand('vscode.open', uri);
@@ -135,8 +135,13 @@ export class OOXMLViewer {
       const filePath = join(OOXMLViewer.fileCachePath, dirname(file.fullPath), file.fileName);
       const compareFilePath = join(OOXMLViewer.fileCachePath, dirname(file.fullPath), `compare.${file.fileName}`);
       // create URIs and title
+      const enc = new TextEncoder();
       const rightUri = Uri.file(filePath);
       const leftUri = Uri.file(compareFilePath);
+      const rightXml = await (await workspace.fs.readFile(rightUri)).toString();
+      const leftXml = await (await workspace.fs.readFile(leftUri)).toString();
+      await workspace.fs.writeFile(rightUri, enc.encode(rightXml.startsWith('<?xml') ? formatXml(rightXml) : rightXml));
+      await workspace.fs.writeFile(leftUri, enc.encode(leftXml.startsWith('<?xml') ? formatXml(leftXml) : leftXml));
       const title = `${basename(filePath)} ↔ ${basename(compareFilePath)}`;
       // diff the primary and compare files
       await commands.executeCommand('vscode.diff', leftUri, rightUri, title);
@@ -307,7 +312,7 @@ export class OOXMLViewer {
    * @param  {string} fileName the name of the file
    * @returns Promise
    */
-  private async _createFile(fullPath: string, fileName: string): Promise<void> {
+  private async _createFile(fullPath: string, fileName: string, formatIt = false): Promise<void> {
     try {
       const folderPath = join(OOXMLViewer.fileCachePath, dirname(fullPath));
       const filePath: string = join(folderPath, fileName);
@@ -320,7 +325,7 @@ export class OOXMLViewer {
       const text: string = (await file?.async('text')) ?? (await (await workspace.fs.readFile(Uri.file(preFilePath))).toString());
       if (text.startsWith('<?xml')) {
         let formattedXml = '';
-        if (text.length < 100000) {
+        if (formatIt) {
           formattedXml = formatXml(text);
         }
         const enc = new TextEncoder();
@@ -476,12 +481,12 @@ export class OOXMLViewer {
    * @returns Promise
    */
   private async _removeDeletedParts(node?: FileNode): Promise<void> {
+    const fileNames = Object.keys(this.zip.files);
     if (!node) {
       await this._removeDeletedParts(this.treeDataProvider.rootFileNode);
     } else {
       node.children.forEach(async (n, i, arr) => {
         const path = join(OOXMLViewer.fileCachePath, n.fullPath);
-        const fileNames = Object.keys(this.zip.files);
         if (!fileNames.includes(n.fullPath)) {
           const file: string = await (await workspace.fs.readFile(Uri.file(path))).toString();
           if (file) {
@@ -492,6 +497,7 @@ export class OOXMLViewer {
             await workspace.fs.delete(Uri.file(join(dirname(path), `prev.${basename(path)}`)), { recursive: true, useTrash: false });
             await workspace.fs.delete(Uri.file(join(dirname(path), `compare.${basename(path)}`)), { recursive: true, useTrash: false });
             arr.splice(i, 1);
+            this.treeDataProvider.refresh();
           }
         } else if (n.children.length) {
           n.children.forEach(async nn => await this._removeDeletedParts(nn));
