@@ -101,12 +101,21 @@ export class OOXMLViewer {
    */
   async viewFile(fileNode: FileNode): Promise<void> {
     try {
-      const folderPath = join(OOXMLViewer.fileCachePath, dirname(fileNode.fullPath));
-      const filePath: string = join(folderPath, fileNode.fileName);
-      await this._createFile(fileNode.fullPath, fileNode.fileName, true);
-      const uri: Uri = Uri.parse(`file:///${filePath}`);
-      OOXMLViewer.openTextEditors[filePath] = fileNode;
-      commands.executeCommand('vscode.open', uri);
+      await window.withProgress(
+        {
+          location: ProgressLocation.Notification,
+          title: 'OOXML Viewer',
+        },
+        async progress => {
+          progress.report({ message: 'Formatting XML' });
+          const folderPath = join(OOXMLViewer.fileCachePath, dirname(fileNode.fullPath));
+          const filePath: string = join(folderPath, fileNode.fileName);
+          await this._createFile(fileNode.fullPath, fileNode.fileName, true);
+          const uri: Uri = Uri.parse(`file:///${filePath}`);
+          OOXMLViewer.openTextEditors[filePath] = fileNode;
+          commands.executeCommand('vscode.open', uri);
+        },
+      );
     } catch (e) {
       console.error(e);
       window.showErrorMessage(`Could not load ${fileNode.fullPath}`);
@@ -300,6 +309,7 @@ export class OOXMLViewer {
     if (showNewFileLabel) {
       await this._removeDeletedParts();
     }
+    await this._reformatOpenTabs();
     // tell vscode the tree has changed
     this.treeDataProvider.refresh();
   }
@@ -324,12 +334,14 @@ export class OOXMLViewer {
       const file: JSZipObject | null = this.zip.file(fullPath);
       const text: string = (await file?.async('text')) ?? (await (await workspace.fs.readFile(Uri.file(preFilePath))).toString());
       if (text.startsWith('<?xml')) {
+        const isSingleLine = text.split('\n').length - 1 === 1;
         let formattedXml = '';
-        if (formatIt) {
+        if (formatIt && isSingleLine && text.length < 500000) {
           formattedXml = formatXml(text);
         }
         const enc = new TextEncoder();
         await workspace.fs.writeFile(Uri.file(filePath), enc.encode(formattedXml || text));
+        await this.zip.file(fullPath, formattedXml || text);
       } else {
         const u8a: Uint8Array | undefined = await file?.async('uint8array');
         if (u8a) {
@@ -504,6 +516,41 @@ export class OOXMLViewer {
         }
       });
     }
+  }
+  private async _reformatOpenTabs(): Promise<void> {
+    const textDocuments: TextDocument[] = [];
+    const closedTextDocuments: TextDocument[] = [];
+    workspace.textDocuments.forEach(t => {
+      if (t.fileName.toLowerCase().includes(OOXMLViewer.fileCachePath.toLowerCase())) {
+        if (Object.keys(this.zip.files).filter(f => f.includes(basename(t.fileName).replace(/compare.|prev./, ''))).length) {
+          textDocuments.push(t);
+        } else {
+          closedTextDocuments.push(t);
+        }
+      }
+    });
+    textDocuments.forEach(async td => {
+      const prevFileName = join(dirname(td.fileName), `prev.${basename(td.fileName)}`);
+      const compareFileName = join(dirname(td.fileName), `compare.${basename(td.fileName)}`);
+      const xml = await (await workspace.fs.readFile(Uri.file(td.fileName))).toString();
+      const prevXml = await (await workspace.fs.readFile(Uri.file(prevFileName))).toString();
+      const compareXml = await (await workspace.fs.readFile(Uri.file(compareFileName))).toString();
+      [
+        { xml, fileName: td.fileName },
+        { xml: prevXml, fileName: prevFileName },
+        { xml: compareXml, fileName: compareFileName },
+      ].forEach(async ({ xml, fileName }) => {
+        if (xml.startsWith('<?xml')) {
+          const enc = new TextEncoder();
+          const text = formatXml(xml);
+          await workspace.fs.writeFile(Uri.file(fileName), enc.encode(text));
+        }
+      });
+    });
+    closedTextDocuments.forEach(async t => {
+      await window.showTextDocument(Uri.file(t.fileName), { preview: true, preserveFocus: false });
+      await commands.executeCommand('workbench.action.closeActiveEditor');
+    });
   }
   /**
    * Check if an OOXML part is different from its cached version
