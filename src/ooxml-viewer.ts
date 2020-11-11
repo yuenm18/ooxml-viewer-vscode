@@ -204,10 +204,8 @@ export class OOXMLViewer {
       if (tds.length) {
         const td: TextDocument | undefined = tds.pop();
         if (td) {
-          if (existsSync(td.fileName)) {
-            await window.showTextDocument(td, { preview: true, preserveFocus: false });
-            await commands.executeCommand('workbench.action.closeActiveEditor');
-          }
+          await window.showTextDocument(td, { preview: true, preserveFocus: false });
+          await commands.executeCommand('workbench.action.closeActiveEditor');
           await OOXMLViewer._closeEditors(tds);
         }
       }
@@ -269,8 +267,8 @@ export class OOXMLViewer {
           if (filesAreDifferent) {
             currentFileNode.iconPath = warningIcon;
             const path = OOXMLViewer._getPrevFilePath(currentFileNode.fullPath);
-            await this._createFile(path, `compare.${currentFileNode.fileName}`);
-            await this._createFile(currentFileNode.fullPath, `prev.${currentFileNode.fileName}`);
+            await this._createFile(path, `compare.${basename(currentFileNode.fileName).replace('compare.', '')}`);
+            await this._createFile(currentFileNode.fullPath, `prev.${basename(currentFileNode.fileName).replace('prev.', '')}`);
           } else {
             currentFileNode.iconPath = currentFileNode.children.length ? ThemeIcon.Folder : ThemeIcon.File;
           }
@@ -284,7 +282,7 @@ export class OOXMLViewer {
           currentFileNode = newFileNode;
           // create a copy of the file and a prev copy with the same data i.e. no changes have been made
           await this._createFile(newFileNode.fullPath, newFileNode.fileName);
-          await this._createFile(newFileNode.fullPath, `prev.${newFileNode.fileName}`);
+          await this._createFile(newFileNode.fullPath, `prev.${basename(newFileNode.fileName).replace('prev.', '')}`);
           // if showNewFileLabel is true (meaning this is a refresh of the tree) then this is a new file so
           // add a green asterisk as the icon and create an empty compare file
           // else create the compare file from the newFileNode.fullPath
@@ -298,17 +296,14 @@ export class OOXMLViewer {
             currentFileNode.iconPath = warningIconGreen;
             await workspace.fs.writeFile(Uri.file(compareFilePath), new Uint8Array());
           } else {
-            await this._createFile(newFileNode.fullPath, `compare.${newFileNode.fileName}`);
+            await this._createFile(newFileNode.fullPath, `compare.${basename(newFileNode.fileName).replace(/compare.|prev./, '')}`);
           }
         }
       }
       // set the current node fullPath (either new or existing) to fileWithPath
       currentFileNode.fullPath = fileWithPath;
     }
-    // remove parts deleted from file if it's not the first time the file is opened
-    if (showNewFileLabel) {
-      await this._removeDeletedParts();
-    }
+    await this._removeDeletedParts();
     await this._reformatOpenTabs();
     // tell vscode the tree has changed
     this.treeDataProvider.refresh();
@@ -334,10 +329,16 @@ export class OOXMLViewer {
       const file: JSZipObject | null = this.zip.file(fullPath);
       const text: string = (await file?.async('text')) ?? (await (await workspace.fs.readFile(Uri.file(preFilePath))).toString());
       if (text.startsWith('<?xml')) {
-        const isSingleLine = text.split('\n').length - 1 === 1;
+        const isSingleLine = text.split('\n').length - 1 <= 1;
         let formattedXml = '';
         if (formatIt && isSingleLine && text.length < 500000) {
           formattedXml = formatXml(text);
+        }
+        if (text.length >= 500000 && formatIt) {
+          window.showWarningMessage(
+            `${basename(fullPath)} is too large to format.\nOOXML Parts must be less than 500,000 characters to format`,
+            { modal: true },
+          );
         }
         const enc = new TextEncoder();
         await workspace.fs.writeFile(Uri.file(filePath), enc.encode(formattedXml || text));
@@ -376,21 +377,23 @@ export class OOXMLViewer {
           const prev = await workspace.fs.readFile(Uri.file(prevFilePath));
           const data: Buffer = Buffer.from(cur);
           const prevData: Buffer = Buffer.from(prev);
+          const checkName = basename(fileName);
           if (!data.equals(prevData)) {
             const pathArr = fileName.split(OOXMLViewer.cacheFolderName);
             let normalizedPath: string = pathArr[pathArr.length - 1].replace(/\\/g, '/');
             normalizedPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
             const zipFile = await this.zip.file(normalizedPath, data, { binary: true }).generateAsync({ type: 'uint8array' });
             await workspace.fs.writeFile(Uri.file(OOXMLViewer.ooxmlFilePath), zipFile);
-            await workspace.fs.writeFile(Uri.file(join(dirname(prevFilePath), `compare.${basename(fileName)}`)), prev);
+            await workspace.fs.writeFile(Uri.file(join(dirname(prevFilePath), `compare.${checkName}`)), prev);
             await workspace.fs.writeFile(Uri.file(prevFilePath), cur);
+            this.treeDataProvider.refresh();
           }
         }
       }
     } catch (err) {
-      if (err?.code === 'EBUSY') {
+      if (err?.code === 'EBUSY' || err?.message.toLowerCase().includes('ebusy')) {
         window.showWarningMessage(
-          `File not saved.\n${OOXMLViewer.ooxmlFilePath} is open in another program.\n
+          `File not saved.\n${basename(OOXMLViewer.ooxmlFilePath)} is open in another program.\n
                   Close that program before making any changes.`,
           { modal: true },
         );
@@ -474,13 +477,16 @@ export class OOXMLViewer {
         title: 'OOXML Viewer',
       },
       async progress => {
-        progress.report({ message: 'Updating OOXML Parts' });
-        const ooxmlZip: JSZip = new JSZip();
-        const data: Buffer = Buffer.from(await workspace.fs.readFile(Uri.file(filePath)));
-        await ooxmlZip.loadAsync(data);
-        this.zip = ooxmlZip;
-        await this._populateOOXMLViewer(this.zip.files, true);
-        await this._viewFiles(Object.values(OOXMLViewer.openTextEditors));
+        try {
+          progress.report({ message: 'Updating OOXML Parts' });
+          const ooxmlZip: JSZip = new JSZip();
+          const data: Buffer = Buffer.from(await workspace.fs.readFile(Uri.file(filePath)));
+          await ooxmlZip.loadAsync(data);
+          this.zip = ooxmlZip;
+          await this._populateOOXMLViewer(this.zip.files, true);
+        } catch (err) {
+          console.error(err);
+        }
       },
     );
   }
@@ -493,64 +499,76 @@ export class OOXMLViewer {
    * @returns Promise
    */
   private async _removeDeletedParts(node?: FileNode): Promise<void> {
-    const fileNames = Object.keys(this.zip.files);
-    if (!node) {
-      await this._removeDeletedParts(this.treeDataProvider.rootFileNode);
-    } else {
-      node.children.forEach(async (n, i, arr) => {
-        const path = join(OOXMLViewer.fileCachePath, n.fullPath);
-        if (!fileNames.includes(n.fullPath)) {
-          const file: string = await (await workspace.fs.readFile(Uri.file(path))).toString();
-          if (file) {
-            n.iconPath = this._context.asAbsolutePath(join('images', 'asterisk.red.svg'));
-            await workspace.fs.writeFile(Uri.file(join(OOXMLViewer.fileCachePath, n.fullPath)), new Uint8Array());
-          } else {
-            await workspace.fs.delete(Uri.file(path), { recursive: true, useTrash: false });
-            await workspace.fs.delete(Uri.file(join(dirname(path), `prev.${basename(path)}`)), { recursive: true, useTrash: false });
-            await workspace.fs.delete(Uri.file(join(dirname(path), `compare.${basename(path)}`)), { recursive: true, useTrash: false });
-            arr.splice(i, 1);
-            this.treeDataProvider.refresh();
+    try {
+      const fileNames = Object.keys(this.zip.files);
+      if (!node) {
+        await this._removeDeletedParts(this.treeDataProvider.rootFileNode);
+      } else {
+        node.children.forEach(async (n, i, arr) => {
+          const path = join(OOXMLViewer.fileCachePath, n.fullPath);
+          if (!fileNames.includes(n.fullPath)) {
+            const file: string = await (await workspace.fs.readFile(Uri.file(path))).toString();
+            if (file) {
+              n.iconPath = this._context.asAbsolutePath(join('images', 'asterisk.red.svg'));
+              await workspace.fs.writeFile(Uri.file(join(OOXMLViewer.fileCachePath, n.fullPath)), new Uint8Array());
+            } else {
+              await workspace.fs.delete(Uri.file(path), { recursive: true, useTrash: false });
+              await workspace.fs.delete(Uri.file(join(dirname(path), `prev.${basename(path)}`)), { recursive: true, useTrash: false });
+              await workspace.fs.delete(Uri.file(join(dirname(path), `compare.${basename(path)}`)), { recursive: true, useTrash: false });
+              arr.splice(i, 1);
+              this.treeDataProvider.refresh();
+            }
+          } else if (n.children.length) {
+            n.children.forEach(async nn => await this._removeDeletedParts(nn));
           }
-        } else if (n.children.length) {
-          n.children.forEach(async nn => await this._removeDeletedParts(nn));
-        }
-      });
+        });
+      }
+    } catch (err) {
+      console.error(err);
     }
   }
   private async _reformatOpenTabs(): Promise<void> {
-    const textDocuments: TextDocument[] = [];
-    const closedTextDocuments: TextDocument[] = [];
-    workspace.textDocuments.forEach(t => {
-      if (t.fileName.toLowerCase().includes(OOXMLViewer.fileCachePath.toLowerCase())) {
-        if (Object.keys(this.zip.files).filter(f => f.includes(basename(t.fileName).replace(/compare.|prev./, ''))).length) {
-          textDocuments.push(t);
-        } else {
-          closedTextDocuments.push(t);
-        }
-      }
-    });
-    textDocuments.forEach(async td => {
-      const prevFileName = join(dirname(td.fileName), `prev.${basename(td.fileName)}`);
-      const compareFileName = join(dirname(td.fileName), `compare.${basename(td.fileName)}`);
-      const xml = await (await workspace.fs.readFile(Uri.file(td.fileName))).toString();
-      const prevXml = await (await workspace.fs.readFile(Uri.file(prevFileName))).toString();
-      const compareXml = await (await workspace.fs.readFile(Uri.file(compareFileName))).toString();
-      [
-        { xml, fileName: td.fileName },
-        { xml: prevXml, fileName: prevFileName },
-        { xml: compareXml, fileName: compareFileName },
-      ].forEach(async ({ xml, fileName }) => {
-        if (xml.startsWith('<?xml')) {
-          const enc = new TextEncoder();
-          const text = formatXml(xml);
-          await workspace.fs.writeFile(Uri.file(fileName), enc.encode(text));
+    try {
+      const textDocuments: TextDocument[] = [];
+      const closedTextDocuments: TextDocument[] = [];
+      workspace.textDocuments.forEach(t => {
+        if (t.fileName.toLowerCase().includes(OOXMLViewer.fileCachePath.toLowerCase())) {
+          if (Object.keys(this.zip.files).filter(f => f.includes(basename(t.fileName).replace(/compare.|prev./, ''))).length) {
+            textDocuments.push(t);
+          } else {
+            closedTextDocuments.push(t);
+          }
         }
       });
-    });
-    closedTextDocuments.forEach(async t => {
-      await window.showTextDocument(Uri.file(t.fileName), { preview: true, preserveFocus: false });
-      await commands.executeCommand('workbench.action.closeActiveEditor');
-    });
+      textDocuments.forEach(async td => {
+        try {
+          const prevFileName = join(dirname(td.fileName), `prev.${basename(td.fileName.replace(/compare.|prev./, ''))}`);
+          const compareFileName = join(dirname(td.fileName), `compare.${basename(td.fileName.replace(/compare.|prev./, ''))}`);
+          const xml = await (await workspace.fs.readFile(Uri.file(td.fileName))).toString();
+          const prevXml = await (await workspace.fs.readFile(Uri.file(prevFileName))).toString();
+          const compareXml = await (await workspace.fs.readFile(Uri.file(compareFileName))).toString();
+          [
+            { xml, fileName: td.fileName },
+            { xml: prevXml, fileName: prevFileName },
+            { xml: compareXml, fileName: compareFileName },
+          ].forEach(async ({ xml, fileName }) => {
+            if (xml.startsWith('<?xml')) {
+              const enc = new TextEncoder();
+              const text = formatXml(xml);
+              await workspace.fs.writeFile(Uri.file(fileName), enc.encode(text));
+            }
+          });
+        } catch (err) {
+          console.error(err);
+        }
+      });
+      closedTextDocuments.forEach(async t => {
+        await window.showTextDocument(Uri.file(t.fileName), { preview: true, preserveFocus: false });
+        await commands.executeCommand('workbench.action.closeActiveEditor');
+      });
+    } catch (err) {
+      console.error(err);
+    }
   }
   /**
    * Check if an OOXML part is different from its cached version
