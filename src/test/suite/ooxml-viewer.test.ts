@@ -4,6 +4,7 @@ import fs from 'fs';
 import JSZip from 'jszip';
 import { dirname, join } from 'path';
 import { match, SinonStub, stub } from 'sinon';
+import { TextDecoder } from 'util';
 import { commands, Disposable, ExtensionContext, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window, workspace } from 'vscode';
 import formatXml from 'xml-formatter';
 import { FileNode, OOXMLTreeDataProvider } from '../../ooxml-tree-view-provider';
@@ -34,14 +35,43 @@ suite('OOXMLViewer', async function () {
     done();
   });
   test('It should populate the sidebar tree with the contents of an ooxml file', async function () {
-    const mkdirMock = stub(workspace.fs, 'createDirectory').returns(Promise.resolve());
     const createFileMock = stub(OOXMLViewer.prototype, <never>'_createFile').returns(Promise.resolve());
-
-    stubs.push(stub(OOXMLViewer, <never>'_fileHasBeenChangedFromOutside').returns(Promise.resolve(false)), mkdirMock, createFileMock);
+    const refreshStub = stub(ooxmlViewer.treeDataProvider, 'refresh').returns(undefined);
+    const createDirectoryStub = stub(workspace.fs, 'createDirectory').returns(Promise.resolve());
+    const spawnStub = stub(child_process, 'spawn').callsFake((arg1, arg2) => {
+      expect(arg1).to.eq('attrib');
+      expect(arg2).to.be.an('array').that.includes('+h');
+      expect(arg2[1]).to.include(OOXMLViewer.cacheFolderName);
+      return {} as child_process.ChildProcess;
+    });
+    const jsZipStub = stub(ooxmlViewer.zip, 'file').callsFake(() => {
+      return ({
+        async(arg: string) {
+          expect(arg).to.eq('text');
+          return Promise.resolve(
+            '<?xml version="1.0" encoding="UTF-8"?>\n<note><date>2015-09-01</date><hour>08:30</hour>' +
+              "<to>Tove</to><from>Jani</from><body>Don't forget me this weekend!</body></note>",
+          );
+        },
+      } as unknown) as JSZip;
+    });
+    const existsSyncStub = stub(fs, 'existsSync').returns(false);
+    stubs.push(
+      stub(OOXMLViewer, <never>'_fileHasBeenChangedFromOutside').returns(Promise.resolve(false)),
+      createDirectoryStub,
+      spawnStub,
+      jsZipStub,
+      refreshStub,
+      existsSyncStub,
+      createFileMock,
+    );
     expect(ooxmlViewer.treeDataProvider.rootFileNode.children.length).to.eq(0);
     await ooxmlViewer.viewContents(Uri.file(testFilePath));
     expect(ooxmlViewer.treeDataProvider.rootFileNode.children.length).to.eq(4);
+    expect(refreshStub.callCount).to.eq(2);
+    expect(existsSyncStub.called).to.be.true;
     expect(createFileMock.callCount).to.eq(225);
+    expect(createDirectoryStub.calledOnce).to.be.true;
   });
   test('viewFile should open a text editor when called with the path to an xml file', async function () {
     const commandsStub = stub(commands, 'executeCommand');
@@ -145,7 +175,10 @@ suite('OOXMLViewer', async function () {
     expect(showDocStub.calledWith(match(textDoc))).to.be.true;
     expect(executeStub.calledWith('workbench.action.closeActiveEditor')).to.be.true;
   });
-  test('getDiff should use vscode.diff to get the difference between two files', function (done) {
+  test('getDiff should use vscode.diff to get the difference between two files', async function () {
+    const xml =
+      '<?xml version="1.0" encoding="UTF-8"?><note><to>Tove</to><from>Jani</from>' +
+      "<heading>Reminder</heading><body>Don't forget me this weekend!</body></note>";
     const vscodeDiffStub = stub(commands, 'executeCommand').callsFake((cmd: string, leftUri, rightUri, title) => {
       expect(cmd).to.eq('vscode.diff');
       expect(title).to.eq('racecar.xml ↔ compare.racecar.xml');
@@ -154,14 +187,26 @@ suite('OOXMLViewer', async function () {
       expect(leftUri.path).to.include('compare.racecar.xml');
       expect(rightUri.path).to.include('racecar.xml');
       expect(rightUri.path).not.to.include('compare');
-      done();
       return Promise.resolve();
     });
-    stubs.push(vscodeDiffStub);
+    const readFileStub = stub(workspace.fs, 'readFile').returns(
+      Promise.resolve({
+        toString() {
+          return xml;
+        },
+      } as Uint8Array),
+    );
+    const writeFileStub = stub(workspace.fs, 'writeFile').callsFake((arg1, arg2) => {
+      expect(arg1.fsPath).to.include(OOXMLViewer.cacheFolderName);
+      const dec = new TextDecoder();
+      expect(dec.decode(arg2)).to.eq(formatXml(xml));
+      return Promise.resolve();
+    });
+    stubs.push(vscodeDiffStub, readFileStub, writeFileStub);
     const node = new FileNode();
     node.fullPath = 'tacocat/racecar.xml';
     node.fileName = 'racecar.xml';
-    ooxmlViewer.getDiff(node);
+    await ooxmlViewer.getDiff(node);
   });
   test('closeWatchers should call restore on the array of file system watchers', function (done) {
     const disposeStub = stub();
