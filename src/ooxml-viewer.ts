@@ -342,7 +342,9 @@ export class OOXMLViewer {
         }
         const enc = new TextEncoder();
         await workspace.fs.writeFile(Uri.file(filePath), enc.encode(formattedXml || text));
-        await this.zip.file(fullPath, formattedXml || text);
+        if (!/compare|prev/.test(filePath)) {
+          await this.zip.file(fullPath, formattedXml || text);
+        }
       } else {
         const u8a: Uint8Array | undefined = await file?.async('uint8array');
         if (u8a) {
@@ -511,6 +513,7 @@ export class OOXMLViewer {
             if (file) {
               n.iconPath = this._context.asAbsolutePath(join('images', 'asterisk.red.svg'));
               await workspace.fs.writeFile(Uri.file(join(OOXMLViewer.fileCachePath, n.fullPath)), new Uint8Array());
+              this.treeDataProvider.refresh();
             } else {
               await workspace.fs.delete(Uri.file(path), { recursive: true, useTrash: false });
               await workspace.fs.delete(Uri.file(join(dirname(path), `prev.${basename(path)}`)), { recursive: true, useTrash: false });
