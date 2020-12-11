@@ -1,10 +1,6 @@
-import rimraf from 'rimraf';
-import { promisify } from 'util';
 import { commands, ExtensionContext, Uri, window } from 'vscode';
 import { FileNode } from './ooxml-tree-view-provider';
 import { OOXMLViewer } from './ooxml-viewer';
-
-const rimrafPromise = promisify(rimraf);
 
 export function activate(context: ExtensionContext): void {
   const ooxmlViewer = new OOXMLViewer(context);
@@ -19,5 +15,5 @@ export function activate(context: ExtensionContext): void {
 
 export async function deactivate(): Promise<void> {
   OOXMLViewer.closeWatchers();
-  return rimrafPromise(OOXMLViewer.fileCachePath);
+  return OOXMLViewer.deleteCacheFiles();
 }

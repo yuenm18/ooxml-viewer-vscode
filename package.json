@@ -139,7 +139,6 @@
   },
   "dependencies": {
     "jszip": "^3.5.0",
-    "rimraf": "^3.0.2",
     "xml-formatter": "^2.3.1"
   }
 }

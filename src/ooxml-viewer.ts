@@ -2,8 +2,7 @@ import { spawn } from 'child_process';
 import { existsSync, PathLike } from 'fs';
 import JSZip, { JSZipObject } from 'jszip';
 import { basename, dirname, format, join, parse } from 'path';
-import rimraf from 'rimraf';
-import { promisify } from 'util';
+import { v4 as uuid } from 'uuid';
 import {
   commands,
   Disposable,
@@ -24,7 +23,6 @@ import {
 } from 'vscode';
 import formatXml from 'xml-formatter';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
-const rimrafPromise = promisify(rimraf);
 /**
  * The OOXML Viewer
  */
@@ -34,7 +32,8 @@ export class OOXMLViewer {
   static watchers: Disposable[] = [];
   static watchActions: { [key: string]: number } = {};
   static openTextEditors: { [key: string]: FileNode } = {};
-  static cacheFolderName = '.53d3a0ba-37e3-41cf-a068-b10b392cf8ca';
+  static cacheFolderIdentifier = '.open-xml-viewer';
+  static cacheFolderName = `${OOXMLViewer.cacheFolderIdentifier}-${uuid()}`;
   static ooxmlFilePath: string;
   static fileCachePath: string = join(process.cwd(), OOXMLViewer.cacheFolderName);
   /**
@@ -225,9 +224,7 @@ export class OOXMLViewer {
       this.zip = new JSZip();
       this.treeDataProvider.rootFileNode = new FileNode();
       this.treeDataProvider.refresh();
-      if (existsSync(OOXMLViewer.fileCachePath)) {
-        await rimrafPromise(OOXMLViewer.fileCachePath);
-      }
+      await OOXMLViewer.deleteCacheFiles();
       OOXMLViewer.closeWatchers();
       await OOXMLViewer._closeEditors();
     } catch (err) {
@@ -599,5 +596,32 @@ export class OOXMLViewer {
       console.error(err.message || err);
     }
     return false;
+  }
+  public static async deleteCacheFiles(): Promise<void> {
+    const vsCodeFolder = process.cwd();
+    const contents = await workspace.fs.readDirectory(Uri.file(vsCodeFolder));
+    contents.forEach(async (c: [string, FileType]) => {
+      if (c[0].startsWith(OOXMLViewer.cacheFolderIdentifier)) {
+        // const { platform } = process;
+        // let cmd = '';
+        // switch (platform) {
+        //   case 'win32':
+        //     cmd = 'tasklist';
+        //     break;
+        //   case 'darwin':
+        //     cmd = `ps -ax | grep vscode`;
+        //     break;
+        //   case 'linux':
+        //     cmd = 'ps -A';
+        //     break;
+        //   default:
+        //     break;
+        // }
+        // exec(cmd, (err, stdout, stderr) => {
+        //   console.log({ err, stdout, stderr });
+        // });
+        await workspace.fs.delete(Uri.file(join(vsCodeFolder, c[0])), { recursive: true, useTrash: false });
+      }
+    });
   }
 }

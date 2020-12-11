@@ -1,11 +1,21 @@
 import { expect } from 'chai';
 import child_process from 'child_process';
-import fs from 'fs';
 import JSZip from 'jszip';
 import { dirname, join } from 'path';
 import { match, SinonStub, stub } from 'sinon';
 import { TextDecoder } from 'util';
-import { commands, Disposable, ExtensionContext, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window, workspace } from 'vscode';
+import {
+  commands,
+  Disposable,
+  ExtensionContext,
+  FileType,
+  TextDocument,
+  TextDocumentShowOptions,
+  TextEditor,
+  Uri,
+  window,
+  workspace,
+} from 'vscode';
 import formatXml from 'xml-formatter';
 import { FileNode, OOXMLTreeDataProvider } from '../../ooxml-tree-view-provider';
 import { OOXMLViewer } from '../../ooxml-viewer';
@@ -55,21 +65,18 @@ suite('OOXMLViewer', async function () {
         },
       } as unknown) as JSZip;
     });
-    const existsSyncStub = stub(fs, 'existsSync').returns(false);
     stubs.push(
       stub(OOXMLViewer, <never>'_fileHasBeenChangedFromOutside').returns(Promise.resolve(false)),
       createDirectoryStub,
       spawnStub,
       jsZipStub,
       refreshStub,
-      existsSyncStub,
       createFileMock,
     );
     expect(ooxmlViewer.treeDataProvider.rootFileNode.children.length).to.eq(0);
     await ooxmlViewer.viewContents(Uri.file(testFilePath));
     expect(ooxmlViewer.treeDataProvider.rootFileNode.children.length).to.eq(4);
     expect(refreshStub.callCount).to.eq(2);
-    expect(existsSyncStub.called).to.be.true;
     expect(createFileMock.callCount).to.eq(225);
     expect(createDirectoryStub.calledOnce).to.be.true;
   });
@@ -152,8 +159,6 @@ suite('OOXMLViewer', async function () {
   test('clear should reset the OOXML Viewer', async function () {
     const textDoc = {} as TextDocument;
     const refreshStub = stub(ooxmlViewer.treeDataProvider, 'refresh').callsFake(() => undefined);
-    const existsSyncStub = stub(fs, 'existsSync').onFirstCall().returns(false);
-    existsSyncStub.returns(true);
     const closeWatchersStub = stub(OOXMLViewer, 'closeWatchers').callsFake(() => undefined);
     const openEditorsStub = stub(Array.prototype, 'filter').callsFake(arg => {
       return [textDoc];
@@ -167,10 +172,9 @@ suite('OOXMLViewer', async function () {
       expect(arg).to.eq('workbench.action.closeActiveEditor');
       return Promise.resolve();
     });
-    stubs.push(refreshStub, existsSyncStub, closeWatchersStub, openEditorsStub, showDocStub, executeStub);
+    stubs.push(refreshStub, closeWatchersStub, openEditorsStub, showDocStub, executeStub);
     await ooxmlViewer.clear();
     expect(refreshStub.calledOnce).to.be.true;
-    expect(existsSyncStub.called).to.be.true;
     expect(closeWatchersStub.calledOnce).to.be.true;
     expect(showDocStub.calledWith(match(textDoc))).to.be.true;
     expect(executeStub.calledWith('workbench.action.closeActiveEditor')).to.be.true;
@@ -220,5 +224,27 @@ suite('OOXMLViewer', async function () {
     OOXMLViewer.closeWatchers();
     expect(disposeStub.calledTwice).to.be.true;
     done();
+  });
+  test('deleteCacheFiles should delete all OOXML Viewer cache folders', async function () {
+    const testStr = 'avid diva';
+    const testPath1 = `${OOXMLViewer.cacheFolderIdentifier}/baseball`;
+    const testPath2 = `${OOXMLViewer.cacheFolderIdentifier}/hockey`;
+    const processStub = stub(process, 'cwd').returns(testStr);
+    const readDirStub = stub(workspace.fs, 'readDirectory').returns(
+      Promise.resolve([
+        ['air an aria', FileType.Directory],
+        [testPath1, FileType.Directory],
+        [testPath2, FileType.Directory],
+        ['aerate pet area', FileType.File],
+      ]),
+    );
+    const deleteStub = stub(workspace.fs, 'delete');
+    stubs.push(processStub, readDirStub, deleteStub);
+    await OOXMLViewer.deleteCacheFiles();
+    const a = Uri.file(testStr);
+    expect(readDirStub.calledWith(match(a))).to.be.true;
+    expect(deleteStub.calledWith(match(Uri.file(join(testStr, testPath1))))).to.be.true;
+    expect(deleteStub.calledWith(match(Uri.file(join(testStr, testPath2))))).to.be.true;
+    expect(deleteStub.calledTwice).to.be.true;
   });
 });
