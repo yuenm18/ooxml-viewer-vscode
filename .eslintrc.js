@@ -17,7 +17,7 @@ module.exports = {
       },
     ],
     'func-call-spacing': ['error', 'never'],
-    indent: ['error', 2],
+    indent: [2, 2, { indentSwitchCase: true }],
     'max-len': [
       'warn',
       {
