@@ -334,7 +334,7 @@ export class OOXMLViewer {
         if (formatIt && isSingleLine && text.length < 500000) {
           formattedXml = formatXml(text);
         }
-        if (text.length >= 500000 && formatIt) {
+        if (text.replace(/\s+/g, '').length >= 500000 && formatIt) {
           window.showWarningMessage(
             `${basename(fullPath)} is too large to format.\nOOXML Parts must be less than 500,000 characters to format`,
             { modal: true },
