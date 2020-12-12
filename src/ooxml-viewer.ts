@@ -3,6 +3,7 @@ import { existsSync, PathLike } from 'fs';
 import JSZip, { JSZipObject } from 'jszip';
 import { basename, dirname, format, join, parse } from 'path';
 import { v4 as uuid } from 'uuid';
+import vkBeautify from 'vkbeautify';
 import {
   commands,
   Disposable,
@@ -19,9 +20,8 @@ import {
   ThemeIcon,
   Uri,
   window,
-  workspace,
+  workspace
 } from 'vscode';
-import formatXml from 'xml-formatter';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
 /**
  * The OOXML Viewer
@@ -148,8 +148,8 @@ export class OOXMLViewer {
       const leftUri = Uri.file(compareFilePath);
       const rightXml = await (await workspace.fs.readFile(rightUri)).toString();
       const leftXml = await (await workspace.fs.readFile(leftUri)).toString();
-      await workspace.fs.writeFile(rightUri, enc.encode(rightXml.startsWith('<?xml') ? formatXml(rightXml) : rightXml));
-      await workspace.fs.writeFile(leftUri, enc.encode(leftXml.startsWith('<?xml') ? formatXml(leftXml) : leftXml));
+      await workspace.fs.writeFile(rightUri, enc.encode(rightXml.startsWith('<?xml') ? vkBeautify.xml(rightXml) : rightXml));
+      await workspace.fs.writeFile(leftUri, enc.encode(leftXml.startsWith('<?xml') ? vkBeautify.xml(leftXml) : leftXml));
       const title = `${basename(filePath)} ↔ ${basename(compareFilePath)}`;
       // diff the primary and compare files
       await commands.executeCommand('vscode.diff', leftUri, rightUri, title);
@@ -310,37 +310,36 @@ export class OOXMLViewer {
    * @method _createFile
    * @private
    * @async
-   * @param  {string} fullPath the path to the folder in the zip file
+   * @param  {string} relativePath the path to the folder in the zip file
    * @param  {string} fileName the name of the file
    * @returns Promise
    */
-  private async _createFile(fullPath: string, fileName: string, formatIt = false): Promise<void> {
+  private async _createFile(relativePath: string, fileName: string, formatIt = false): Promise<void> {
     try {
-      const folderPath = join(OOXMLViewer.fileCachePath, dirname(fullPath));
+      const folderPath = join(OOXMLViewer.fileCachePath, dirname(relativePath));
       const filePath: string = join(folderPath, fileName);
-      const preFilePath = join(OOXMLViewer.fileCachePath, fullPath);
+      const preFilePath = join(OOXMLViewer.fileCachePath, relativePath);
       await workspace.fs.createDirectory(Uri.file(folderPath));
       if (process && (process.platform === 'win32' || (process.env && process.env.OSTYPE && /^(msys|cygwin)$/.test(process.env.OSTYPE)))) {
         spawn('attrib', ['+h', OOXMLViewer.fileCachePath]);
       }
-      const file: JSZipObject | null = this.zip.file(fullPath);
+      const file: JSZipObject | null = this.zip.file(relativePath);
       const text: string = (await file?.async('text')) ?? (await (await workspace.fs.readFile(Uri.file(preFilePath))).toString());
       if (text.startsWith('<?xml')) {
-        const isSingleLine = text.split('\n').length - 1 <= 1;
         let formattedXml = '';
-        if (formatIt && isSingleLine && text.length < 500000) {
-          formattedXml = formatXml(text);
+        if (formatIt && text.length < 500000) {
+          formattedXml = vkBeautify.xml(text);
         }
         if (text.replace(/\s+/g, '').length >= 500000 && formatIt) {
           window.showWarningMessage(
-            `${basename(fullPath)} is too large to format.\nOOXML Parts must be less than 500,000 characters to format`,
+            `${basename(relativePath)} is too large to format.\nOOXML Parts must be less than 500,000 characters to format`,
             { modal: true },
           );
         }
         const enc = new TextEncoder();
         await workspace.fs.writeFile(Uri.file(filePath), enc.encode(formattedXml || text));
         if (!/compare|prev/.test(filePath)) {
-          await this.zip.file(fullPath, formattedXml || text);
+          await this.zip.file(relativePath, text);
         }
       } else {
         const u8a: Uint8Array | undefined = await file?.async('uint8array');
@@ -372,10 +371,13 @@ export class OOXMLViewer {
         const time = stats.mtime;
         if (stats.type !== FileType.Directory && OOXMLViewer.watchActions[fileName] !== time) {
           OOXMLViewer.watchActions[fileName] = time;
+          const textDecoder = new TextDecoder();
           const cur = await workspace.fs.readFile(Uri.file(fileName));
           const prev = await workspace.fs.readFile(Uri.file(prevFilePath));
-          const data: Buffer = Buffer.from(cur);
-          const prevData: Buffer = Buffer.from(prev);
+          const curMiniXml = vkBeautify.xmlmin(textDecoder.decode(cur), true);
+          const prevMiniXml = vkBeautify.xmlmin(textDecoder.decode(prev), true);
+          const data: Buffer = Buffer.from(curMiniXml);
+          const prevData: Buffer = Buffer.from(prevMiniXml);
           const checkName = basename(fileName);
           if (!data.equals(prevData)) {
             const pathArr = fileName.split(OOXMLViewer.cacheFolderName);
@@ -554,7 +556,7 @@ export class OOXMLViewer {
           ].forEach(async ({ xml, fileName }) => {
             if (xml.startsWith('<?xml')) {
               const enc = new TextEncoder();
-              const text = formatXml(xml);
+              const text = vkBeautify.xml(xml);
               await workspace.fs.writeFile(Uri.file(fileName), enc.encode(text));
             }
           });

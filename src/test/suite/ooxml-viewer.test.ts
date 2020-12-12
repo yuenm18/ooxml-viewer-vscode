@@ -4,6 +4,7 @@ import JSZip from 'jszip';
 import { dirname, join } from 'path';
 import { match, SinonStub, stub } from 'sinon';
 import { TextDecoder } from 'util';
+import vkBeautify from 'vkbeautify';
 import {
   commands,
   Disposable,
@@ -14,9 +15,8 @@ import {
   TextEditor,
   Uri,
   window,
-  workspace,
+  workspace
 } from 'vscode';
-import formatXml from 'xml-formatter';
 import { FileNode, OOXMLTreeDataProvider } from '../../ooxml-tree-view-provider';
 import { OOXMLViewer } from '../../ooxml-viewer';
 
@@ -98,7 +98,7 @@ suite('OOXMLViewer', async function () {
     });
     const writeFileStub = stub(workspace.fs, 'writeFile').callsFake((uri: Uri, u8a: Uint8Array) => {
       expect(uri).to.be.instanceof(Uri);
-      const sent: Buffer = Buffer.from(enc.encode(formatXml(xml)));
+      const sent: Buffer = Buffer.from(enc.encode(vkBeautify.xml(xml)));
       const received: Buffer = Buffer.from(u8a);
       expect(sent.equals(received)).to.be.true;
       return Promise.resolve();
@@ -203,7 +203,7 @@ suite('OOXMLViewer', async function () {
     const writeFileStub = stub(workspace.fs, 'writeFile').callsFake((arg1, arg2) => {
       expect(arg1.fsPath).to.include(OOXMLViewer.cacheFolderName);
       const dec = new TextDecoder();
-      expect(dec.decode(arg2)).to.eq(formatXml(xml));
+      expect(dec.decode(arg2)).to.eq(vkBeautify.xml(xml));
       return Promise.resolve();
     });
     stubs.push(vscodeDiffStub, readFileStub, writeFileStub);
