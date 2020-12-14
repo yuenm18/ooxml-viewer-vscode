@@ -20,7 +20,7 @@ import {
   ThemeIcon,
   Uri,
   window,
-  workspace
+  workspace,
 } from 'vscode';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
 /**
@@ -327,12 +327,12 @@ export class OOXMLViewer {
       const text: string = (await file?.async('text')) ?? (await (await workspace.fs.readFile(Uri.file(preFilePath))).toString());
       if (text.startsWith('<?xml')) {
         let formattedXml = '';
-        if (formatIt && text.length < 500000) {
+        if (formatIt && text.length < 1000000) {
           formattedXml = vkBeautify.xml(text);
         }
-        if (text.replace(/\s+/g, '').length >= 500000 && formatIt) {
+        if (text.replace(/\s+/g, '').length >= 1000000 && formatIt) {
           window.showWarningMessage(
-            `${basename(relativePath)} is too large to format.\nOOXML Parts must be less than 500,000 characters to format`,
+            `${basename(relativePath)} is too large to format.\nOOXML Parts must be less than 1,000,000 characters to format`,
             { modal: true },
           );
         }
@@ -549,13 +549,13 @@ export class OOXMLViewer {
           const xml = await (await workspace.fs.readFile(Uri.file(td.fileName))).toString();
           const prevXml = await (await workspace.fs.readFile(Uri.file(prevFileName))).toString();
           const compareXml = await (await workspace.fs.readFile(Uri.file(compareFileName))).toString();
+          const enc = new TextEncoder();
           [
             { xml, fileName: td.fileName },
             { xml: prevXml, fileName: prevFileName },
             { xml: compareXml, fileName: compareFileName },
           ].forEach(async ({ xml, fileName }) => {
             if (xml.startsWith('<?xml')) {
-              const enc = new TextEncoder();
               const text = vkBeautify.xml(xml);
               await workspace.fs.writeFile(Uri.file(fileName), enc.encode(text));
             }
@@ -591,7 +591,12 @@ export class OOXMLViewer {
         const firstBuffer: Buffer = Buffer.from(await workspace.fs.readFile(Uri.file(firstFilePath)));
         const secondBuffer: Buffer = Buffer.from(await workspace.fs.readFile(Uri.file(secondFilePath)));
         if (!firstBuffer.equals(secondBuffer)) {
-          return true;
+          const decoder = new TextDecoder();
+          const first = decoder.decode(await workspace.fs.readFile(Uri.file(firstFilePath)));
+          const second = decoder.decode(await workspace.fs.readFile(Uri.file(secondFilePath)));
+          const firstBufferMin: Buffer = Buffer.from(vkBeautify.xmlmin(first));
+          const secondBufferMin: Buffer = Buffer.from(vkBeautify.xmlmin(second));
+          return !firstBufferMin.equals(secondBufferMin);
         }
       }
     } catch (err) {
