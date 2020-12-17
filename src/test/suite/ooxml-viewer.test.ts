@@ -15,7 +15,7 @@ import {
   TextEditor,
   Uri,
   window,
-  workspace
+  workspace,
 } from 'vscode';
 import { FileNode, OOXMLTreeDataProvider } from '../../ooxml-tree-view-provider';
 import { OOXMLViewer } from '../../ooxml-viewer';
@@ -66,7 +66,7 @@ suite('OOXMLViewer', async function () {
       } as unknown) as JSZip;
     });
     stubs.push(
-      stub(OOXMLViewer, <never>'_fileHasBeenChangedFromOutside').returns(Promise.resolve(false)),
+      stub(ooxmlViewer, <never>'_fileHasBeenChangedFromOutside').returns(Promise.resolve(false)),
       createDirectoryStub,
       spawnStub,
       jsZipStub,
@@ -114,7 +114,7 @@ suite('OOXMLViewer', async function () {
     stubs.push(commandsStub, createDirectoryStub, spawnStub, readFileStub, writeFileStub, zipStub);
     const node = new FileNode();
     await ooxmlViewer.viewFile(node);
-    const folderPath = join(OOXMLViewer.fileCachePath, dirname(node.fullPath));
+    const folderPath = join(ooxmlViewer.fileCachePath, dirname(node.fullPath));
     const filePath: string = join(folderPath, node.fileName);
     expect(OOXMLViewer.openTextEditors[filePath]).to.eq(node);
     expect(commandsStub.calledWith('vscode.open')).to.be.true;
@@ -148,9 +148,6 @@ suite('OOXMLViewer', async function () {
     stubs.push(commandsStub, createDirectoryStub, spawnStub, writeFileStub, zipStub);
     const node = new FileNode();
     await ooxmlViewer.viewFile(node);
-    const folderPath = join(OOXMLViewer.fileCachePath, dirname(node.fullPath));
-    const filePath: string = join(folderPath, node.fileName);
-    expect(OOXMLViewer.openTextEditors[filePath]).to.eq(node);
     expect(commandsStub.calledWith('vscode.open')).to.be.true;
     if (process && (process.platform === 'win32' || (process.env && process.env.OSTYPE && /^(msys|cygwin)$/.test(process.env.OSTYPE)))) {
       expect(spawnStub.calledWith('attrib')).to.be.true;
