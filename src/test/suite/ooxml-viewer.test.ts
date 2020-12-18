@@ -5,18 +5,7 @@ import { dirname, join } from 'path';
 import { match, SinonStub, stub } from 'sinon';
 import { TextDecoder } from 'util';
 import vkBeautify from 'vkbeautify';
-import {
-  commands,
-  Disposable,
-  ExtensionContext,
-  FileType,
-  TextDocument,
-  TextDocumentShowOptions,
-  TextEditor,
-  Uri,
-  window,
-  workspace,
-} from 'vscode';
+import { commands, Disposable, ExtensionContext, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window, workspace } from 'vscode';
 import { FileNode, OOXMLTreeDataProvider } from '../../ooxml-tree-view-provider';
 import { OOXMLViewer } from '../../ooxml-viewer';
 
@@ -77,7 +66,7 @@ suite('OOXMLViewer', async function () {
     await ooxmlViewer.viewContents(Uri.file(testFilePath));
     expect(ooxmlViewer.treeDataProvider.rootFileNode.children.length).to.eq(4);
     expect(refreshStub.callCount).to.eq(2);
-    expect(createFileMock.callCount).to.eq(225);
+    expect(createFileMock.callCount).to.eq(369);
     expect(createDirectoryStub.calledOnce).to.be.true;
   });
   test('viewFile should open a text editor when called with the path to an xml file', async function () {
@@ -86,7 +75,6 @@ suite('OOXMLViewer', async function () {
       expect(uri).to.be.instanceof(Uri);
       return Promise.resolve();
     });
-    const spawnStub = stub(child_process, 'spawn').returns({ stderr: null } as child_process.ChildProcess);
     const enc = new TextEncoder();
     const xml =
       '<?xml version="1.0" encoding="UTF-8"?><note><to>Tove</to><from>Jani</from>' +
@@ -111,16 +99,13 @@ suite('OOXMLViewer', async function () {
         );
       },
     } as never) as JSZip);
-    stubs.push(commandsStub, createDirectoryStub, spawnStub, readFileStub, writeFileStub, zipStub);
+    stubs.push(commandsStub, createDirectoryStub, readFileStub, writeFileStub, zipStub);
     const node = new FileNode();
     await ooxmlViewer.viewFile(node);
     const folderPath = join(ooxmlViewer.fileCachePath, dirname(node.fullPath));
     const filePath: string = join(folderPath, node.fileName);
     expect(OOXMLViewer.openTextEditors[filePath]).to.eq(node);
     expect(commandsStub.calledWith('vscode.open')).to.be.true;
-    if (process && (process.platform === 'win32' || (process.env && process.env.OSTYPE && /^(msys|cygwin)$/.test(process.env.OSTYPE)))) {
-      expect(spawnStub.calledWith('attrib')).to.be.true;
-    }
   });
   test("viewFile should open a file if it's not an xml file", async function () {
     const commandsStub = stub(commands, 'executeCommand');
@@ -128,7 +113,6 @@ suite('OOXMLViewer', async function () {
       expect(uri).to.be.instanceof(Uri);
       return Promise.resolve();
     });
-    const spawnStub = stub(child_process, 'spawn').returns({ stderr: null } as child_process.ChildProcess);
     const enc = new TextEncoder();
     const codeCat = enc.encode('tacocat');
     const writeFileStub = stub(workspace.fs, 'writeFile').callsFake((uri: Uri, u8a: Uint8Array) => {
@@ -145,13 +129,10 @@ suite('OOXMLViewer', async function () {
         }
       },
     } as never) as JSZip);
-    stubs.push(commandsStub, createDirectoryStub, spawnStub, writeFileStub, zipStub);
+    stubs.push(commandsStub, createDirectoryStub, writeFileStub, zipStub);
     const node = new FileNode();
     await ooxmlViewer.viewFile(node);
     expect(commandsStub.calledWith('vscode.open')).to.be.true;
-    if (process && (process.platform === 'win32' || (process.env && process.env.OSTYPE && /^(msys|cygwin)$/.test(process.env.OSTYPE)))) {
-      expect(spawnStub.calledWith('attrib')).to.be.true;
-    }
   });
   test('clear should reset the OOXML Viewer', async function () {
     const textDoc = {} as TextDocument;
@@ -221,27 +202,5 @@ suite('OOXMLViewer', async function () {
     OOXMLViewer.closeWatchers();
     expect(disposeStub.calledTwice).to.be.true;
     done();
-  });
-  test('deleteCacheFiles should delete all OOXML Viewer cache folders', async function () {
-    const testStr = 'avid diva';
-    const testPath1 = `${OOXMLViewer.cacheFolderIdentifier}/baseball`;
-    const testPath2 = `${OOXMLViewer.cacheFolderIdentifier}/hockey`;
-    const processStub = stub(process, 'cwd').returns(testStr);
-    const readDirStub = stub(workspace.fs, 'readDirectory').returns(
-      Promise.resolve([
-        ['air an aria', FileType.Directory],
-        [testPath1, FileType.Directory],
-        [testPath2, FileType.Directory],
-        ['aerate pet area', FileType.File],
-      ]),
-    );
-    const deleteStub = stub(workspace.fs, 'delete');
-    stubs.push(processStub, readDirStub, deleteStub);
-    await OOXMLViewer.deleteCacheFiles();
-    const a = Uri.file(testStr);
-    expect(readDirStub.calledWith(match(a))).to.be.true;
-    expect(deleteStub.calledWith(match(Uri.file(join(testStr, testPath1))))).to.be.true;
-    expect(deleteStub.calledWith(match(Uri.file(join(testStr, testPath2))))).to.be.true;
-    expect(deleteStub.calledTwice).to.be.true;
   });
 });

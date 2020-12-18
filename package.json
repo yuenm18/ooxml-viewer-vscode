@@ -118,7 +118,6 @@
     "@types/node": "^14.14.6",
     "@types/rimraf": "^3.0.0",
     "@types/sinon": "^9.0.8",
-    "@types/uuid": "^8.3.0",
     "@types/vkbeautify": "^0.99.2",
     "@types/vscode": "^1.50.0",
     "@typescript-eslint/eslint-plugin": "^3.10.1",

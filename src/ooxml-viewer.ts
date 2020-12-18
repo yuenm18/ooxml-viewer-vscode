@@ -30,8 +30,7 @@ export class OOXMLViewer {
   static watchers: Disposable[] = [];
   static watchActions: { [key: string]: number } = {};
   static openTextEditors: { [key: string]: FileNode } = {};
-  static cacheFolderIdentifier = '.open-xml-viewer';
-  static cacheFolderName = OOXMLViewer.cacheFolderIdentifier;
+  static cacheFolderName = '.open-xml-viewer';
   static ooxmlFilePath: string;
   fileCachePath: string = join(this._context.storageUri?.fsPath || '', OOXMLViewer.cacheFolderName);
   /**
@@ -219,7 +218,9 @@ export class OOXMLViewer {
       this.zip = new JSZip();
       this.treeDataProvider.rootFileNode = new FileNode();
       this.treeDataProvider.refresh();
-      await OOXMLViewer.deleteCacheFiles();
+      if (existsSync(this.fileCachePath)) {
+        await workspace.fs.delete(Uri.file(this.fileCachePath), { recursive: true, useTrash: false });
+      }
       OOXMLViewer.closeWatchers();
       await this.closeEditors();
     } catch (err) {
@@ -594,32 +595,5 @@ export class OOXMLViewer {
       console.error(err.message || err);
     }
     return false;
-  }
-  public static async deleteCacheFiles(): Promise<void> {
-    const vsCodeFolder = process.cwd();
-    const contents = await workspace.fs.readDirectory(Uri.file(vsCodeFolder));
-    contents.forEach(async (c: [string, FileType]) => {
-      if (c[0].startsWith(OOXMLViewer.cacheFolderIdentifier)) {
-        // const { platform } = process;
-        // let cmd = '';
-        // switch (platform) {
-        //   case 'win32':
-        //     cmd = 'tasklist';
-        //     break;
-        //   case 'darwin':
-        //     cmd = `ps -ax | grep vscode`;
-        //     break;
-        //   case 'linux':
-        //     cmd = 'ps -A';
-        //     break;
-        //   default:
-        //     break;
-        // }
-        // exec(cmd, (err, stdout, stderr) => {
-        //   console.log({ err, stdout, stderr });
-        // });
-        await workspace.fs.delete(Uri.file(join(vsCodeFolder, c[0])), { recursive: true, useTrash: false });
-      }
-    });
   }
 }
