@@ -1,7 +1,6 @@
 import { existsSync, PathLike } from 'fs';
 import JSZip, { JSZipObject } from 'jszip';
-import { basename, dirname, format, join, parse } from 'path';
-import { v4 as uuid } from 'uuid';
+import { basename, dirname, join, normalize, parse } from 'path';
 import vkBeautify from 'vkbeautify';
 import {
   commands,
@@ -32,7 +31,7 @@ export class OOXMLViewer {
   static watchActions: { [key: string]: number } = {};
   static openTextEditors: { [key: string]: FileNode } = {};
   static cacheFolderIdentifier = '.open-xml-viewer';
-  static cacheFolderName = `${OOXMLViewer.cacheFolderIdentifier}-${uuid()}`;
+  static cacheFolderName = OOXMLViewer.cacheFolderIdentifier;
   static ooxmlFilePath: string;
   fileCachePath: string = join(this._context.storageUri?.fsPath || '', OOXMLViewer.cacheFolderName);
   /**
@@ -193,7 +192,7 @@ export class OOXMLViewer {
    * @param  {TextDocument[]} textDocuments?
    * @returns Promise
    */
-  private async _closeEditors(textDocuments?: TextDocument[]): Promise<void> {
+  async closeEditors(textDocuments?: TextDocument[]): Promise<void> {
     try {
       const tds = textDocuments ?? workspace.textDocuments.filter(t => t.fileName.toLowerCase().includes(this.fileCachePath.toLowerCase()));
       if (tds.length) {
@@ -201,7 +200,7 @@ export class OOXMLViewer {
         if (td) {
           await window.showTextDocument(td, { preview: true, preserveFocus: false });
           await commands.executeCommand('workbench.action.closeActiveEditor');
-          await this._closeEditors(tds);
+          await this.closeEditors(tds);
         }
       }
     } catch (err) {
@@ -222,7 +221,7 @@ export class OOXMLViewer {
       this.treeDataProvider.refresh();
       await OOXMLViewer.deleteCacheFiles();
       OOXMLViewer.closeWatchers();
-      await this._closeEditors();
+      await this.closeEditors();
     } catch (err) {
       console.error(err);
       window.showErrorMessage('Could not remove ooxml file viewer cache');
@@ -257,11 +256,13 @@ export class OOXMLViewer {
           const filesAreDifferent = await this._fileHasBeenChangedFromOutside(currentFileNode.fullPath);
           // If the files are different replace copy prev to compare and copy current part to prev and add the warning icon,
           // else don't edit the files and use a folder or file icon
+          const path = OOXMLViewer._getPrevFilePath(currentFileNode.fullPath);
+          const comparePath = `compare.${basename(currentFileNode.fileName).replace('compare.', '')}`;
+          const prevPath = `prev.${basename(currentFileNode.fileName).replace('prev.', '')}`;
+          await this._createFile(path, comparePath);
+          await this._createFile(currentFileNode.fullPath, prevPath);
           if (filesAreDifferent) {
             currentFileNode.iconPath = warningIcon;
-            const path = OOXMLViewer._getPrevFilePath(currentFileNode.fullPath);
-            await this._createFile(path, `compare.${basename(currentFileNode.fileName).replace('compare.', '')}`);
-            await this._createFile(currentFileNode.fullPath, `prev.${basename(currentFileNode.fileName).replace('prev.', '')}`);
           } else {
             currentFileNode.iconPath = currentFileNode.children.length ? ThemeIcon.Folder : ThemeIcon.File;
           }
@@ -308,17 +309,19 @@ export class OOXMLViewer {
    */
   private async _createFile(relativePath: string, fileName: string, formatIt = false): Promise<void> {
     try {
+      const preFilePath = join(this.fileCachePath, relativePath);
       const folderPath = join(this.fileCachePath, dirname(relativePath));
       const filePath: string = join(folderPath, fileName);
       await workspace.fs.createDirectory(Uri.file(folderPath));
       const file: JSZipObject | null = this.zip.file(relativePath);
-      const text: string | undefined = await file?.async('text');
-      if (text?.startsWith('<?xml')) {
+      const text: string = (await file?.async('text')) ?? (await (await workspace.fs.readFile(Uri.file(preFilePath))).toString());
+      if (text.startsWith('<?xml')) {
         let formattedXml = '';
-        if (formatIt && text.length < 1000000) {
+        const len = text.replace(/\s+/g, '').length;
+        if (formatIt && len < 1000000) {
           formattedXml = vkBeautify.xml(text);
         }
-        if (text.replace(/\s+/g, '').length >= 1000000 && formatIt) {
+        if (len >= 1000000 && formatIt) {
           window.showWarningMessage(
             `${basename(relativePath)} is too large to format.\nOOXML Parts must be less than 1,000,000 characters to format`,
             { modal: true },
@@ -449,7 +452,7 @@ export class OOXMLViewer {
    */
   private static _getPrevFilePath(path: string): string {
     const { dir, base } = parse(path);
-    return format({ dir, base: `prev.${base}` });
+    return normalize(`${dir}/prev.${base}`);
   }
   /**
    * Update the OOXML cache files

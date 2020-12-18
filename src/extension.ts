@@ -4,6 +4,7 @@ import { OOXMLViewer } from './ooxml-viewer';
 
 export function activate(context: ExtensionContext): void {
   const ooxmlViewer = new OOXMLViewer(context);
+  ooxmlViewer.closeEditors();
   context.subscriptions.push(window.registerTreeDataProvider('ooxmlViewer', ooxmlViewer.treeDataProvider));
   context.subscriptions.push(commands.registerCommand('ooxmlViewer.viewContents', async (file: Uri) => ooxmlViewer.viewContents(file)));
   context.subscriptions.push(
@@ -15,5 +16,4 @@ export function activate(context: ExtensionContext): void {
 
 export async function deactivate(): Promise<void> {
   OOXMLViewer.closeWatchers();
-  return OOXMLViewer.deleteCacheFiles();
 }
