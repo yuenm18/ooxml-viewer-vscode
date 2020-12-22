@@ -219,7 +219,8 @@ export class OOXMLViewer {
       this.treeDataProvider.rootFileNode = new FileNode();
       this.treeDataProvider.refresh();
       if (existsSync(this.fileCachePath)) {
-        await workspace.fs.delete(Uri.file(this.fileCachePath), { recursive: true, useTrash: false });
+        // do not add await this
+        workspace.fs.delete(Uri.file(this.fileCachePath), { recursive: true, useTrash: false });
       }
       OOXMLViewer.closeWatchers();
       await this.closeEditors();
@@ -506,9 +507,9 @@ export class OOXMLViewer {
               await workspace.fs.writeFile(Uri.file(join(this.fileCachePath, n.fullPath)), new Uint8Array());
               this.treeDataProvider.refresh();
             } else {
-              await workspace.fs.delete(Uri.file(path), { recursive: true, useTrash: false });
-              await workspace.fs.delete(Uri.file(join(dirname(path), `prev.${basename(path)}`)), { recursive: true, useTrash: false });
-              await workspace.fs.delete(Uri.file(join(dirname(path), `compare.${basename(path)}`)), { recursive: true, useTrash: false });
+              workspace.fs.delete(Uri.file(path), { recursive: true, useTrash: false });
+              workspace.fs.delete(Uri.file(join(dirname(path), `prev.${basename(path)}`)), { recursive: true, useTrash: false });
+              workspace.fs.delete(Uri.file(join(dirname(path), `compare.${basename(path)}`)), { recursive: true, useTrash: false });
               arr.splice(i, 1);
               this.treeDataProvider.refresh();
             }
