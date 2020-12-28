@@ -7,7 +7,7 @@
 
 - [Displays the contents of OOXML documents in VS Code](#displays-the-contents-of-ooxml-documents-in-vs-code)
 - [Edit the contents of an OOXML documents in VS Code](#edit-the-contents-of-an-ooxml-documents-in-vs-code)
-- [Get diff when OOXML documents are edited from outside, e.g. in Microsoft Word, Libre Office Writer, Microsoft Excel, Libre Office Calc, etc.](#get-diff-when-ooxml-documents-are-edited-from-outside-eg-in-microsoft-word,-libre-office-Writer-microsoft-excel-libre-office-calc-etc)
+- [Get diff when OOXML documents are edited from outside, e.g. in Microsoft Word, Libre Office Writer, Microsoft Excel, Libre Office Calc, etc.](#user-content-get-diff-when-ooxml-documents-are-edited-from-outside-eg-in-microsoft-word-libre-office-writer-microsoft-excel-libre-office-calc-etc)
 
 ### Displays the contents of OOXML documents in VS Code
 
