@@ -219,7 +219,7 @@ export class OOXMLViewer {
       this.treeDataProvider.rootFileNode = new FileNode();
       this.treeDataProvider.refresh();
       if (existsSync(this.fileCachePath)) {
-        // do not add await this
+        // do not await this
         workspace.fs.delete(Uri.file(this.fileCachePath), { recursive: true, useTrash: false });
       }
       OOXMLViewer.closeWatchers();
@@ -264,7 +264,7 @@ export class OOXMLViewer {
           await this._createFile(path, comparePath);
           await this._createFile(currentFileNode.fullPath, prevPath);
           if (filesAreDifferent) {
-            currentFileNode.iconPath = warningIcon;
+            currentFileNode.iconPath = Uri.file(warningIcon);
           } else {
             currentFileNode.iconPath = currentFileNode.children.length ? ThemeIcon.Folder : ThemeIcon.File;
           }
@@ -285,7 +285,7 @@ export class OOXMLViewer {
           if (showNewFileLabel) {
             const warningIconGreen: string = this._context.asAbsolutePath(join('images', 'asterisk.green.svg'));
             const compareFilePath: PathLike = join(this.fileCachePath, dirname(newFileNode.fullPath), `compare.${newFileNode.fileName}`);
-            currentFileNode.iconPath = warningIconGreen;
+            currentFileNode.iconPath = Uri.file(warningIconGreen);
             await workspace.fs.writeFile(Uri.file(compareFilePath), new Uint8Array());
           } else {
             await this._createFile(newFileNode.fullPath, `compare.${basename(newFileNode.fileName).replace(/compare.|prev./, '')}`);
@@ -503,7 +503,7 @@ export class OOXMLViewer {
           if (!fileNames.includes(n.fullPath)) {
             const file: string = await (await workspace.fs.readFile(Uri.file(path))).toString();
             if (file) {
-              n.iconPath = this._context.asAbsolutePath(join('images', 'asterisk.red.svg'));
+              n.iconPath = Uri.file(this._context.asAbsolutePath(join('images', 'asterisk.red.svg')));
               await workspace.fs.writeFile(Uri.file(join(this.fileCachePath, n.fullPath)), new Uint8Array());
               this.treeDataProvider.refresh();
             } else {
