@@ -143,7 +143,7 @@ export class OOXMLViewer {
       const enc = new TextEncoder();
       const rightUri = Uri.file(filePath);
       const leftUri = Uri.file(compareFilePath);
-      const rightXml = await (await workspace.fs.readFile(rightUri)).toString();
+      const rightXml = (await workspace.fs.readFile(rightUri)).toString();
       const leftXml = await (await workspace.fs.readFile(leftUri)).toString();
       await workspace.fs.writeFile(rightUri, enc.encode(rightXml.startsWith('<?xml') ? vkBeautify.xml(rightXml) : rightXml));
       await workspace.fs.writeFile(leftUri, enc.encode(leftXml.startsWith('<?xml') ? vkBeautify.xml(leftXml) : leftXml));
