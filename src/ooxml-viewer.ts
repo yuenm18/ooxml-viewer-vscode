@@ -316,7 +316,7 @@ export class OOXMLViewer {
       const filePath: string = join(folderPath, fileName);
       await workspace.fs.createDirectory(Uri.file(folderPath));
       const file: JSZipObject | null = this.zip.file(relativePath);
-      const text: string = (await file?.async('text')) ?? (await (await workspace.fs.readFile(Uri.file(preFilePath))).toString());
+      const text: string = (await file?.async('text')) ?? (await workspace.fs.readFile(Uri.file(preFilePath))).toString();
       if (text.startsWith('<?xml')) {
         let formattedXml = '';
         const len = text.replace(/\s+/g, '').length;
