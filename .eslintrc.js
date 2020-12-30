@@ -17,7 +17,7 @@ module.exports = {
       },
     ],
     'func-call-spacing': ['error', 'never'],
-    indent: [2, 2, { SwitchCase: 1 }],
+    indent: ['error', 2, { SwitchCase: 1 }],
     'max-len': [
       'warn',
       {
@@ -30,7 +30,7 @@ module.exports = {
     ],
     'no-console': ['warn', { allow: ['warn', 'error'] }],
     'no-unused-vars': 'off',
-    quotes: [2, 'single', { avoidEscape: true }],
+    quotes: ['error', 'single', { avoidEscape: true }],
     semi: ['error', 'always'],
     'space-in-parens': ['error', 'never'],
   },
