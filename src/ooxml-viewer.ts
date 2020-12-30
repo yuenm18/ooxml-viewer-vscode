@@ -107,7 +107,7 @@ export class OOXMLViewer {
           const folderPath = join(this.fileCachePath, dirname(fileNode.fullPath));
           const filePath: string = join(folderPath, fileNode.fileName);
           await this._createFile(fileNode.fullPath, fileNode.fileName, true);
-          const uri: Uri = Uri.parse(`file:///${filePath}`);
+          const uri: Uri = Uri.file(filePath);
           OOXMLViewer.openTextEditors[filePath] = fileNode;
           commands.executeCommand('vscode.open', uri);
         },
