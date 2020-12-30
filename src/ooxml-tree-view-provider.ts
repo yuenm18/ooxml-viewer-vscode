@@ -71,13 +71,13 @@ export class FileNode implements TreeItem {
   }
 
   get collapsibleState(): TreeItemCollapsibleState | undefined {
-    return this.children.length ? TreeItemCollapsibleState.Collapsed : TreeItemCollapsibleState.None;
+    return this.children.length ? TreeItemCollapsibleState.Expanded : TreeItemCollapsibleState.None;
   }
 
   get command(): Command | undefined {
     if (this.fullPath) {
       return {
-        command: 'ooxmlViewer.viewFile',
+        command: this.children.length ? '' : 'ooxmlViewer.viewFile',
         title: 'View file',
         tooltip: 'View file tooltip',
         arguments: [this],
