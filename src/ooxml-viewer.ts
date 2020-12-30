@@ -185,7 +185,7 @@ export class OOXMLViewer {
   }
   /**
    * Closes all active editor tabs
-   * @method _closeEditors
+   * @method closeEditors
    * @private
    * @async
    * @param  {TextDocument[]} textDocuments?
