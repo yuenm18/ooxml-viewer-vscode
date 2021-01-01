@@ -37,5 +37,8 @@ const config = {
       },
     ],
   },
+  node: {
+    __filename: false,
+  },
 };
 module.exports = config;

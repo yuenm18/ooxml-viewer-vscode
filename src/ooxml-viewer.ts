@@ -15,12 +15,13 @@ import {
   TextDocument,
   TextEditor,
   TextEditorEdit,
-  ThemeIcon,
+
   Uri,
   window,
-  workspace,
+  workspace
 } from 'vscode';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
+
 /**
  * The OOXML Viewer
  */
@@ -258,7 +259,6 @@ export class OOXMLViewer {
         // Create node if it does not exist
         const existingFileNode = currentFileNode.children.find(c => c.description === fileOrFolderName);
         if (existingFileNode) {
-          const warningIcon: string = this._context.asAbsolutePath(join('images', 'asterisk.yellow.svg'));
           currentFileNode = existingFileNode;
           await this._createFile(currentFileNode.fullPath, currentFileNode.fileName);
           const filesAreDifferent = await this._fileHasBeenChangedFromOutside(currentFileNode.fullPath);
@@ -270,9 +270,9 @@ export class OOXMLViewer {
           await this._createFile(path, comparePath);
           await this._createFile(currentFileNode.fullPath, prevPath);
           if (filesAreDifferent) {
-            currentFileNode.iconPath = Uri.file(warningIcon);
+            currentFileNode.setModified();
           } else {
-            currentFileNode.iconPath = currentFileNode.children.length ? ThemeIcon.Folder : ThemeIcon.File;
+            currentFileNode.setUnchanged();
           }
         } else {
           // create a new FileNode with the currentFileNode as parent and add it to the currentFileNode children
@@ -289,9 +289,8 @@ export class OOXMLViewer {
           // add a green asterisk as the icon and create an empty compare file
           // else create the compare file from the newFileNode.fullPath
           if (showNewFileLabel) {
-            const warningIconGreen: string = this._context.asAbsolutePath(join('images', 'asterisk.green.svg'));
             const compareFilePath: PathLike = join(this.fileCachePath, dirname(newFileNode.fullPath), `compare.${newFileNode.fileName}`);
-            currentFileNode.iconPath = Uri.file(warningIconGreen);
+            currentFileNode.setCreated();
             await workspace.fs.writeFile(Uri.file(compareFilePath), new Uint8Array());
           } else {
             await this._createFile(newFileNode.fullPath, `compare.${basename(newFileNode.fileName).replace(/compare.|prev./, '')}`);
@@ -515,7 +514,7 @@ export class OOXMLViewer {
           if (!fileNames.includes(n.fullPath)) {
             const file: string = await (await workspace.fs.readFile(Uri.file(path))).toString();
             if (file) {
-              n.iconPath = Uri.file(this._context.asAbsolutePath(join('images', 'asterisk.red.svg')));
+              n.setDeleted();
               await workspace.fs.writeFile(Uri.file(join(this.fileCachePath, n.fullPath)), new Uint8Array());
               this.treeDataProvider.refresh();
             } else {

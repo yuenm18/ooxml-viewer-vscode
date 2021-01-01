@@ -1,3 +1,4 @@
+import { join } from 'path';
 import { Command, Event, EventEmitter, ProviderResult, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri } from 'vscode';
 
 /**
@@ -61,11 +62,8 @@ export class OOXMLTreeDataProvider implements TreeDataProvider<FileNode> {
  * File tree node
  */
 export class FileNode implements TreeItem {
-  private _iconPath: ThemeIcon | Uri | { light: Uri; dark: Uri };
+  private _status: 'created' | 'deleted' | 'modified' | 'unchanged' = 'unchanged'
 
-  constructor() {
-    this._iconPath = this.children.length ? ThemeIcon.Folder : ThemeIcon.File;
-  }
   get description(): string {
     return this.fileName;
   }
@@ -83,15 +81,15 @@ export class FileNode implements TreeItem {
         arguments: [this],
       };
     }
-    return;
   }
 
   get iconPath(): ThemeIcon | Uri | { light: Uri; dark: Uri } {
-    return this._iconPath;
-  }
-
-  set iconPath(value: ThemeIcon | Uri | { light: Uri; dark: Uri }) {
-    this._iconPath = value;
+    switch (this._status) {
+      case 'created': return Uri.file(join(__filename, '..', '..', 'images', 'asterisk.green.svg'));
+      case 'deleted': return Uri.file(join(__filename, '..', '..', 'images', 'asterisk.red.svg'));
+      case 'modified': return Uri.file(join(__filename, '..', '..', 'images', 'asterisk.yellow.svg'));
+      default: return this.children.length ? ThemeIcon.Folder : ThemeIcon.File;
+    }
   }
 
   get tooltip(): string {
@@ -117,4 +115,20 @@ export class FileNode implements TreeItem {
    * Parent file node
    */
   parent: FileNode | undefined;
+
+  setCreated(): void {
+    this._status = 'created';
+  }
+
+  setDeleted(): void {
+    this._status = 'deleted';
+  }
+
+  setModified(): void {
+    this._status = 'modified';
+  }
+
+  setUnchanged(): void {
+    this._status = 'unchanged';
+  }
 }
