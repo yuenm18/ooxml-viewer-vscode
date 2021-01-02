@@ -15,12 +15,14 @@ import {
   TextDocument,
   TextEditor,
   TextEditorEdit,
-
   Uri,
   window,
   workspace
 } from 'vscode';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
+
+export const CACHE_FOLDER_NAME = '.open-xml-viewer';
+const MAXIMUM_XML_PARSING_CHARACTERS = 1000000;
 
 /**
  * The OOXML Viewer
@@ -28,12 +30,11 @@ import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
 export class OOXMLViewer {
   treeDataProvider: OOXMLTreeDataProvider;
   zip: JSZip;
-  static watchers: Disposable[] = [];
-  static watchActions: { [key: string]: number } = {};
-  static openTextEditors: { [key: string]: FileNode } = {};
-  static cacheFolderName = '.open-xml-viewer';
-  static ooxmlFilePath: string;
-  fileCachePath: string = join(this._context.storageUri?.fsPath || '', OOXMLViewer.cacheFolderName);
+  watchers: Disposable[] = [];
+  watchActions: { [key: string]: number } = {};
+  openTextEditors: { [key: string]: FileNode } = {};
+  ooxmlFilePath = '';
+  fileCachePath: string = join(this._context.storageUri?.fsPath || '', CACHE_FOLDER_NAME);
 
   /**
    * @description Constructs an instance of OOXMLViewer
@@ -55,7 +56,7 @@ export class OOXMLViewer {
    */
   async viewContents(file: Uri): Promise<void> {
     try {
-      OOXMLViewer.ooxmlFilePath = file.fsPath;
+      this.ooxmlFilePath = file.fsPath;
       await window.withProgress(
         {
           location: ProgressLocation.Notification,
@@ -76,11 +77,12 @@ export class OOXMLViewer {
           });
 
           const textDocumentWatcher = workspace.onDidSaveTextDocument(this._updateOOXMLFile);
+
           // TODO: find a better way to remove closed text editors from the openTextEditors. The onDidCloseTextDocument takes more than 3+ minutes to fire.
           const closeWatcher = workspace.onDidCloseTextDocument((textDocument: TextDocument) => {
-            delete OOXMLViewer.openTextEditors[textDocument.fileName];
+            delete this.openTextEditors[textDocument.fileName];
           });
-          OOXMLViewer.watchers.push(watcher, textDocumentWatcher, closeWatcher);
+          this.watchers.push(watcher, textDocumentWatcher, closeWatcher);
         },
       );
     } catch (err) {
@@ -109,7 +111,7 @@ export class OOXMLViewer {
           const filePath: string = join(folderPath, fileNode.fileName);
           await this._createFile(fileNode.fullPath, fileNode.fileName, true);
           const uri: Uri = Uri.file(filePath);
-          OOXMLViewer.openTextEditors[filePath] = fileNode;
+          this.openTextEditors[filePath] = fileNode;
           commands.executeCommand('vscode.open', uri);
         },
       );
@@ -162,10 +164,10 @@ export class OOXMLViewer {
    * @async
    * @returns {void}
    */
-  static closeWatchers(): void {
-    if (OOXMLViewer.watchers.length) {
-      OOXMLViewer.watchers.forEach(w => w.dispose());
-      OOXMLViewer.watchers = [];
+  closeWatchers(): void {
+    if (this.watchers.length) {
+      this.watchers.forEach(w => w.dispose());
+      this.watchers = [];
     }
   }
 
@@ -227,7 +229,8 @@ export class OOXMLViewer {
         // do not await this
         workspace.fs.delete(Uri.file(this.fileCachePath), { recursive: true, useTrash: false });
       }
-      OOXMLViewer.closeWatchers();
+      
+      this.closeWatchers();
       await this.closeEditors();
     } catch (err) {
       console.error(err);
@@ -326,12 +329,13 @@ export class OOXMLViewer {
       if (text.startsWith('<?xml')) {
         let formattedXml = '';
         const len = text.replace(/\s+/g, '').length;
-        if (formatIt && len < 1000000) {
+        if (formatIt && len < MAXIMUM_XML_PARSING_CHARACTERS) {
           formattedXml = vkBeautify.xml(text);
         }
-        if (len >= 1000000 && formatIt) {
+        if (len >= MAXIMUM_XML_PARSING_CHARACTERS && formatIt) {
           window.showWarningMessage(
-            `${basename(relativePath)} is too large to format.\nOOXML Parts must be less than 1,000,000 characters to format`,
+            `${basename(relativePath)} is too large to format.\nOOXML Parts must be less than ` +
+            `${MAXIMUM_XML_PARSING_CHARACTERS.toLocaleString()} characters to format`,
             { modal: true },
           );
         }
@@ -369,8 +373,8 @@ export class OOXMLViewer {
       if (fileName && existsSync(fileName) && prevFilePath && existsSync(prevFilePath)) {
         const stats: FileStat = await workspace.fs.stat(Uri.file(fileName));
         const time = stats.mtime;
-        if (stats.type !== FileType.Directory && OOXMLViewer.watchActions[fileName] !== time) {
-          OOXMLViewer.watchActions[fileName] = time;
+        if (stats.type !== FileType.Directory && this.watchActions[fileName] !== time) {
+          this.watchActions[fileName] = time;
           const textDecoder = new TextDecoder();
           const cur = await workspace.fs.readFile(Uri.file(fileName));
           const prev = await workspace.fs.readFile(Uri.file(prevFilePath));
@@ -380,11 +384,11 @@ export class OOXMLViewer {
           const prevData: Buffer = Buffer.from(prevMiniXml);
           const checkName = basename(fileName);
           if (!data.equals(prevData)) {
-            const pathArr = fileName.split(OOXMLViewer.cacheFolderName);
+            const pathArr = fileName.split(CACHE_FOLDER_NAME);
             let normalizedPath: string = pathArr[pathArr.length - 1].replace(/\\/g, '/');
             normalizedPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
             const zipFile = await this.zip.file(normalizedPath, data, { binary: true }).generateAsync({ type: 'uint8array' });
-            await workspace.fs.writeFile(Uri.file(OOXMLViewer.ooxmlFilePath), zipFile);
+            await workspace.fs.writeFile(Uri.file(this.ooxmlFilePath), zipFile);
             await workspace.fs.writeFile(Uri.file(join(dirname(prevFilePath), `compare.${checkName}`)), prev);
             await workspace.fs.writeFile(Uri.file(prevFilePath), cur);
             this.treeDataProvider.refresh();
@@ -394,7 +398,7 @@ export class OOXMLViewer {
     } catch (err) {
       if (err?.code === 'EBUSY' || err?.message.toLowerCase().includes('ebusy')) {
         window.showWarningMessage(
-          `File not saved.\n${basename(OOXMLViewer.ooxmlFilePath)} is open in another program.\n
+          `File not saved.\n${basename(this.ooxmlFilePath)} is open in another program.\n
                   Close that program before making any changes.`,
           { modal: true },
         );

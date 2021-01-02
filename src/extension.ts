@@ -2,8 +2,10 @@ import { commands, ExtensionContext, Uri, window } from 'vscode';
 import { FileNode } from './ooxml-tree-view-provider';
 import { OOXMLViewer } from './ooxml-viewer';
 
+let ooxmlViewer: OOXMLViewer;
+
 export function activate(context: ExtensionContext): void {
-  const ooxmlViewer = new OOXMLViewer(context);
+  ooxmlViewer = new OOXMLViewer(context);
   ooxmlViewer.closeEditors();
   context.subscriptions.push(window.registerTreeDataProvider('ooxmlViewer', ooxmlViewer.treeDataProvider));
   context.subscriptions.push(commands.registerCommand('ooxmlViewer.viewContents', async (file: Uri) => ooxmlViewer.viewContents(file)));
@@ -15,5 +17,5 @@ export function activate(context: ExtensionContext): void {
 }
 
 export async function deactivate(): Promise<void> {
-  OOXMLViewer.closeWatchers();
+  ooxmlViewer?.closeWatchers();
 }
