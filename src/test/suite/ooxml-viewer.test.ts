@@ -35,7 +35,7 @@ suite('OOXMLViewer', async function () {
     expect(ooxmlViewer.treeDataProvider).to.be.instanceOf(OOXMLTreeDataProvider);
     done();
   });
-  
+
   test('It should populate the sidebar tree with the contents of an ooxml file', async function () {
     const createFileMock = stub(ooxmlViewer.cache, 'createFile').returns(Promise.resolve());
     const refreshStub = stub(ooxmlViewer.treeDataProvider, 'refresh').returns(undefined);
@@ -110,7 +110,7 @@ suite('OOXMLViewer', async function () {
     expect(ooxmlViewer.openTextEditors[filePath]).to.eq(node);
     expect(commandsStub.calledWith('vscode.open')).to.be.true;
   });
-  
+
   test("viewFile should open a file if it's not an xml file", async function () {
     const commandsStub = stub(commands, 'executeCommand');
     const createDirectoryStub = stub(workspace.fs, 'createDirectory').callsFake(uri => {
@@ -133,12 +133,16 @@ suite('OOXMLViewer', async function () {
         }
       },
     } as never) as JSZip);
-    stubs.push(commandsStub, createDirectoryStub, writeFileStub, zipStub);
+    const readFileStub = stub(workspace.fs, 'readFile').callsFake((uri: Uri) => {
+      expect(uri).to.be.instanceof(Uri);
+      return Promise.resolve(new Uint8Array());
+    });
+    stubs.push(commandsStub, createDirectoryStub, writeFileStub, zipStub, readFileStub);
     const node = new FileNode();
     await ooxmlViewer.viewFile(node);
     expect(commandsStub.calledWith('vscode.open')).to.be.true;
   });
-  
+
   test('clear should reset the OOXML Viewer', async function () {
     const textDoc = {} as TextDocument;
     const refreshStub = stub(ooxmlViewer.treeDataProvider, 'refresh').callsFake(() => undefined);
@@ -162,7 +166,7 @@ suite('OOXMLViewer', async function () {
     expect(showDocStub.calledWith(match(textDoc))).to.be.true;
     expect(executeStub.calledWith('workbench.action.closeActiveEditor')).to.be.true;
   });
-  
+
   test('getDiff should use vscode.diff to get the difference between two files', async function () {
     const xml =
       '<?xml version="1.0" encoding="UTF-8"?><note><to>Tove</to><from>Jani</from>' +
@@ -196,7 +200,7 @@ suite('OOXMLViewer', async function () {
     node.fileName = 'racecar.xml';
     await ooxmlViewer.getDiff(node);
   });
-  
+
   test('closeWatchers should call restore on the array of file system watchers', function (done) {
     const disposeStub = stub();
     const disposable1 = ({
