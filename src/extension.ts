@@ -6,7 +6,7 @@ let ooxmlViewer: OOXMLViewer;
 
 export function activate(context: ExtensionContext): void {
   ooxmlViewer = new OOXMLViewer(context);
-  ooxmlViewer.closeEditors();
+  
   context.subscriptions.push(window.registerTreeDataProvider('ooxmlViewer', ooxmlViewer.treeDataProvider));
   context.subscriptions.push(commands.registerCommand('ooxmlViewer.viewContents', async (file: Uri) => ooxmlViewer.viewContents(file)));
   context.subscriptions.push(
@@ -17,5 +17,5 @@ export function activate(context: ExtensionContext): void {
 }
 
 export async function deactivate(): Promise<void> {
-  ooxmlViewer?.closeWatchers();
+  ooxmlViewer?.disposeWatchers();
 }

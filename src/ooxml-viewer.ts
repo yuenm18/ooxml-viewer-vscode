@@ -1,6 +1,6 @@
-import { existsSync, PathLike } from 'fs';
-import JSZip, { JSZipObject } from 'jszip';
-import { basename, dirname, join, normalize, parse } from 'path';
+import { existsSync } from 'fs';
+import JSZip from 'jszip';
+import { basename } from 'path';
 import vkBeautify from 'vkbeautify';
 import {
   commands,
@@ -9,19 +9,16 @@ import {
   FileStat,
   FileSystemWatcher,
   FileType,
-  Position,
   ProgressLocation,
-  Range,
   TextDocument,
-  TextEditor,
-  TextEditorEdit,
   Uri,
   window,
   workspace
 } from 'vscode';
+import { ExtensionUtilities } from './extension-utilities';
+import { OOXMLFileCache } from './ooxml-file-cache';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
 
-export const CACHE_FOLDER_NAME = '.open-xml-viewer';
 const MAXIMUM_XML_PARSING_CHARACTERS = 1000000;
 
 /**
@@ -34,17 +31,19 @@ export class OOXMLViewer {
   watchActions: { [key: string]: number } = {};
   openTextEditors: { [key: string]: FileNode } = {};
   ooxmlFilePath = '';
-  fileCachePath: string = join(this._context.storageUri?.fsPath || '', CACHE_FOLDER_NAME);
+  cache: OOXMLFileCache;
 
   /**
    * @description Constructs an instance of OOXMLViewer
    * @constructor OOXMLViewer
-   * @param  {ExtensionContext} _context
+   * @param  {ExtensionContext} context The extension context
    * @returns {OOXMLViewer} instance
    */
-  constructor(private _context: ExtensionContext) {
+  constructor(context: ExtensionContext) {
     this.treeDataProvider = new OOXMLTreeDataProvider();
     this.zip = new JSZip();
+    this.cache = new OOXMLFileCache(context);
+    this.closeEditors();
   }
 
   /**
@@ -64,11 +63,10 @@ export class OOXMLViewer {
         },
         async progress => {
           progress.report({ message: 'Unpacking OOXML Parts' });
-          await this._resetOOXMLViewer();
+          await this.resetOOXMLViewer();
           const data = await workspace.fs.readFile(Uri.file(file.fsPath));
           await this.zip.loadAsync(data);
           await this._populateOOXMLViewer(this.zip.files, false);
-          await workspace.fs.createDirectory(Uri.file(this.fileCachePath));
 
           const watcher: FileSystemWatcher = workspace.createFileSystemWatcher(file.fsPath);
 
@@ -76,7 +74,7 @@ export class OOXMLViewer {
             this._reloadOoxmlFile(file.fsPath);
           });
 
-          const textDocumentWatcher = workspace.onDidSaveTextDocument(this._updateOOXMLFile);
+          const textDocumentWatcher = workspace.onDidSaveTextDocument(this._updateOOXMLFile.bind(this));
 
           // TODO: find a better way to remove closed text editors from the openTextEditors. The onDidCloseTextDocument takes more than 3+ minutes to fire.
           const closeWatcher = workspace.onDidCloseTextDocument((textDocument: TextDocument) => {
@@ -107,12 +105,12 @@ export class OOXMLViewer {
         },
         async progress => {
           progress.report({ message: 'Formatting XML' });
-          const folderPath = join(this.fileCachePath, dirname(fileNode.fullPath));
-          const filePath: string = join(folderPath, fileNode.fileName);
-          await this._createFile(fileNode.fullPath, fileNode.fileName, true);
-          const uri: Uri = Uri.file(filePath);
+
+          await this._tryFormatXMLFile(fileNode.fullPath);
+
+          const filePath = this.cache.getFileCachePath(fileNode.fullPath);
           this.openTextEditors[filePath] = fileNode;
-          commands.executeCommand('vscode.open', uri);
+          commands.executeCommand('vscode.open', Uri.file(filePath));
         },
       );
     } catch (e) {
@@ -127,7 +125,7 @@ export class OOXMLViewer {
    * @returns {Promise<void>} Promise that returns void
    */
   clear(): Promise<void> {
-    return this._resetOOXMLViewer();
+    return this.resetOOXMLViewer();
   }
 
   /**
@@ -140,19 +138,21 @@ export class OOXMLViewer {
   async getDiff(file: FileNode): Promise<void> {
     try {
       // get the full path for the primary file and the compare files
-      const filePath = join(this.fileCachePath, dirname(file.fullPath), file.fileName);
-      const compareFilePath = join(this.fileCachePath, dirname(file.fullPath), `compare.${file.fileName}`);
-      // create URIs and title
+
+      const fileCachePath = this.cache.getFileCachePath(file.fullPath);
+      const fileCompareCachePath = this.cache.getCompareFileCachePath(file.fullPath);
+      const fileContents = (await this.cache.getFile(file.fullPath)).toString();
+      const compareFileContents = (await this.cache.getCompareFile(file.fullPath)).toString();
+
       const enc = new TextEncoder();
-      const rightUri = Uri.file(filePath);
-      const leftUri = Uri.file(compareFilePath);
-      const rightXml = (await workspace.fs.readFile(rightUri)).toString();
-      const leftXml = (await workspace.fs.readFile(leftUri)).toString();
-      await workspace.fs.writeFile(rightUri, enc.encode(rightXml.startsWith('<?xml') ? vkBeautify.xml(rightXml) : rightXml));
-      await workspace.fs.writeFile(leftUri, enc.encode(leftXml.startsWith('<?xml') ? vkBeautify.xml(leftXml) : leftXml));
-      const title = `${basename(filePath)} ↔ ${basename(compareFilePath)}`;
+      await this.cache.cacheFile(file.fullPath, enc.encode(fileContents.startsWith('<?xml') ? vkBeautify.xml(fileContents) : fileContents));
+      await this.cache.cacheCompareFile(file.fullPath, enc.encode(compareFileContents.startsWith('<?xml')
+        ? vkBeautify.xml(compareFileContents)
+        : compareFileContents));
+
       // diff the primary and compare files
-      await commands.executeCommand('vscode.diff', leftUri, rightUri, title);
+      const title = `${basename(fileCachePath)} ↔ ${basename(fileCompareCachePath)}`;
+      await commands.executeCommand('vscode.diff', Uri.file(fileCompareCachePath), Uri.file(fileCachePath), title);
     } catch (err) {
       console.error(err);
     }
@@ -160,32 +160,14 @@ export class OOXMLViewer {
 
   /**
    * @description Close all file watchers
-   * @method closeWatchers
+   * @method disposeWatchers
    * @async
    * @returns {void}
    */
-  closeWatchers(): void {
+  disposeWatchers(): void {
     if (this.watchers.length) {
       this.watchers.forEach(w => w.dispose());
       this.watchers = [];
-    }
-  }
-
-  /**
-   * @description Receives an array of FileNode instances and calls viewFile on each and empties the array
-   * @method _viewFiles
-   * @private
-   * @async
-   * @param  {FileNode[]} fileNodes
-   * @returns Promise<void>
-   */
-  private async _viewFiles(fileNodes: FileNode[]): Promise<void> {
-    while (fileNodes.length) {
-      const fileNode: FileNode | undefined = fileNodes.pop();
-      const filePath: string | undefined = fileNode ? join(this.fileCachePath, dirname(fileNode.fullPath), fileNode.fileName) : undefined;
-      if (fileNode && filePath && existsSync(filePath)) {
-        await this.viewFile(fileNode);
-      }
     }
   }
 
@@ -194,44 +176,33 @@ export class OOXMLViewer {
    * @method closeEditors
    * @private
    * @async
-   * @param  {TextDocument[]} textDocuments?
+   * @param  {TextDocument[]} textDocuments
    * @returns {Promise<void>}
    */
-  async closeEditors(textDocuments?: TextDocument[]): Promise<void> {
-    try {
-      const tds = textDocuments ?? workspace.textDocuments.filter(t => t.fileName.toLowerCase().includes(this.fileCachePath.toLowerCase()));
-      if (tds.length) {
-        const td: TextDocument | undefined = tds.pop();
-        if (td) {
-          await window.showTextDocument(td, { preview: true, preserveFocus: false });
-          await commands.executeCommand('workbench.action.closeActiveEditor');
-          await this.closeEditors(tds);
-        }
-      }
-    } catch (err) {
-      console.error(err);
-    }
+  async closeEditors(): Promise<void> {
+    return ExtensionUtilities.closeEditors(
+      workspace.textDocuments.filter(t => t.fileName.startsWith(this.cache.cacheBasePath)));
   }
 
   /**
    * @description Sets this.zip to an empty zip file, deletes the cache folder, closes all watchers, and closes all editor tabs
-   * @method _resetOOXMLViewer
+   * @method resetOOXMLViewer
    * @private
    * @async
    * @returns {Promise<void>}
    */
-  private async _resetOOXMLViewer(): Promise<void> {
+  private async resetOOXMLViewer(): Promise<void> {
     try {
       this.zip = new JSZip();
       this.treeDataProvider.rootFileNode = new FileNode();
       this.treeDataProvider.refresh();
-      if (existsSync(this.fileCachePath)) {
-        // do not await this
-        workspace.fs.delete(Uri.file(this.fileCachePath), { recursive: true, useTrash: false });
-      }
-      
-      this.closeWatchers();
-      await this.closeEditors();
+
+      this.disposeWatchers();
+
+      await Promise.all([
+        this.closeEditors(),
+        this.cache.clear(),
+      ]);
     } catch (err) {
       console.error(err);
       window.showErrorMessage('Could not remove ooxml file viewer cache');
@@ -258,101 +229,74 @@ export class OOXMLViewer {
       // Build nodes for each file
       let currentFileNode = this.treeDataProvider.rootFileNode;
       const names: string[] = fileWithPath.split('/');
+      let existingFileNode: FileNode | undefined;
       for (const fileOrFolderName of names) {
         // Create node if it does not exist
-        const existingFileNode = currentFileNode.children.find(c => c.description === fileOrFolderName);
+        existingFileNode = currentFileNode.children.find(c => c.description === fileOrFolderName);
         if (existingFileNode) {
           currentFileNode = existingFileNode;
-          await this._createFile(currentFileNode.fullPath, currentFileNode.fileName);
-          const filesAreDifferent = await this._fileHasBeenChangedFromOutside(currentFileNode.fullPath);
-          // If the files are different replace copy prev to compare and copy current part to prev and add the warning icon,
-          // else don't edit the files and use a folder or file icon
-          const path = OOXMLViewer._getPrevFilePath(currentFileNode.fullPath);
-          const comparePath = `compare.${basename(currentFileNode.fileName).replace('compare.', '')}`;
-          const prevPath = `prev.${basename(currentFileNode.fileName).replace('prev.', '')}`;
-          await this._createFile(path, comparePath);
-          await this._createFile(currentFileNode.fullPath, prevPath);
-          if (filesAreDifferent) {
-            currentFileNode.setModified();
-          } else {
-            currentFileNode.setUnchanged();
-          }
         } else {
           // create a new FileNode with the currentFileNode as parent and add it to the currentFileNode children
           const newFileNode = new FileNode();
           newFileNode.fileName = fileOrFolderName;
           newFileNode.parent = currentFileNode;
-          newFileNode.fullPath = fileWithPath;
+          // newFileNode.fullPath = fileWithPath;
           currentFileNode.children.push(newFileNode);
           currentFileNode = newFileNode;
-          // create a copy of the file and a prev copy with the same data i.e. no changes have been made
-          await this._createFile(newFileNode.fullPath, newFileNode.fileName);
-          await this._createFile(newFileNode.fullPath, `prev.${basename(newFileNode.fileName).replace('prev.', '')}`);
-          // if showNewFileLabel is true (meaning this is a refresh of the tree) then this is a new file so
-          // add a green asterisk as the icon and create an empty compare file
-          // else create the compare file from the newFileNode.fullPath
-          if (showNewFileLabel) {
-            const compareFilePath: PathLike = join(this.fileCachePath, dirname(newFileNode.fullPath), `compare.${newFileNode.fileName}`);
-            currentFileNode.setCreated();
-            await workspace.fs.writeFile(Uri.file(compareFilePath), new Uint8Array());
-          } else {
-            await this._createFile(newFileNode.fullPath, `compare.${basename(newFileNode.fileName).replace(/compare.|prev./, '')}`);
-          }
         }
       }
+
       // set the current node fullPath (either new or existing) to fileWithPath
       currentFileNode.fullPath = fileWithPath;
+
+      // cache or update the cache of the node and mark the status of the node
+      const data = await this.zip.file(currentFileNode.fullPath)?.async('uint8array') ?? new Uint8Array();
+      if (existingFileNode) {
+        const filesAreDifferent = await this._hasFileBeenChangedFromOutside(currentFileNode.fullPath, data);
+        await this.cache.updateCachedFile(currentFileNode.fullPath, data);
+
+        if (filesAreDifferent) {
+          currentFileNode.setModified();
+        } else {
+          currentFileNode.setUnchanged();
+        }
+      } else {
+        await this.cache.cacheCachedFile(currentFileNode.fullPath, data, showNewFileLabel);
+        if (showNewFileLabel) {
+          currentFileNode.setCreated();
+        }
+      }
     }
+
     await this._removeDeletedParts();
     await this._reformatOpenTabs();
+
     // tell vscode the tree has changed
     this.treeDataProvider.refresh();
   }
 
-  /**
-   * @description Create a file from a part of the zip file
-   * @method _createFile
-   * @private
-   * @async
-   * @param  {string} relativePath the path to the folder in the zip file
-   * @param  {string} fileName the name of the file
-   * @returns {Promise<void>}
-   */
-  private async _createFile(relativePath: string, fileName: string, formatIt = false): Promise<void> {
-    try {
-      const preFilePath = join(this.fileCachePath, relativePath);
-      const folderPath = join(this.fileCachePath, dirname(relativePath));
-      const filePath: string = join(folderPath, fileName);
-      await workspace.fs.createDirectory(Uri.file(folderPath));
-      const file: JSZipObject | null = this.zip.file(relativePath);
-      const text: string = (await file?.async('text')) ?? (await workspace.fs.readFile(Uri.file(preFilePath))).toString();
-      if (text.startsWith('<?xml')) {
-        let formattedXml = '';
-        const len = text.replace(/\s+/g, '').length;
-        if (formatIt && len < MAXIMUM_XML_PARSING_CHARACTERS) {
-          formattedXml = vkBeautify.xml(text);
-        }
-        if (len >= MAXIMUM_XML_PARSING_CHARACTERS && formatIt) {
-          window.showWarningMessage(
-            `${basename(relativePath)} is too large to format.\nOOXML Parts must be less than ` +
-            `${MAXIMUM_XML_PARSING_CHARACTERS.toLocaleString()} characters to format`,
-            { modal: true },
-          );
-        }
-        const enc = new TextEncoder();
-        await workspace.fs.writeFile(Uri.file(filePath), enc.encode(formattedXml || text));
-        if (!/compare|prev/.test(filePath)) {
-          await this.zip.file(relativePath, text);
-        }
-      } else {
-        const u8a: Uint8Array | undefined = await file?.async('uint8array');
-        if (u8a) {
-          await workspace.fs.writeFile(Uri.file(filePath), u8a);
-        }
-      }
-    } catch (err) {
-      console.error(err);
+  private async _tryFormatXMLFile(filePath: string): Promise<boolean> {
+    const data = await this.cache.getFile(filePath);
+    const text = new TextDecoder().decode(data);
+    if (!text.startsWith('<?xml')) {
+      return false;
     }
+
+    const lengthWithNoWhitespace = text.replace(/\s+/g, '').length;
+    if (lengthWithNoWhitespace >= MAXIMUM_XML_PARSING_CHARACTERS) {
+      window.showWarningMessage(
+        `${basename(filePath)} is too large to format.\nOOXML Parts must be less than ` +
+        `${MAXIMUM_XML_PARSING_CHARACTERS.toLocaleString()} characters to format`,
+        { modal: true },
+      );
+
+      return false;
+    }
+
+    const formattedXml = vkBeautify.xml(text);
+    await this.cache.cacheFile(filePath, new TextEncoder().encode(formattedXml || text));
+
+    return true;
   }
 
   /**
@@ -360,114 +304,55 @@ export class OOXMLViewer {
    * @method _updateOOXMLFile
    * @async
    * @private
-   * @param  {TextDocument} e
+   * @param  {TextDocument} document The text document
    * @returns {Promise<void>}
    */
-  private _updateOOXMLFile = async (e: TextDocument): Promise<void> => {
+  private async _updateOOXMLFile(document: TextDocument): Promise<void> {
     try {
-      const { fileName } = e;
-      let prevFilePath = '';
-      if (fileName) {
-        prevFilePath = OOXMLViewer._getPrevFilePath(fileName);
+      const filePath = document.fileName;
+      const prevFilePath = this.cache.getPrevFilePath(filePath);
+
+      if (!(filePath && existsSync(filePath) && prevFilePath && existsSync(prevFilePath))) {
+        return;
       }
-      if (fileName && existsSync(fileName) && prevFilePath && existsSync(prevFilePath)) {
-        const stats: FileStat = await workspace.fs.stat(Uri.file(fileName));
-        const time = stats.mtime;
-        if (stats.type !== FileType.Directory && this.watchActions[fileName] !== time) {
-          this.watchActions[fileName] = time;
-          const textDecoder = new TextDecoder();
-          const cur = await workspace.fs.readFile(Uri.file(fileName));
-          const prev = await workspace.fs.readFile(Uri.file(prevFilePath));
-          const curMiniXml = vkBeautify.xmlmin(textDecoder.decode(cur), true);
-          const prevMiniXml = vkBeautify.xmlmin(textDecoder.decode(prev), true);
-          const data: Buffer = Buffer.from(curMiniXml);
-          const prevData: Buffer = Buffer.from(prevMiniXml);
-          const checkName = basename(fileName);
-          if (!data.equals(prevData)) {
-            const pathArr = fileName.split(CACHE_FOLDER_NAME);
-            let normalizedPath: string = pathArr[pathArr.length - 1].replace(/\\/g, '/');
-            normalizedPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
-            const zipFile = await this.zip.file(normalizedPath, data, { binary: true }).generateAsync({ type: 'uint8array' });
-            await workspace.fs.writeFile(Uri.file(this.ooxmlFilePath), zipFile);
-            await workspace.fs.writeFile(Uri.file(join(dirname(prevFilePath), `compare.${checkName}`)), prev);
-            await workspace.fs.writeFile(Uri.file(prevFilePath), cur);
-            this.treeDataProvider.refresh();
-          }
-        }
+
+      const stats: FileStat = await workspace.fs.stat(Uri.file(filePath));
+      const time = stats.mtime;
+
+      if (stats.type === FileType.Directory || this.watchActions[filePath] === time) {
+        return;
       }
+
+      this.watchActions[filePath] = time;
+
+      const textDecoder = new TextDecoder();
+      const fileContents = await workspace.fs.readFile(Uri.file(filePath));
+      const prevFileContents = await workspace.fs.readFile(Uri.file(prevFilePath));
+      const fileMinXml = vkBeautify.xmlmin(textDecoder.decode(fileContents), true);
+      const prevFileMinXml = vkBeautify.xmlmin(textDecoder.decode(prevFileContents), true);
+
+      if (Buffer.from(fileMinXml).equals(Buffer.from(prevFileMinXml))) {
+        return;
+      }
+
+      let normalizedPath = filePath.substring(this.cache.cacheBasePath.length).replace(/\\/g, '/');
+      normalizedPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
+      const zipFile = await this.zip.file(normalizedPath, fileMinXml, { binary: true }).generateAsync({ type: 'uint8array' });
+      await workspace.fs.writeFile(Uri.file(this.ooxmlFilePath), zipFile);
+
+      await workspace.fs.writeFile(Uri.file(this.cache.getCompareFilePath(filePath)), prevFileContents);
+      await workspace.fs.writeFile(Uri.file(this.cache.getPrevFilePath(filePath)), fileContents);
+      this.treeDataProvider.refresh();
     } catch (err) {
       if (err?.code === 'EBUSY' || err?.message.toLowerCase().includes('ebusy')) {
         window.showWarningMessage(
-          `File not saved.\n${basename(this.ooxmlFilePath)} is open in another program.\n
-                  Close that program before making any changes.`,
+          `File not saved.\n${basename(this.ooxmlFilePath)} is open in another program.\nClose that program before making any changes.`,
           { modal: true },
         );
-        OOXMLViewer._makeDirty(window.activeTextEditor);
+
+        await ExtensionUtilities.makeTextEditorDirty(window.activeTextEditor);
       }
     }
-  };
-
-  /**
-   * @description Make a text editor tab dirty
-   * @method _makeDirty
-   * @async
-   * @private
-   * @param  {TextEditor} activeTextEditor? the text editor to be made dirty
-   * @returns {Promise<void>}
-   */
-  private static async _makeDirty(activeTextEditor?: TextEditor): Promise<void> {
-    activeTextEditor?.edit(async (textEditorEdit: TextEditorEdit) => {
-      if (window.activeTextEditor?.selection) {
-        const { activeTextEditor } = window;
-
-        if (activeTextEditor && activeTextEditor.document.lineCount >= 2) {
-          const lineNumber = activeTextEditor.document.lineCount - 2;
-          const lastLineRange = new Range(new Position(lineNumber, 0), new Position(lineNumber + 1, 0));
-          const lastLineText = activeTextEditor.document.getText(lastLineRange);
-          textEditorEdit.replace(lastLineRange, lastLineText);
-          return;
-        }
-
-        // Try to replace the first character.
-        const range = new Range(new Position(0, 0), new Position(0, 1));
-        const text: string | undefined = activeTextEditor?.document.getText(range);
-        if (text) {
-          textEditorEdit.replace(range, text);
-          return;
-        }
-
-        // With an empty file, we first add a character and then remove it.
-        // This has to be done as two edits, which can cause the cursor to
-        // visibly move and then return, but we can at least combine them
-        // into a single undo step.
-        await activeTextEditor?.edit(
-          (innerEditBuilder: TextEditorEdit) => {
-            innerEditBuilder.replace(range, ' ');
-          },
-          { undoStopBefore: true, undoStopAfter: false },
-        );
-
-        await activeTextEditor?.edit(
-          (innerEditBuilder: TextEditorEdit) => {
-            innerEditBuilder.replace(range, '');
-          },
-          { undoStopBefore: false, undoStopAfter: true },
-        );
-      }
-    });
-  }
-
-  /**
-   * @description Get the file path for the prev version of a file
-   * @method _getPrevFilePath
-   * @private
-   * @async
-   * @param  {string} path
-   * @returns {string}
-   */
-  private static _getPrevFilePath(path: string): string {
-    const { dir, base } = parse(path);
-    return normalize(`${dir}/prev.${base}`);
   }
 
   /**
@@ -487,10 +372,12 @@ export class OOXMLViewer {
       async progress => {
         try {
           progress.report({ message: 'Updating OOXML Parts' });
-          const ooxmlZip: JSZip = new JSZip();
-          const data: Buffer = Buffer.from(await workspace.fs.readFile(Uri.file(filePath)));
-          await ooxmlZip.loadAsync(data);
-          this.zip = ooxmlZip;
+
+          // unzip ooxml file again
+          const data = await workspace.fs.readFile(Uri.file(filePath));
+          this.zip = new JSZip();
+          await this.zip.loadAsync(data);
+
           await this._populateOOXMLViewer(this.zip.files, true);
         } catch (err) {
           console.error(err);
@@ -500,6 +387,8 @@ export class OOXMLViewer {
   }
 
   /**
+   * Traverse tree and delete cached parts that don't exist
+   * 
    * @description Delete cache files for parts deleted from OOXML file
    * @method _removeDeletedParts
    * @async
@@ -509,34 +398,32 @@ export class OOXMLViewer {
    */
   private async _removeDeletedParts(node?: FileNode): Promise<void> {
     try {
-      const fileNames = Object.keys(this.zip.files);
-      if (!node) {
-        await this._removeDeletedParts(this.treeDataProvider.rootFileNode);
-      } else {
-        node.children.forEach(async (n, i, arr) => {
-          const path = join(this.fileCachePath, n.fullPath);
-          if (!fileNames.includes(n.fullPath)) {
-            const file: string = await (await workspace.fs.readFile(Uri.file(path))).toString();
-            if (file) {
-              n.setDeleted();
-              await workspace.fs.writeFile(Uri.file(join(this.fileCachePath, n.fullPath)), new Uint8Array());
-              this.treeDataProvider.refresh();
-            } else {
-              workspace.fs.delete(Uri.file(path), { recursive: true, useTrash: false });
-              workspace.fs.delete(Uri.file(join(dirname(path), `prev.${basename(path)}`)), { recursive: true, useTrash: false });
-              workspace.fs.delete(Uri.file(join(dirname(path), `compare.${basename(path)}`)), { recursive: true, useTrash: false });
-              arr.splice(i, 1);
-              this.treeDataProvider.refresh();
-            }
-          } else if (n.children.length) {
-            n.children.forEach(async nn => await this._removeDeletedParts(nn));
+      const filesInOoxmlFile = new Set(Object.keys(this.zip.files));
+      const fileNodeQueue = [this.treeDataProvider.rootFileNode];
+
+      let fileNode;
+      while ((fileNode = fileNodeQueue.pop())) {
+        if (fileNode.fullPath && !filesInOoxmlFile.has(fileNode.fullPath)) {
+          const cachedFileExists = await this.cache.readFile(fileNode.fullPath);
+          if (cachedFileExists) {
+            fileNode.setDeleted();
+            await this.cache.cacheFile(fileNode.fullPath, new Uint8Array());
+          } else {
+            await this.cache.deleteCachedFiles(fileNode.fullPath);
+            fileNode.parent?.children.splice(fileNode.parent.children.indexOf(fileNode), 1);
           }
-        });
+        }
+
+        fileNodeQueue.push(...fileNode.children);
       }
+
+      this.treeDataProvider.refresh();
+
     } catch (err) {
       console.error(err);
     }
   }
+
   /**
    * @description Reformats the open tabs after their contents have been updated
    * @method _reformatOpenTabs
@@ -546,43 +433,28 @@ export class OOXMLViewer {
    */
   private async _reformatOpenTabs(): Promise<void> {
     try {
-      const textDocuments: TextDocument[] = [];
-      const closedTextDocuments: TextDocument[] = [];
-      workspace.textDocuments.forEach(t => {
-        if (t.fileName.toLowerCase().includes(this.fileCachePath.toLowerCase())) {
-          if (Object.keys(this.zip.files).filter(f => f.includes(basename(t.fileName).replace(/compare.|prev./, ''))).length) {
-            textDocuments.push(t);
-          } else {
-            closedTextDocuments.push(t);
-          }
-        }
-      });
-      textDocuments.forEach(async td => {
-        try {
-          const prevFileName = join(dirname(td.fileName), `prev.${basename(td.fileName.replace(/compare.|prev./, ''))}`);
-          const compareFileName = join(dirname(td.fileName), `compare.${basename(td.fileName.replace(/compare.|prev./, ''))}`);
-          const xml = await (await workspace.fs.readFile(Uri.file(td.fileName))).toString();
-          const prevXml = await (await workspace.fs.readFile(Uri.file(prevFileName))).toString();
-          const compareXml = await (await workspace.fs.readFile(Uri.file(compareFileName))).toString();
-          const enc = new TextEncoder();
-          [
-            { xml, fileName: td.fileName },
-            { xml: prevXml, fileName: prevFileName },
-            { xml: compareXml, fileName: compareFileName },
-          ].forEach(async ({ xml, fileName }) => {
+      workspace.textDocuments
+        .filter(d => d.fileName.startsWith(this.cache.cacheBasePath))
+        .filter(d => Object.keys(this.zip.files).filter(f => f.includes(basename(d.fileName))))
+        .forEach(async d => {
+          try {
+            const xml = (await workspace.fs.readFile(Uri.file(d.fileName))).toString();
             if (xml.startsWith('<?xml')) {
               const text = vkBeautify.xml(xml);
-              await workspace.fs.writeFile(Uri.file(fileName), enc.encode(text));
+              await workspace.fs.writeFile(Uri.file(d.fileName), new TextEncoder().encode(text));
             }
-          });
-        } catch (err) {
-          console.error(err);
-        }
-      });
-      closedTextDocuments.forEach(async t => {
-        await window.showTextDocument(Uri.file(t.fileName), { preview: true, preserveFocus: false });
-        await commands.executeCommand('workbench.action.closeActiveEditor');
-      });
+          } catch (err) {
+            console.error(err);
+          }
+        });
+
+      workspace.textDocuments
+        .filter(d => d.fileName.startsWith(this.cache.cacheBasePath))
+        .filter(d => !Object.keys(this.zip.files).filter(f => f.includes(basename(d.fileName))))
+        .forEach(async t => {
+          await window.showTextDocument(Uri.file(t.fileName), { preview: true, preserveFocus: false });
+          await commands.executeCommand('workbench.action.closeActiveEditor');
+        });
     } catch (err) {
       console.error(err);
     }
@@ -590,34 +462,30 @@ export class OOXMLViewer {
 
   /**
    * @description Check if an OOXML part is different from its cached version
-   * @method _fileHasBeenChangedFromOutside
+   * @method _hasFileBeenChangedFromOutside
    * @async
    * @private
-   * @param  {string} firstFile
+   * @param  {string} filePath The path of the file
    * @returns {Promise<boolean>}
    */
-  private async _fileHasBeenChangedFromOutside(firstFile: string): Promise<boolean> {
+  private async _hasFileBeenChangedFromOutside(filePath: string, newContent: Uint8Array): Promise<boolean> {
     try {
-      const secondFile = OOXMLViewer._getPrevFilePath(firstFile);
-      const firstFilePath = join(this.fileCachePath, firstFile);
-      const secondFilePath = join(this.fileCachePath, secondFile);
-      const firstStat: FileStat = await workspace.fs.stat(Uri.file(firstFilePath));
-      const secondStat: FileStat = await workspace.fs.stat(Uri.file(secondFilePath));
-      if (firstStat.type !== FileType.Directory && secondStat.type !== FileType.Directory) {
-        const firstBuffer: Buffer = Buffer.from(await workspace.fs.readFile(Uri.file(firstFilePath)));
-        const secondBuffer: Buffer = Buffer.from(await workspace.fs.readFile(Uri.file(secondFilePath)));
-        if (!firstBuffer.equals(secondBuffer)) {
-          const decoder = new TextDecoder();
-          const first = decoder.decode(await workspace.fs.readFile(Uri.file(firstFilePath)));
-          const second = decoder.decode(await workspace.fs.readFile(Uri.file(secondFilePath)));
-          const firstBufferMin: Buffer = Buffer.from(vkBeautify.xmlmin(first));
-          const secondBufferMin: Buffer = Buffer.from(vkBeautify.xmlmin(second));
-          return !firstBufferMin.equals(secondBufferMin);
-        }
+      const fileArrayBuffer = newContent;
+      const prevFileArrayBuffer = await this.cache.getPrevFile(filePath);
+      if (Buffer.from(fileArrayBuffer).equals(Buffer.from(prevFileArrayBuffer))) {
+        return false;
       }
+
+      const decoder = new TextDecoder();
+      const fileText = decoder.decode(fileArrayBuffer);
+      const prevFileText = decoder.decode(prevFileArrayBuffer);
+      const minFileText = vkBeautify.xmlmin(fileText);
+      const minPrevFileText = vkBeautify.xmlmin(prevFileText);
+      return !(minFileText === minPrevFileText);
     } catch (err) {
       console.error(err.message || err);
     }
+
     return false;
   }
 }

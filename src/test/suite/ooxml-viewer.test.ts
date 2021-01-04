@@ -6,8 +6,9 @@ import { match, SinonStub, stub } from 'sinon';
 import { TextDecoder } from 'util';
 import vkBeautify from 'vkbeautify';
 import { commands, Disposable, ExtensionContext, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window, workspace } from 'vscode';
+import { CACHE_FOLDER_NAME } from '../../ooxml-file-cache';
 import { FileNode, OOXMLTreeDataProvider } from '../../ooxml-tree-view-provider';
-import { CACHE_FOLDER_NAME, OOXMLViewer } from '../../ooxml-viewer';
+import { OOXMLViewer } from '../../ooxml-viewer';
 
 suite('OOXMLViewer', async function () {
   this.timeout(10000);
@@ -18,9 +19,9 @@ suite('OOXMLViewer', async function () {
 
   setup(function () {
     context = {
-      asAbsolutePath: (path?: string) => {
-        return 'tacocat';
-      },
+      // asAbsolutePath: (path?: string) => {
+      //   return 'tacocat';
+      // },
     };
     ooxmlViewer = new OOXMLViewer((context as unknown) as ExtensionContext);
   });
@@ -36,7 +37,7 @@ suite('OOXMLViewer', async function () {
   });
   
   test('It should populate the sidebar tree with the contents of an ooxml file', async function () {
-    const createFileMock = stub(OOXMLViewer.prototype, <never>'_createFile').returns(Promise.resolve());
+    const createFileMock = stub(ooxmlViewer.cache, 'createFile').returns(Promise.resolve());
     const refreshStub = stub(ooxmlViewer.treeDataProvider, 'refresh').returns(undefined);
     const createDirectoryStub = stub(workspace.fs, 'createDirectory').returns(Promise.resolve());
     const spawnStub = stub(child_process, 'spawn').callsFake((arg1, arg2) => {
@@ -57,7 +58,7 @@ suite('OOXMLViewer', async function () {
       } as unknown) as JSZip;
     });
     stubs.push(
-      stub(ooxmlViewer, <never>'_fileHasBeenChangedFromOutside').returns(Promise.resolve(false)),
+      stub(ooxmlViewer, <never>'_hasFileBeenChangedFromOutside').returns(Promise.resolve(false)),
       createDirectoryStub,
       spawnStub,
       jsZipStub,
@@ -67,9 +68,8 @@ suite('OOXMLViewer', async function () {
     expect(ooxmlViewer.treeDataProvider.rootFileNode.children.length).to.eq(0);
     await ooxmlViewer.viewContents(Uri.file(testFilePath));
     expect(ooxmlViewer.treeDataProvider.rootFileNode.children.length).to.eq(4);
-    expect(refreshStub.callCount).to.eq(2);
-    expect(createFileMock.callCount).to.eq(369);
-    expect(createDirectoryStub.calledOnce).to.be.true;
+    expect(refreshStub.callCount).to.eq(3);
+    expect(createFileMock.callCount).to.eq(120);
   });
 
   test('viewFile should open a text editor when called with the path to an xml file', async function () {
@@ -105,7 +105,7 @@ suite('OOXMLViewer', async function () {
     stubs.push(commandsStub, createDirectoryStub, readFileStub, writeFileStub, zipStub);
     const node = new FileNode();
     await ooxmlViewer.viewFile(node);
-    const folderPath = join(ooxmlViewer.fileCachePath, dirname(node.fullPath));
+    const folderPath = join(ooxmlViewer.cache.cacheBasePath, dirname(node.fullPath));
     const filePath: string = join(folderPath, node.fileName);
     expect(ooxmlViewer.openTextEditors[filePath]).to.eq(node);
     expect(commandsStub.calledWith('vscode.open')).to.be.true;
@@ -142,7 +142,7 @@ suite('OOXMLViewer', async function () {
   test('clear should reset the OOXML Viewer', async function () {
     const textDoc = {} as TextDocument;
     const refreshStub = stub(ooxmlViewer.treeDataProvider, 'refresh').callsFake(() => undefined);
-    const closeWatchersStub = stub(OOXMLViewer.prototype, 'closeWatchers').callsFake(() => undefined);
+    const disposeWatchersStub = stub(OOXMLViewer.prototype, 'disposeWatchers').callsFake(() => undefined);
     const openEditorsStub = stub(Array.prototype, 'filter').callsFake(arg => {
       return [textDoc];
     });
@@ -155,10 +155,10 @@ suite('OOXMLViewer', async function () {
       expect(arg).to.eq('workbench.action.closeActiveEditor');
       return Promise.resolve();
     });
-    stubs.push(refreshStub, closeWatchersStub, openEditorsStub, showDocStub, executeStub);
+    stubs.push(refreshStub, disposeWatchersStub, openEditorsStub, showDocStub, executeStub);
     await ooxmlViewer.clear();
     expect(refreshStub.calledOnce).to.be.true;
-    expect(closeWatchersStub.calledOnce).to.be.true;
+    expect(disposeWatchersStub.calledOnce).to.be.true;
     expect(showDocStub.calledWith(match(textDoc))).to.be.true;
     expect(executeStub.calledWith('workbench.action.closeActiveEditor')).to.be.true;
   });
@@ -206,7 +206,7 @@ suite('OOXMLViewer', async function () {
       dispose: disposeStub,
     } as never) as Disposable;
     ooxmlViewer.watchers.push(disposable1, disposable2);
-    ooxmlViewer.closeWatchers();
+    ooxmlViewer.disposeWatchers();
     expect(disposeStub.calledTwice).to.be.true;
     done();
   });
