@@ -139,12 +139,13 @@ export class OOXMLViewer {
       const fileContents = this.textDecoder.decode(await this.cache.getCachedFile(file.fullPath));
       const compareFileContents = this.textDecoder.decode(await this.cache.getCachedCompareFile(file.fullPath));
 
-      await this.cache.updateCachedFile(file.fullPath, this.textEncoder.encode(fileContents.startsWith('<?xml')
-        ? vkBeautify.xml(fileContents)
-        : fileContents), false);
-      await this.cache.updateCompareFile(file.fullPath, this.textEncoder.encode(compareFileContents.startsWith('<?xml')
-        ? vkBeautify.xml(compareFileContents)
-        : compareFileContents));
+      if (fileContents.startsWith('<?xml')) {
+        await this.cache.updateCachedFile(file.fullPath, this.textEncoder.encode(vkBeautify.xml(fileContents)), false);
+      }
+
+      if (compareFileContents.startsWith('<?xml')) {
+        await this.cache.updateCompareFile(file.fullPath, this.textEncoder.encode(vkBeautify.xml(compareFileContents)));
+      }
 
       // diff the primary and compare files
       const title = `${basename(fileCachePath)} ↔ ${basename(fileCompareCachePath)}`;
