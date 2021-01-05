@@ -190,7 +190,10 @@ suite('OOXMLViewer', async function () {
       expect(dec.decode(arg2)).to.eq(vkBeautify.xml(xml));
       return Promise.resolve();
     });
-    stubs.push(vscodeDiffStub, readFileStub, writeFileStub);
+    const textDecoderStub = stub(ooxmlViewer.textDecoder, 'decode').callsFake(arg => {
+      return xml;
+    });
+    stubs.push(vscodeDiffStub, readFileStub, writeFileStub, textDecoderStub);
     const node = new FileNode();
     node.fullPath = 'tacocat/racecar.xml';
     node.fileName = 'racecar.xml';
