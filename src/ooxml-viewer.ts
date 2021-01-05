@@ -13,7 +13,7 @@ import {
   TextDocument,
   Uri,
   window,
-  workspace
+  workspace,
 } from 'vscode';
 import { ExtensionUtilities } from './extension-utilities';
 import { OOXMLFileCache } from './ooxml-file-cache';
@@ -405,7 +405,7 @@ export class OOXMLViewer {
       while ((fileNode = fileNodeQueue.pop())) {
         if (fileNode.fullPath && !filesInOoxmlFile.has(fileNode.fullPath)) {
           const cachedFileExists = await this.cache.readFile(fileNode.fullPath);
-          if (cachedFileExists) {
+          if (cachedFileExists && cachedFileExists.length) {
             fileNode.setDeleted();
             await this.cache.cacheFile(fileNode.fullPath, new Uint8Array());
           } else {
