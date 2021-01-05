@@ -1,4 +1,3 @@
-import { existsSync } from 'fs';
 import JSZip from 'jszip';
 import { basename } from 'path';
 import vkBeautify from 'vkbeautify';
@@ -6,9 +5,7 @@ import {
   commands,
   Disposable,
   ExtensionContext,
-  FileStat,
   FileSystemWatcher,
-  FileType,
   ProgressLocation,
   TextDocument,
   Uri,
@@ -26,10 +23,11 @@ export class OOXMLViewer {
   treeDataProvider: OOXMLTreeDataProvider;
   zip: JSZip;
   watchers: Disposable[] = [];
-  watchActions: { [key: string]: number } = {};
   openTextEditors: { [key: string]: FileNode } = {};
   ooxmlFilePath = '';
   cache: OOXMLFileCache;
+  textEncoder = new TextEncoder();
+  textDecoder = new TextDecoder();
 
   /**
    * @description Constructs an instance of OOXMLViewer
@@ -104,13 +102,7 @@ export class OOXMLViewer {
         async progress => {
           progress.report({ message: 'Formatting XML' });
 
-          // try format xml file
-          const data = await this.cache.getCachedFile(fileNode.fullPath);
-          const text = new TextDecoder().decode(data);
-          if (text.startsWith('<?xml')) {
-            const formattedXml = vkBeautify.xml(text);
-            await this.cache.cacheFile(fileNode.fullPath, new TextEncoder().encode(formattedXml));
-          }
+          this.tryFormatXml(fileNode.fullPath);
 
           const filePath = this.cache.getFileCachePath(fileNode.fullPath);
           this.openTextEditors[filePath] = fileNode;
@@ -142,15 +134,15 @@ export class OOXMLViewer {
   async getDiff(file: FileNode): Promise<void> {
     try {
       // get the full path for the primary file and the compare files
-
       const fileCachePath = this.cache.getFileCachePath(file.fullPath);
       const fileCompareCachePath = this.cache.getCompareFileCachePath(file.fullPath);
-      const fileContents = (await this.cache.getCachedFile(file.fullPath)).toString();
-      const compareFileContents = (await this.cache.getCachedCompareFile(file.fullPath)).toString();
+      const fileContents = this.textDecoder.decode(await this.cache.getCachedFile(file.fullPath));
+      const compareFileContents = this.textDecoder.decode(await this.cache.getCachedCompareFile(file.fullPath));
 
-      const enc = new TextEncoder();
-      await this.cache.cacheFile(file.fullPath, enc.encode(fileContents.startsWith('<?xml') ? vkBeautify.xml(fileContents) : fileContents));
-      await this.cache.cacheCompareFile(file.fullPath, enc.encode(compareFileContents.startsWith('<?xml')
+      await this.cache.updateCachedFile(file.fullPath, this.textEncoder.encode(fileContents.startsWith('<?xml')
+        ? vkBeautify.xml(fileContents)
+        : fileContents), false);
+      await this.cache.updateCompareFile(file.fullPath, this.textEncoder.encode(compareFileContents.startsWith('<?xml')
         ? vkBeautify.xml(compareFileContents)
         : compareFileContents));
 
@@ -180,10 +172,9 @@ export class OOXMLViewer {
    * @method closeEditors
    * @private
    * @async
-   * @param  {TextDocument[]} textDocuments
    * @returns {Promise<void>}
    */
-  async closeEditors(): Promise<void> {
+  private async closeEditors(): Promise<void> {
     return ExtensionUtilities.closeEditors(
       workspace.textDocuments.filter(t => t.fileName.startsWith(this.cache.cacheBasePath)));
   }
@@ -234,8 +225,8 @@ export class OOXMLViewer {
       let currentFileNode = this.treeDataProvider.rootFileNode;
       const names: string[] = fileWithPath.split('/');
       let existingFileNode: FileNode | undefined;
+      
       for (const fileOrFolderName of names) {
-        // Create node if it does not exist
         existingFileNode = currentFileNode.children.find(c => c.description === fileOrFolderName);
         if (existingFileNode) {
           currentFileNode = existingFileNode;
@@ -256,7 +247,7 @@ export class OOXMLViewer {
       const data = await this.zip.file(currentFileNode.fullPath)?.async('uint8array') ?? new Uint8Array();
       if (existingFileNode && !currentFileNode.isDeleted()) {
         const filesAreDifferent = await this.hasFileBeenChangedFromOutside(currentFileNode.fullPath, data);
-        await this.cache.updateCachedFile(currentFileNode.fullPath, data);
+        await this.cache.updateCachedFile(currentFileNode.fullPath, data, true);
 
         if (filesAreDifferent) {
           currentFileNode.setModified();
@@ -279,48 +270,36 @@ export class OOXMLViewer {
   }
   
   /**
-   * @description Writes changes to OOXML file being inspected
+   * @description Writes changes to OOXML file being inspected when one of its parts is saved.
+   * Note that this will trigger `reloadOoxmlFile` to fire if changes are written.
    * @method updateOOXMLFile
    * @async
    * @private
-   * @param  {TextDocument} document The text document
+   * @param  {TextDocument} document The text document.
    * @returns {Promise<void>}
    */
   private async updateOOXMLFile(document: TextDocument): Promise<void> {
     try {
-      const filePath = document.fileName;
-      const prevFilePath = this.cache.getPrevFilePath(filePath);
-
-      if (!(filePath && existsSync(filePath) && prevFilePath && existsSync(prevFilePath))) {
+      const cacheFilePath = document.fileName;
+      if (!this.cache.pathBelongsToCache(cacheFilePath) || !this.cache.pathIsNotPrevOrCompare(cacheFilePath)) {
         return;
       }
 
-      const stats: FileStat = await this.cache.getFileStats(filePath);
-      const time = stats.mtime;
+      const filePath = this.cache.getFilePathFromCacheFilePath(cacheFilePath);
 
-      if (stats.type === FileType.Directory || this.watchActions[filePath] === time) {
-        return;
-      }
-
-      this.watchActions[filePath] = time;
-
-      const textDecoder = new TextDecoder();
-      const fileContents = await this.cache.readFile(filePath);
-      const prevFileContents = await this.cache.readFile(prevFilePath);
-      const fileMinXml = vkBeautify.xmlmin(textDecoder.decode(fileContents), true);
-      const prevFileMinXml = vkBeautify.xmlmin(textDecoder.decode(prevFileContents), true);
+      const fileContents = await this.cache.getCachedFile(filePath);
+      const prevFileContents = await this.cache.getCachedPrevFile(filePath);
+      const fileMinXml = vkBeautify.xmlmin(this.textDecoder.decode(fileContents), true);
+      const prevFileMinXml = vkBeautify.xmlmin(this.textDecoder.decode(prevFileContents), true);
 
       if (Buffer.from(fileMinXml).equals(Buffer.from(prevFileMinXml))) {
         return;
       }
-
-      let normalizedPath = filePath.substring(this.cache.cacheBasePath.length).replace(/\\/g, '/');
-      normalizedPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
-      const zipFile = await this.zip.file(normalizedPath, fileMinXml, { binary: true }).generateAsync({ type: 'uint8array' });
+      
+      const zipFile = await this.zip.file(filePath, fileMinXml, { binary: true }).generateAsync({ type: 'uint8array' });
       await workspace.fs.writeFile(Uri.file(this.ooxmlFilePath), zipFile);
 
-      await this.cache.writeFile(this.cache.getCompareFilePath(filePath), prevFileContents);
-      await this.cache.writeFile(this.cache.getPrevFilePath(filePath), fileContents);
+      await this.cache.createCachedFile(filePath, fileContents, false);
       this.treeDataProvider.refresh();
     } catch (err) {
       if (err?.code === 'EBUSY' || err?.message.toLowerCase().includes('ebusy')) {
@@ -385,8 +364,7 @@ export class OOXMLViewer {
           const cachedFileExists = await this.cache.getCachedFile(fileNode.fullPath);
           if (cachedFileExists && !fileNode.isDeleted()) {
             fileNode.setDeleted();
-            await this.cache.cacheCompareFile(fileNode.fullPath, await this.cache.getCachedFile(fileNode.fullPath));
-            await this.cache.cacheFile(fileNode.fullPath, new Uint8Array());
+            await this.cache.updateCachedFile(fileNode.fullPath, new Uint8Array(), true);
           } else {
             // remove files marked as deleted from tree view and cache after the ooxml file 
             // the second time the ooxml file is saved 
@@ -415,25 +393,22 @@ export class OOXMLViewer {
   private async reformatOpenTabs(): Promise<void> {
     try {
       workspace.textDocuments
-        .filter(d => d.fileName.startsWith(this.cache.cacheBasePath))
+        .filter(d => this.cache.pathBelongsToCache(d.fileName))
         .filter(d => Object.keys(this.zip.files).filter(f => f.includes(basename(d.fileName))))
         .forEach(async d => {
           try {
-            const xml = (await this.cache.readFile(d.fileName)).toString();
-            if (xml.startsWith('<?xml')) {
-              const text = vkBeautify.xml(xml);
-              await this.cache.writeFile(d.fileName, new TextEncoder().encode(text));
-            }
+            const filePath = this.cache.getFilePathFromCacheFilePath(d.fileName);
+            await this.tryFormatXml(filePath);
           } catch (err) {
             console.error(err);
           }
         });
 
       workspace.textDocuments
-        .filter(d => d.fileName.startsWith(this.cache.cacheBasePath))
+        .filter(d => this.cache.pathBelongsToCache(d.fileName))
         .filter(d => !Object.keys(this.zip.files).filter(f => f.includes(basename(d.fileName))))
-        .forEach(async t => {
-          await window.showTextDocument(Uri.file(t.fileName), { preview: true, preserveFocus: false });
+        .forEach(async d => {
+          await window.showTextDocument(Uri.file(d.fileName), { preview: true, preserveFocus: false });
           await commands.executeCommand('workbench.action.closeActiveEditor');
         });
     } catch (err) {
@@ -442,12 +417,32 @@ export class OOXMLViewer {
   }
 
   /**
-   * @description Check if an OOXML part is different from its cached version
+   * @description Tries to format the file as xml.
+   * @method tryFormatXml
+   * @async
+   * @private
+   * @param {string} filePath The path of the file in the ooxml package.
+   * @returns {Promise<boolean>} A Promise resolving to whether or not the file has been formatted.
+   */
+  private async tryFormatXml(filePath: string) {
+    const xml = this.textDecoder.decode(await this.cache.getCachedFile(filePath));
+    if (xml.startsWith('<?xml')) {
+      const text = vkBeautify.xml(xml);
+      await this.cache.updateCachedFile(filePath, this.textEncoder.encode(text), false);
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * @description Check if an OOXML part is different from its cached version.
    * @method hasFileBeenChangedFromOutside
    * @async
    * @private
-   * @param  {string} filePath The path of the file
-   * @returns {Promise<boolean>}
+   * @param {string} filePath The path of the file in the ooxml package.
+   * @param {string} newContent The updated contents of the file.
+   * @returns {Promise<boolean>} A Promise resolving to whether or not the file has been changed from the outside.
    */
   private async hasFileBeenChangedFromOutside(filePath: string, newContent: Uint8Array): Promise<boolean> {
     try {
@@ -457,12 +452,11 @@ export class OOXMLViewer {
         return false;
       }
 
-      const decoder = new TextDecoder();
-      const fileText = decoder.decode(fileArrayBuffer);
-      const prevFileText = decoder.decode(prevFileArrayBuffer);
+      const fileText = this.textDecoder.decode(fileArrayBuffer);
+      const prevFileText = this.textDecoder.decode(prevFileArrayBuffer);
       const minFileText = vkBeautify.xmlmin(fileText);
       const minPrevFileText = vkBeautify.xmlmin(prevFileText);
-      return !(minFileText === minPrevFileText);
+      return minFileText !== minPrevFileText;
     } catch (err) {
       console.error(err.message || err);
     }

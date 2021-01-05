@@ -18,11 +18,7 @@ suite('OOXMLViewer', async function () {
   let context: { [key: string]: (path?: string | undefined) => string };
 
   setup(function () {
-    context = {
-      // asAbsolutePath: (path?: string) => {
-      //   return 'tacocat';
-      // },
-    };
+    context = {};
     ooxmlViewer = new OOXMLViewer((context as unknown) as ExtensionContext);
   });
 
@@ -37,7 +33,7 @@ suite('OOXMLViewer', async function () {
   });
 
   test('It should populate the sidebar tree with the contents of an ooxml file', async function () {
-    const createFileMock = stub(ooxmlViewer.cache, 'writeFile').returns(Promise.resolve());
+    const writeFileMock = stub(workspace.fs, 'writeFile').returns(Promise.resolve());
     const refreshStub = stub(ooxmlViewer.treeDataProvider, 'refresh').returns(undefined);
     const createDirectoryStub = stub(workspace.fs, 'createDirectory').returns(Promise.resolve());
     const spawnStub = stub(childProcess, 'spawn').callsFake((arg1, arg2) => {
@@ -63,13 +59,13 @@ suite('OOXMLViewer', async function () {
       spawnStub,
       jsZipStub,
       refreshStub,
-      createFileMock,
+      writeFileMock,
     );
     expect(ooxmlViewer.treeDataProvider.rootFileNode.children.length).to.eq(0);
     await ooxmlViewer.viewContents(Uri.file(testFilePath));
     expect(ooxmlViewer.treeDataProvider.rootFileNode.children.length).to.eq(4);
     expect(refreshStub.callCount).to.eq(3);
-    expect(createFileMock.callCount).to.eq(120);
+    expect(writeFileMock.callCount).to.eq(120);
   });
 
   test('viewFile should open a text editor when called with the path to an xml file', async function () {
