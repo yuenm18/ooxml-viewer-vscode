@@ -2,10 +2,10 @@ import { commands, Position, Range, TextDocument, TextEditor, TextEditorEdit, wi
 
 export class ExtensionUtilities {
   /**
-   * @description Make a text editor tab dirty
+   * @description Make a text editor tab dirty.
    * @method makeTextEditorDirty
    * @async
-   * @param  {TextEditor} activeTextEditor? the text editor to be made dirty
+   * @param {TextEditor} activeTextEditor the text editor to be made dirty.
    * @returns {Promise<void>}
    */
   static async makeTextEditorDirty(activeTextEditor?: TextEditor): Promise<void> {
@@ -52,10 +52,10 @@ export class ExtensionUtilities {
   
 
   /**
-   * @description Closes all active editor tabs
+   * @description Closes text editors.
    * @method closeEditors
    * @async
-   * @param  {TextDocument[]} textDocuments
+   * @param {TextDocument[]} textDocuments The text documents to close.
    * @returns {Promise<void>}
    */
   static async closeEditors(textDocuments: TextDocument[]): Promise<void> {

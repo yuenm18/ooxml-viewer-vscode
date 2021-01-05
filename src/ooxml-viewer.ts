@@ -13,13 +13,11 @@ import {
   TextDocument,
   Uri,
   window,
-  workspace,
+  workspace
 } from 'vscode';
 import { ExtensionUtilities } from './extension-utilities';
 import { OOXMLFileCache } from './ooxml-file-cache';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
-
-const MAXIMUM_XML_PARSING_CHARACTERS = 1000000;
 
 /**
  * The OOXML Viewer
@@ -66,15 +64,15 @@ export class OOXMLViewer {
           await this.resetOOXMLViewer();
           const data = await workspace.fs.readFile(Uri.file(file.fsPath));
           await this.zip.loadAsync(data);
-          await this._populateOOXMLViewer(this.zip.files, false);
+          await this.populateOOXMLViewer(this.zip.files, false);
 
           const watcher: FileSystemWatcher = workspace.createFileSystemWatcher(file.fsPath);
 
           watcher.onDidChange((uri: Uri) => {
-            this._reloadOoxmlFile(file.fsPath);
+            this.reloadOoxmlFile(file.fsPath);
           });
 
-          const textDocumentWatcher = workspace.onDidSaveTextDocument(this._updateOOXMLFile.bind(this));
+          const textDocumentWatcher = workspace.onDidSaveTextDocument(this.updateOOXMLFile.bind(this));
 
           // TODO: find a better way to remove closed text editors from the openTextEditors. The onDidCloseTextDocument takes more than 3+ minutes to fire.
           const closeWatcher = workspace.onDidCloseTextDocument((textDocument: TextDocument) => {
@@ -106,7 +104,13 @@ export class OOXMLViewer {
         async progress => {
           progress.report({ message: 'Formatting XML' });
 
-          await this._tryFormatXMLFile(fileNode.fullPath);
+          // try format xml file
+          const data = await this.cache.getCachedFile(fileNode.fullPath);
+          const text = new TextDecoder().decode(data);
+          if (text.startsWith('<?xml')) {
+            const formattedXml = vkBeautify.xml(text);
+            await this.cache.cacheFile(fileNode.fullPath, new TextEncoder().encode(formattedXml));
+          }
 
           const filePath = this.cache.getFileCachePath(fileNode.fullPath);
           this.openTextEditors[filePath] = fileNode;
@@ -141,8 +145,8 @@ export class OOXMLViewer {
 
       const fileCachePath = this.cache.getFileCachePath(file.fullPath);
       const fileCompareCachePath = this.cache.getCompareFileCachePath(file.fullPath);
-      const fileContents = (await this.cache.getFile(file.fullPath)).toString();
-      const compareFileContents = (await this.cache.getCompareFile(file.fullPath)).toString();
+      const fileContents = (await this.cache.getCachedFile(file.fullPath)).toString();
+      const compareFileContents = (await this.cache.getCachedCompareFile(file.fullPath)).toString();
 
       const enc = new TextEncoder();
       await this.cache.cacheFile(file.fullPath, enc.encode(fileContents.startsWith('<?xml') ? vkBeautify.xml(fileContents) : fileContents));
@@ -211,14 +215,14 @@ export class OOXMLViewer {
 
   /**
    * @description Create or update tree view File Nodes and create cache files for comparison
-   * @method _populateOOXMLViewer
+   * @method populateOOXMLViewer
    * @private
    * @async
-   * @param  {{[key:string]:JSZip.JSZipObject}} files
-   * @param  {boolean} showNewFileLabel
+   * @param  {{[key:string]:JSZip.JSZipObject}} files A dictionary of files in the ooxml package.
+   * @param  {boolean} showNewFileLabel Whether or not to show the new file label (asterisk) when creating a new file node.
    * @returns {Promise<void>}
    */
-  private async _populateOOXMLViewer(files: { [key: string]: JSZip.JSZipObject }, showNewFileLabel: boolean): Promise<void> {
+  private async populateOOXMLViewer(files: { [key: string]: JSZip.JSZipObject }, showNewFileLabel: boolean): Promise<void> {
     const fileKeys: string[] = Object.keys(files);
     for (const fileWithPath of fileKeys) {
       // ignore folder files
@@ -240,7 +244,6 @@ export class OOXMLViewer {
           const newFileNode = new FileNode();
           newFileNode.fileName = fileOrFolderName;
           newFileNode.parent = currentFileNode;
-          // newFileNode.fullPath = fileWithPath;
           currentFileNode.children.push(newFileNode);
           currentFileNode = newFileNode;
         }
@@ -251,8 +254,8 @@ export class OOXMLViewer {
 
       // cache or update the cache of the node and mark the status of the node
       const data = await this.zip.file(currentFileNode.fullPath)?.async('uint8array') ?? new Uint8Array();
-      if (existingFileNode) {
-        const filesAreDifferent = await this._hasFileBeenChangedFromOutside(currentFileNode.fullPath, data);
+      if (existingFileNode && !currentFileNode.isDeleted()) {
+        const filesAreDifferent = await this.hasFileBeenChangedFromOutside(currentFileNode.fullPath, data);
         await this.cache.updateCachedFile(currentFileNode.fullPath, data);
 
         if (filesAreDifferent) {
@@ -261,53 +264,29 @@ export class OOXMLViewer {
           currentFileNode.setUnchanged();
         }
       } else {
-        await this.cache.cacheCachedFile(currentFileNode.fullPath, data, showNewFileLabel);
+        await this.cache.createCachedFile(currentFileNode.fullPath, data, showNewFileLabel);
         if (showNewFileLabel) {
           currentFileNode.setCreated();
         }
       }
     }
 
-    await this._removeDeletedParts();
-    await this._reformatOpenTabs();
+    await this.removeDeletedParts();
+    await this.reformatOpenTabs();
 
     // tell vscode the tree has changed
     this.treeDataProvider.refresh();
   }
-
-  private async _tryFormatXMLFile(filePath: string): Promise<boolean> {
-    const data = await this.cache.getFile(filePath);
-    const text = new TextDecoder().decode(data);
-    if (!text.startsWith('<?xml')) {
-      return false;
-    }
-
-    const lengthWithNoWhitespace = text.replace(/\s+/g, '').length;
-    if (lengthWithNoWhitespace >= MAXIMUM_XML_PARSING_CHARACTERS) {
-      window.showWarningMessage(
-        `${basename(filePath)} is too large to format.\nOOXML Parts must be less than ` +
-        `${MAXIMUM_XML_PARSING_CHARACTERS.toLocaleString()} characters to format`,
-        { modal: true },
-      );
-
-      return false;
-    }
-
-    const formattedXml = vkBeautify.xml(text);
-    await this.cache.cacheFile(filePath, new TextEncoder().encode(formattedXml || text));
-
-    return true;
-  }
-
+  
   /**
    * @description Writes changes to OOXML file being inspected
-   * @method _updateOOXMLFile
+   * @method updateOOXMLFile
    * @async
    * @private
    * @param  {TextDocument} document The text document
    * @returns {Promise<void>}
    */
-  private async _updateOOXMLFile(document: TextDocument): Promise<void> {
+  private async updateOOXMLFile(document: TextDocument): Promise<void> {
     try {
       const filePath = document.fileName;
       const prevFilePath = this.cache.getPrevFilePath(filePath);
@@ -316,7 +295,7 @@ export class OOXMLViewer {
         return;
       }
 
-      const stats: FileStat = await workspace.fs.stat(Uri.file(filePath));
+      const stats: FileStat = await this.cache.getFileStats(filePath);
       const time = stats.mtime;
 
       if (stats.type === FileType.Directory || this.watchActions[filePath] === time) {
@@ -326,8 +305,8 @@ export class OOXMLViewer {
       this.watchActions[filePath] = time;
 
       const textDecoder = new TextDecoder();
-      const fileContents = await workspace.fs.readFile(Uri.file(filePath));
-      const prevFileContents = await workspace.fs.readFile(Uri.file(prevFilePath));
+      const fileContents = await this.cache.readFile(filePath);
+      const prevFileContents = await this.cache.readFile(prevFilePath);
       const fileMinXml = vkBeautify.xmlmin(textDecoder.decode(fileContents), true);
       const prevFileMinXml = vkBeautify.xmlmin(textDecoder.decode(prevFileContents), true);
 
@@ -340,8 +319,8 @@ export class OOXMLViewer {
       const zipFile = await this.zip.file(normalizedPath, fileMinXml, { binary: true }).generateAsync({ type: 'uint8array' });
       await workspace.fs.writeFile(Uri.file(this.ooxmlFilePath), zipFile);
 
-      await workspace.fs.writeFile(Uri.file(this.cache.getCompareFilePath(filePath)), prevFileContents);
-      await workspace.fs.writeFile(Uri.file(this.cache.getPrevFilePath(filePath)), fileContents);
+      await this.cache.writeFile(this.cache.getCompareFilePath(filePath), prevFileContents);
+      await this.cache.writeFile(this.cache.getPrevFilePath(filePath), fileContents);
       this.treeDataProvider.refresh();
     } catch (err) {
       if (err?.code === 'EBUSY' || err?.message.toLowerCase().includes('ebusy')) {
@@ -357,13 +336,13 @@ export class OOXMLViewer {
 
   /**
    * @description Update the OOXML cache files
-   * @method _reloadOoxmlFile
+   * @method reloadOoxmlFile
    * @async
    * @private
    * @param  {string} filePath Path to the OOXML file to load
    * @returns {Promise<void>}
    */
-  private async _reloadOoxmlFile(filePath: string): Promise<void> {
+  private async reloadOoxmlFile(filePath: string): Promise<void> {
     await window.withProgress(
       {
         location: ProgressLocation.Notification,
@@ -378,7 +357,7 @@ export class OOXMLViewer {
           this.zip = new JSZip();
           await this.zip.loadAsync(data);
 
-          await this._populateOOXMLViewer(this.zip.files, true);
+          await this.populateOOXMLViewer(this.zip.files, true);
         } catch (err) {
           console.error(err);
         }
@@ -390,13 +369,12 @@ export class OOXMLViewer {
    * Traverse tree and delete cached parts that don't exist
    * 
    * @description Delete cache files for parts deleted from OOXML file
-   * @method _removeDeletedParts
+   * @method removeDeletedParts
    * @async
    * @private
-   * @param  {FileNode} node?
    * @returns {Promise<void>}
    */
-  private async _removeDeletedParts(node?: FileNode): Promise<void> {
+  private async removeDeletedParts(): Promise<void> {
     try {
       const filesInOoxmlFile = new Set(Object.keys(this.zip.files));
       const fileNodeQueue = [this.treeDataProvider.rootFileNode];
@@ -404,11 +382,14 @@ export class OOXMLViewer {
       let fileNode;
       while ((fileNode = fileNodeQueue.pop())) {
         if (fileNode.fullPath && !filesInOoxmlFile.has(fileNode.fullPath)) {
-          const cachedFileExists = await this.cache.readFile(fileNode.fullPath);
-          if (cachedFileExists && cachedFileExists.length) {
+          const cachedFileExists = await this.cache.getCachedFile(fileNode.fullPath);
+          if (cachedFileExists && !fileNode.isDeleted()) {
             fileNode.setDeleted();
+            await this.cache.cacheCompareFile(fileNode.fullPath, await this.cache.getCachedFile(fileNode.fullPath));
             await this.cache.cacheFile(fileNode.fullPath, new Uint8Array());
           } else {
+            // remove files marked as deleted from tree view and cache after the ooxml file 
+            // the second time the ooxml file is saved 
             await this.cache.deleteCachedFiles(fileNode.fullPath);
             fileNode.parent?.children.splice(fileNode.parent.children.indexOf(fileNode), 1);
           }
@@ -426,22 +407,22 @@ export class OOXMLViewer {
 
   /**
    * @description Reformats the open tabs after their contents have been updated
-   * @method _reformatOpenTabs
+   * @method reformatOpenTabs
    * @async
    * @private
    * @returns {Promise<void>}
    */
-  private async _reformatOpenTabs(): Promise<void> {
+  private async reformatOpenTabs(): Promise<void> {
     try {
       workspace.textDocuments
         .filter(d => d.fileName.startsWith(this.cache.cacheBasePath))
         .filter(d => Object.keys(this.zip.files).filter(f => f.includes(basename(d.fileName))))
         .forEach(async d => {
           try {
-            const xml = (await workspace.fs.readFile(Uri.file(d.fileName))).toString();
+            const xml = (await this.cache.readFile(d.fileName)).toString();
             if (xml.startsWith('<?xml')) {
               const text = vkBeautify.xml(xml);
-              await workspace.fs.writeFile(Uri.file(d.fileName), new TextEncoder().encode(text));
+              await this.cache.writeFile(d.fileName, new TextEncoder().encode(text));
             }
           } catch (err) {
             console.error(err);
@@ -462,16 +443,16 @@ export class OOXMLViewer {
 
   /**
    * @description Check if an OOXML part is different from its cached version
-   * @method _hasFileBeenChangedFromOutside
+   * @method hasFileBeenChangedFromOutside
    * @async
    * @private
    * @param  {string} filePath The path of the file
    * @returns {Promise<boolean>}
    */
-  private async _hasFileBeenChangedFromOutside(filePath: string, newContent: Uint8Array): Promise<boolean> {
+  private async hasFileBeenChangedFromOutside(filePath: string, newContent: Uint8Array): Promise<boolean> {
     try {
       const fileArrayBuffer = newContent;
-      const prevFileArrayBuffer = await this.cache.getPrevFile(filePath);
+      const prevFileArrayBuffer = await this.cache.getCachedPrevFile(filePath);
       if (Buffer.from(fileArrayBuffer).equals(Buffer.from(prevFileArrayBuffer))) {
         return false;
       }

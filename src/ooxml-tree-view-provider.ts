@@ -116,18 +116,39 @@ export class FileNode implements TreeItem {
    */
   parent: FileNode | undefined;
 
+  /**
+   * Gets whether or not the file node has a status of deleted.
+   * 
+   * @returns True if status is deleted, false otherwise.
+   */
+  isDeleted(): boolean {
+    return this._status === 'deleted';
+  }
+
+  /**
+   * Sets the status of the file node to created.
+   */
   setCreated(): void {
     this._status = 'created';
   }
 
+  /**
+   * Sets the status of the file node to deleted.
+   */
   setDeleted(): void {
     this._status = 'deleted';
   }
-
+  
+  /**
+   * Sets the status of the file node to modified.
+   */
   setModified(): void {
     this._status = 'modified';
   }
 
+  /**
+   * Sets the status of the file node to unchanged.
+   */
   setUnchanged(): void {
     this._status = 'unchanged';
   }

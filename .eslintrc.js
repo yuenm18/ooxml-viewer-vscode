@@ -6,12 +6,13 @@ module.exports = {
   env: { node: true },
   rules: {
     '@typescript-eslint/no-unused-vars': ['warn', { args: 'none' }],
+    'camelcase': ['warn', { properties: 'always' }],
     'comma-dangle': [
       'error',
       {
         arrays: 'always-multiline',
         objects: 'always-multiline',
-        imports: 'always-multiline',
+        imports: 'never',
         exports: 'always-multiline',
         functions: 'always-multiline',
       },

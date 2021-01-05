@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import child_process from 'child_process';
+import childProcess from 'child_process';
 import JSZip from 'jszip';
 import { dirname, join } from 'path';
 import { match, SinonStub, stub } from 'sinon';
@@ -37,14 +37,14 @@ suite('OOXMLViewer', async function () {
   });
 
   test('It should populate the sidebar tree with the contents of an ooxml file', async function () {
-    const createFileMock = stub(ooxmlViewer.cache, 'createFile').returns(Promise.resolve());
+    const createFileMock = stub(ooxmlViewer.cache, 'writeFile').returns(Promise.resolve());
     const refreshStub = stub(ooxmlViewer.treeDataProvider, 'refresh').returns(undefined);
     const createDirectoryStub = stub(workspace.fs, 'createDirectory').returns(Promise.resolve());
-    const spawnStub = stub(child_process, 'spawn').callsFake((arg1, arg2) => {
+    const spawnStub = stub(childProcess, 'spawn').callsFake((arg1, arg2) => {
       expect(arg1).to.eq('attrib');
       expect(arg2).to.be.an('array').that.includes('+h');
       expect(arg2[1]).to.include(CACHE_FOLDER_NAME);
-      return {} as child_process.ChildProcess;
+      return {} as childProcess.ChildProcess;
     });
     const jsZipStub = stub(ooxmlViewer.zip, 'file').callsFake(() => {
       return ({
@@ -58,7 +58,7 @@ suite('OOXMLViewer', async function () {
       } as unknown) as JSZip;
     });
     stubs.push(
-      stub(ooxmlViewer, <never>'_hasFileBeenChangedFromOutside').returns(Promise.resolve(false)),
+      stub(ooxmlViewer, <never>'hasFileBeenChangedFromOutside').returns(Promise.resolve(false)),
       createDirectoryStub,
       spawnStub,
       jsZipStub,
