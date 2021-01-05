@@ -213,4 +213,44 @@ suite('OOXMLViewer', async function () {
     expect(disposeStub.calledTwice).to.be.true;
     done();
   });
+
+  function findNode(node: FileNode, path: string): FileNode | null {
+    let found: FileNode | null = null;
+    if (node.fullPath === path) {
+      return node;
+    } else if (node.children.length) {
+      for (let i = 0; !found && i < node.children.length; i++) {
+        found = findNode(node.children[i], path);
+      }
+    }
+    return found;
+  }
+
+  test('It should delete a file node if isDeleted returns true', async function () {
+    const path = 'ppt/slides/slide1.xml';
+    await ooxmlViewer.viewContents(Uri.file(testFilePath));
+    const populateOOXMLViewerStub = stub(ooxmlViewer, <never>'populateOOXMLViewer').callThrough();
+    const updateCachedFileStub = stub(ooxmlViewer.cache, 'updateCachedFile');
+    const deleteCachedFilesFileStub = stub(ooxmlViewer.cache, 'deleteCachedFiles');
+    stubs.push(populateOOXMLViewerStub, deleteCachedFilesFileStub, updateCachedFileStub);
+    delete ooxmlViewer.zip.files[path];
+    const node = findNode(ooxmlViewer.treeDataProvider.rootFileNode, path);
+    node?.setDeleted();
+    await populateOOXMLViewerStub.bind(ooxmlViewer)(ooxmlViewer.zip.files, false);
+    expect(deleteCachedFilesFileStub.called).to.be.true;
+  });
+
+  test('It should set a file node as deleted if it is removed from this.zip.files', async function () {
+    const path = 'ppt/slides/slide1.xml';
+    await ooxmlViewer.viewContents(Uri.file(testFilePath));
+    const populateOOXMLViewerStub = stub(ooxmlViewer, <never>'populateOOXMLViewer').callThrough();
+    const updateCachedFileStub = stub(ooxmlViewer.cache, 'updateCachedFile');
+    const deleteCachedFilesFileStub = stub(ooxmlViewer.cache, 'deleteCachedFiles');
+    stubs.push(populateOOXMLViewerStub, deleteCachedFilesFileStub, updateCachedFileStub);
+    delete ooxmlViewer.zip.files[path];
+    const node = findNode(ooxmlViewer.treeDataProvider.rootFileNode, path);
+    await populateOOXMLViewerStub.bind(ooxmlViewer)(ooxmlViewer.zip.files, false);
+    expect(deleteCachedFilesFileStub.called).to.be.false;
+    expect(node?.isDeleted()).to.be.true;
+  });
 });
