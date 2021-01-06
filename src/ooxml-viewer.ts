@@ -47,12 +47,12 @@ export class OOXMLViewer {
 
   /**
    * @description Loads the selected OOXML file into the tree view and add file listeners
-   * @method viewContents
+   * @method openOoxmlPackage
    * @async
    * @param {Uri} file The OOXML file
    * @returns {Promise<void>}
    */
-  async viewContents(file: Uri): Promise<void> {
+  async openOoxmlPackage(file: Uri): Promise<void> {
     try {
       this.ooxmlFilePath = file.fsPath;
       await window.withProgress(

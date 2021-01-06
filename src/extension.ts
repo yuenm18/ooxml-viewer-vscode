@@ -8,7 +8,9 @@ export function activate(context: ExtensionContext): void {
   ooxmlViewer = new OOXMLViewer(context);
   
   context.subscriptions.push(window.registerTreeDataProvider('ooxmlViewer', ooxmlViewer.treeDataProvider));
-  context.subscriptions.push(commands.registerCommand('ooxmlViewer.viewContents', async (file: Uri) => ooxmlViewer.viewContents(file)));
+  context.subscriptions.push(
+    commands.registerCommand('ooxmlViewer.openOoxmlPackage', async (file: Uri) => ooxmlViewer.openOoxmlPackage(file)),
+  );
   context.subscriptions.push(
     commands.registerCommand('ooxmlViewer.viewFile', async (fileNode: FileNode) => ooxmlViewer.viewFile(fileNode)),
   );

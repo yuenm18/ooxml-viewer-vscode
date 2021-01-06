@@ -62,7 +62,7 @@ suite('OOXMLViewer', async function () {
       writeFileMock,
     );
     expect(ooxmlViewer.treeDataProvider.rootFileNode.children.length).to.eq(0);
-    await ooxmlViewer.viewContents(Uri.file(testFilePath));
+    await ooxmlViewer.openOoxmlPackage(Uri.file(testFilePath));
     expect(ooxmlViewer.treeDataProvider.rootFileNode.children.length).to.eq(4);
     expect(refreshStub.callCount).to.eq(3);
     expect(writeFileMock.callCount).to.eq(120);
@@ -227,7 +227,7 @@ suite('OOXMLViewer', async function () {
 
   test('It should delete a file node if isDeleted returns true', async function () {
     const path = 'ppt/slides/slide1.xml';
-    await ooxmlViewer.viewContents(Uri.file(testFilePath));
+    await ooxmlViewer.openOoxmlPackage(Uri.file(testFilePath));
     const populateOOXMLViewerStub = stub(ooxmlViewer, <never>'populateOOXMLViewer').callThrough();
     const updateCachedFileStub = stub(ooxmlViewer.cache, 'updateCachedFile');
     const deleteCachedFilesFileStub = stub(ooxmlViewer.cache, 'deleteCachedFiles');
@@ -241,7 +241,7 @@ suite('OOXMLViewer', async function () {
 
   test('It should set a file node as deleted if it is removed from this.zip.files', async function () {
     const path = 'ppt/slides/slide1.xml';
-    await ooxmlViewer.viewContents(Uri.file(testFilePath));
+    await ooxmlViewer.openOoxmlPackage(Uri.file(testFilePath));
     const populateOOXMLViewerStub = stub(ooxmlViewer, <never>'populateOOXMLViewer').callThrough();
     const updateCachedFileStub = stub(ooxmlViewer.cache, 'updateCachedFile');
     const deleteCachedFilesFileStub = stub(ooxmlViewer.cache, 'deleteCachedFiles');

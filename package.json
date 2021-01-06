@@ -24,14 +24,14 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:ooxmlViewer.viewContents",
+    "onCommand:openOoxmlPackage",
     "onView:ooxmlViewer"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "ooxmlViewer.viewContents",
+        "command": "ooxmlViewer.openOoxmlPackage",
         "title": "Open OOXML Package",
         "when": "resourceLangId == ooxml"
       },
@@ -71,7 +71,7 @@
     "menus": {
       "explorer/context": [
         {
-          "command": "ooxmlViewer.viewContents",
+          "command": "ooxmlViewer.openOoxmlPackage",
           "group": "navigation",
           "when": "resourceLangId == ooxml"
         }
