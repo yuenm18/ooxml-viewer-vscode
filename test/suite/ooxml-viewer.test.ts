@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import childProcess from 'child_process';
 import JSZip from 'jszip';
+import { tmpdir } from 'os';
 import { join } from 'path';
 import { match, SinonStub, stub } from 'sinon';
 import { TextDecoder } from 'util';
@@ -15,10 +16,13 @@ suite('OOXMLViewer', async function () {
   let ooxmlViewer: OOXMLViewer;
   const stubs: SinonStub[] = [];
   const testFilePath = join(__dirname, '..', '..', '..', 'test', 'test-data', 'Test.pptx');
-  let context: { [key: string]: (path?: string | undefined) => string };
 
   setup(function () {
-    context = {};
+    const context = {
+      storageUri: {
+        fsPath: tmpdir(),
+      },
+    };
     ooxmlViewer = new OOXMLViewer((context as unknown) as ExtensionContext);
   });
 
