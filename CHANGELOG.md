@@ -9,12 +9,12 @@
 
 ### Changed
 - Rename menu option from "View Contents" to "Open OOXML Package"
-- Sav/cache OOXML parts to the file system
+- Save/cache OOXML parts to the file system
 
 ## [0.0.1] - 2019-08-27
 ### Added
 - Support for viewing the contents of OOXML documents
 
-[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v0.0.1...v1.0.0
 [0.0.1]: https://github.com/yuenm18/ooxml-viewer-vscode/releases/tag/v0.0.1
