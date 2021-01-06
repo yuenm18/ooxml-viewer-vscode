@@ -13,7 +13,7 @@
   "bugs": {
     "url": "https://github.com/yuenm18/ooxml-viewer-vscode/issues"
   },
-  "icon": "images/icon.png",
+  "icon": "resources/icons/icon.png",
   "keywords": [
     "ooxml"
   ],

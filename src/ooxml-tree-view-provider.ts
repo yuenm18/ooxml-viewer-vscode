@@ -85,9 +85,9 @@ export class FileNode implements TreeItem {
 
   get iconPath(): ThemeIcon | Uri | { light: Uri; dark: Uri } {
     switch (this._status) {
-      case 'created': return Uri.file(join(__filename, '..', '..', 'images', 'asterisk.green.svg'));
-      case 'deleted': return Uri.file(join(__filename, '..', '..', 'images', 'asterisk.red.svg'));
-      case 'modified': return Uri.file(join(__filename, '..', '..', 'images', 'asterisk.yellow.svg'));
+      case 'created': return Uri.file(join(__filename, '..', '..', 'resources', 'icons', 'asterisk.green.svg'));
+      case 'deleted': return Uri.file(join(__filename, '..', '..', 'resources', 'icons', 'asterisk.red.svg'));
+      case 'modified': return Uri.file(join(__filename, '..', '..', 'resources', 'icons', 'asterisk.yellow.svg'));
       default: return this.children.length ? ThemeIcon.Folder : ThemeIcon.File;
     }
   }
