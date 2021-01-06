@@ -37,9 +37,9 @@ steps:
       echo ">>> Compiled ooxml-viewer"
     displayName: Build
     
-  # - bash: |
-  #     echo ">>> Run integration test"
-  #     npm test
-  #   displayName: Run Tests
-  #   env:
-  #     DISPLAY: ':99.0'
+  - bash: |
+      echo ">>> Run integration test"
+      npm test
+    displayName: Run Tests
+    env:
+      DISPLAY: ':99.0'

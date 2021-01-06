@@ -22,10 +22,12 @@ import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
 export class OOXMLViewer {
   treeDataProvider: OOXMLTreeDataProvider;
   zip: JSZip;
+  cache: OOXMLFileCache;
+  
   watchers: Disposable[] = [];
   openTextEditors: { [key: string]: FileNode } = {};
   ooxmlFilePath = '';
-  cache: OOXMLFileCache;
+  
   textEncoder = new TextEncoder();
   textDecoder = new TextDecoder();
 
@@ -39,6 +41,7 @@ export class OOXMLViewer {
     this.treeDataProvider = new OOXMLTreeDataProvider();
     this.zip = new JSZip();
     this.cache = new OOXMLFileCache(context);
+    
     this.closeEditors();
   }
 
@@ -60,12 +63,14 @@ export class OOXMLViewer {
         async progress => {
           progress.report({ message: 'Unpacking OOXML Parts' });
           await this.resetOOXMLViewer();
+
+          // load ooxml file and populate the viewer
           const data = await workspace.fs.readFile(Uri.file(file.fsPath));
           await this.zip.loadAsync(data);
           await this.populateOOXMLViewer(this.zip.files, false);
 
+          // set up watchers
           const watcher: FileSystemWatcher = workspace.createFileSystemWatcher(file.fsPath);
-
           watcher.onDidChange((uri: Uri) => {
             this.reloadOoxmlFile(file.fsPath);
           });
@@ -133,22 +138,22 @@ export class OOXMLViewer {
    */
   async getDiff(file: FileNode): Promise<void> {
     try {
-      // get the full path for the primary file and the compare files
-      const fileCachePath = this.cache.getFileCachePath(file.fullPath);
-      const fileCompareCachePath = this.cache.getCompareFileCachePath(file.fullPath);
+      // format the file and its compare
       const fileContents = this.textDecoder.decode(await this.cache.getCachedFile(file.fullPath));
-      const compareFileContents = this.textDecoder.decode(await this.cache.getCachedCompareFile(file.fullPath));
-
       if (fileContents.startsWith('<?xml')) {
         await this.cache.updateCachedFile(file.fullPath, this.textEncoder.encode(vkBeautify.xml(fileContents)), false);
       }
 
+      const compareFileContents = this.textDecoder.decode(await this.cache.getCachedCompareFile(file.fullPath));
       if (compareFileContents.startsWith('<?xml')) {
         await this.cache.updateCompareFile(file.fullPath, this.textEncoder.encode(vkBeautify.xml(compareFileContents)));
       }
 
       // diff the primary and compare files
+      const fileCachePath = this.cache.getFileCachePath(file.fullPath);
+      const fileCompareCachePath = this.cache.getCompareFileCachePath(file.fullPath);
       const title = `${basename(fileCachePath)} ↔ ${basename(fileCompareCachePath)}`;
+      
       await commands.executeCommand('vscode.diff', Uri.file(fileCompareCachePath), Uri.file(fileCachePath), title);
     } catch (err) {
       console.error(err);
