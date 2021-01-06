@@ -42,4 +42,4 @@ To view a diff with the previous version of an OOXML part, right click on the pa
 
 ## Release Notes
 
-Please see the [Change Log](CHANGELOG.md)
+Please see the [Changelog](CHANGELOG.md)
