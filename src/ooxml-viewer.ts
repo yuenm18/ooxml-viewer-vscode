@@ -152,7 +152,7 @@ export class OOXMLViewer {
       // diff the primary and compare files
       const fileCachePath = this.cache.getFileCachePath(file.fullPath);
       const fileCompareCachePath = this.cache.getCompareFileCachePath(file.fullPath);
-      const title = `${basename(fileCachePath)} ↔ ${basename(fileCompareCachePath)}`;
+      const title = `${basename(fileCachePath)} ↔ compare.${basename(fileCompareCachePath)}`;
       
       await commands.executeCommand('vscode.diff', Uri.file(fileCompareCachePath), Uri.file(fileCachePath), title);
     } catch (err) {
@@ -287,7 +287,7 @@ export class OOXMLViewer {
   private async updateOOXMLFile(document: TextDocument): Promise<void> {
     try {
       const cacheFilePath = document.fileName;
-      if (!this.cache.pathBelongsToCache(cacheFilePath) || !this.cache.pathIsNotPrevOrCompare(cacheFilePath)) {
+      if (!this.cache.pathBelongsToCache(cacheFilePath) || !this.cache.cachePathIsNormal(cacheFilePath)) {
         return;
       }
 
@@ -398,12 +398,13 @@ export class OOXMLViewer {
    */
   private async reformatOpenTabs(): Promise<void> {
     try {
+      const filePathsInOoxmlPackage = new Set(Object.keys(this.zip.files));
       workspace.textDocuments
         .filter(d => this.cache.pathBelongsToCache(d.fileName))
-        .filter(d => Object.keys(this.zip.files).filter(f => f.includes(basename(d.fileName))))
-        .forEach(async d => {
+        .map(d => this.cache.getFilePathFromCacheFilePath(d.fileName))
+        .filter(p => filePathsInOoxmlPackage.has(p))
+        .forEach(async filePath => {
           try {
-            const filePath = this.cache.getFilePathFromCacheFilePath(d.fileName);
             await this.tryFormatXml(filePath);
           } catch (err) {
             console.error(err);
@@ -412,7 +413,7 @@ export class OOXMLViewer {
 
       workspace.textDocuments
         .filter(d => this.cache.pathBelongsToCache(d.fileName))
-        .filter(d => !Object.keys(this.zip.files).filter(f => f.includes(basename(d.fileName))))
+        .filter(d => !filePathsInOoxmlPackage.has(this.cache.getFilePathFromCacheFilePath(d.fileName)))
         .forEach(async d => {
           await window.showTextDocument(Uri.file(d.fileName), { preview: true, preserveFocus: false });
           await commands.executeCommand('workbench.action.closeActiveEditor');

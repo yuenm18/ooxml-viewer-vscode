@@ -1,8 +1,11 @@
 import { existsSync } from 'fs';
-import { basename, dirname, join } from 'path';
+import { dirname, join, sep } from 'path';
 import { ExtensionContext, Uri, workspace } from 'vscode';
 
-export const CACHE_FOLDER_NAME = '.open-xml-viewer';
+export const CACHE_FOLDER_NAME = 'cache';
+export const NORMAL_SUBFOLDER_NAME = 'normal';
+export const PREV_SUBFOLDER_NAME = 'prev';
+export const COMPARE_SUBFOLDER_NAME = 'compare';
 
 /**
  * The file system cache for ooxml files.
@@ -100,7 +103,7 @@ export class OOXMLFileCache {
    * @returns {string} The file path of the cached file.
    */
   getFileCachePath(filePath: string): string {
-    return join(this.cacheBasePath, filePath);
+    return join(this.cacheBasePath, NORMAL_SUBFOLDER_NAME, filePath);
   }
 
   /**
@@ -110,7 +113,7 @@ export class OOXMLFileCache {
    * @returns {string} The file path of the cached compare file.
    */
   getCompareFileCachePath(filePath: string): string {
-    return join(this.cacheBasePath, join(dirname(filePath), `compare.${basename(filePath)}`));
+    return join(this.cacheBasePath, COMPARE_SUBFOLDER_NAME, filePath);
   }
   
   /**
@@ -121,8 +124,10 @@ export class OOXMLFileCache {
    */
   getFilePathFromCacheFilePath(cachePath: string): string {
     if (this.pathBelongsToCache(cachePath)) {
-      let normalizedPath = cachePath.substring(this.cacheBasePath.length).replace(/\\/g, '/');
-      normalizedPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
+      // trim off base path plus the trailing separator
+      const trimmedPath = cachePath.substring(this.cacheBasePath.length + sep.length);
+      // trim off the subfolder and join path using unix file separators
+      const normalizedPath = trimmedPath.split(sep).slice(1).join('/');
       return normalizedPath;
     }
     
@@ -140,13 +145,13 @@ export class OOXMLFileCache {
   }
   
   /**
-   * Determines whether or not the file path is a prev or cache file
+   * Determines whether or not the cache file path is for a normal cache file (not prev or compare).
    * 
-   * @param {string} filePath The file path.
+   * @param {string} cacheFilePath The file path.
    * @returns {boolean} Whether or not the path is in the cache.
    */
-  pathIsNotPrevOrCompare(filePath: string): boolean {
-    return !/(prev\.)|(compare\.)/.test(basename(filePath));
+  cachePathIsNormal(cacheFilePath: string): boolean {
+    return cacheFilePath.startsWith(join(this.cacheBasePath, NORMAL_SUBFOLDER_NAME));
   }
 
   /**
@@ -156,7 +161,7 @@ export class OOXMLFileCache {
    * @returns {Promise<Uint8Array>} Promise resolving to the contents of the file.
    */
   async getCachedFile(filePath: string): Promise<Uint8Array> {
-    const cachePath = join(this.cacheBasePath, filePath);
+    const cachePath = this.getFileCachePath(filePath);
     return this.readFile(cachePath);
   }
 
@@ -179,7 +184,7 @@ export class OOXMLFileCache {
    * @returns {Promise<void>}
    */
   private async cacheFile(filePath: string, fileContents: Uint8Array): Promise<void> {
-    const cachePath = join(this.cacheBasePath, filePath);
+    const cachePath = this.getFileCachePath(filePath);
     return this.writeFile(cachePath, fileContents);
   }
 
@@ -258,7 +263,7 @@ export class OOXMLFileCache {
    * @returns {string} The file path of the cached prev file.
    */
   private getPrevFileCachePath(filePath: string): string {
-    return join(this.cacheBasePath, join(dirname(filePath), `prev.${basename(filePath)}`));
+    return join(this.cacheBasePath, PREV_SUBFOLDER_NAME, filePath);
   }
 
   /**

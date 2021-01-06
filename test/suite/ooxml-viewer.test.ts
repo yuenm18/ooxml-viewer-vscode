@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import childProcess from 'child_process';
 import JSZip from 'jszip';
-import { dirname, join } from 'path';
+import { join } from 'path';
 import { match, SinonStub, stub } from 'sinon';
 import { TextDecoder } from 'util';
 import vkBeautify from 'vkbeautify';
@@ -101,8 +101,7 @@ suite('OOXMLViewer', async function () {
     stubs.push(commandsStub, createDirectoryStub, readFileStub, writeFileStub, zipStub);
     const node = new FileNode();
     await ooxmlViewer.viewFile(node);
-    const folderPath = join(ooxmlViewer.cache.cacheBasePath, dirname(node.fullPath));
-    const filePath: string = join(folderPath, node.fileName);
+    const filePath = ooxmlViewer.cache.getFileCachePath(node.fullPath);
     expect(ooxmlViewer.openTextEditors[filePath]).to.eq(node);
     expect(commandsStub.calledWith('vscode.open')).to.be.true;
   });
@@ -172,7 +171,7 @@ suite('OOXMLViewer', async function () {
       expect(title).to.eq('racecar.xml ↔ compare.racecar.xml');
       expect(leftUri).to.be.instanceof(Uri);
       expect(rightUri).to.be.instanceof(Uri);
-      expect(leftUri.path).to.include('compare.racecar.xml');
+      expect(leftUri.path).to.include('compare');
       expect(rightUri.path).to.include('racecar.xml');
       expect(rightUri.path).not.to.include('compare');
       return Promise.resolve();
