@@ -30,10 +30,10 @@ steps:
       echo ">>> Started xvfb"
     displayName: Start xvfb
     condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
-  
+
   - bash: |
       echo ">>> Compile ooxml-viewer"
-      npm run compile
+      npm install && npm run compile
       echo ">>> Compiled ooxml-viewer"
     displayName: Build
     
