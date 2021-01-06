@@ -13,13 +13,13 @@
 
 To view the contents of an OOXML document, right click on the file in the context menu, then click on the part you want to view.
 
-![Opening an OOXML Part](resources/images/viewing-ooxml-part.gif)
+![Opening an OOXML Part](https://raw.githubusercontent.com/yuenm18/ooxml-viewer-vscode/master/resources/images/viewing-ooxml-part.gif)
 
 ### Edit the contents of an OOXML documents in VS Code
 
 To edit an OOXML part, select the part in the OOXML Viewer menu then edit and save. The changes will be reflected in the OOXML document.
 
-![Editing the contents of an OOXML document in VS Code](resources/images/editing-ooxml-part.gif)
+![Editing the contents of an OOXML document in VS Code](https://raw.githubusercontent.com/yuenm18/ooxml-viewer-vscode/master/resources/images/editing-ooxml-part.gif)
 
 ### Get diff when OOXML documents are edited from outside, e.g. in Microsoft Word, Libre Office Writer, Microsoft Excel, Libre Office Calc, etc.
 
@@ -29,15 +29,15 @@ To view a diff with the previous version of an OOXML part, right click on the pa
 
 #### Diff adding text to a docx file
 
-![Getting the diff of an OOXML Part](resources/images/getting-diff.gif)
+![Getting the diff of an OOXML Part](https://raw.githubusercontent.com/yuenm18/ooxml-viewer-vscode/master/resources/images/getting-diff.gif)
 
 #### Diff adding a slide to a docx file
 
-![Getting the diff of an OOXML Part](resources/images/getting-diff-add.gif)
+![Getting the diff of an OOXML Part](https://raw.githubusercontent.com/yuenm18/ooxml-viewer-vscode/master/resources/images/getting-diff-add.gif)
 
 #### Diff removing a slide from a pptx file
 
-![Getting the diff of an OOXML Part](resources/images/getting-diff-delete.gif)
+![Getting the diff of an OOXML Part](https://raw.githubusercontent.com/yuenm18/ooxml-viewer-vscode/master/resources/images/getting-diff-delete.gif)
 
 
 ## Release Notes

@@ -20,7 +20,7 @@ suite('OOXMLViewer', async function () {
   setup(function () {
     const context = {
       storageUri: {
-        fsPath: tmpdir(),
+        fsPath: join(tmpdir(), 'ooxml-viewer'),
       },
     };
     ooxmlViewer = new OOXMLViewer((context as unknown) as ExtensionContext);
