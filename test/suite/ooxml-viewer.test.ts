@@ -6,15 +6,15 @@ import { match, SinonStub, stub } from 'sinon';
 import { TextDecoder } from 'util';
 import vkBeautify from 'vkbeautify';
 import { commands, Disposable, ExtensionContext, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window, workspace } from 'vscode';
-import { CACHE_FOLDER_NAME } from '../../ooxml-file-cache';
-import { FileNode, OOXMLTreeDataProvider } from '../../ooxml-tree-view-provider';
-import { OOXMLViewer } from '../../ooxml-viewer';
+import { CACHE_FOLDER_NAME } from '../../src/ooxml-file-cache';
+import { FileNode, OOXMLTreeDataProvider } from '../../src/ooxml-tree-view-provider';
+import { OOXMLViewer } from '../../src/ooxml-viewer';
 
 suite('OOXMLViewer', async function () {
   this.timeout(10000);
   let ooxmlViewer: OOXMLViewer;
   const stubs: SinonStub[] = [];
-  const testFilePath = join(__dirname, '..', '..', '..', 'test-data', 'Test.pptx');
+  const testFilePath = join(__dirname, '..', '..', '..', 'test', 'test-data', 'Test.pptx');
   let context: { [key: string]: (path?: string | undefined) => string };
 
   setup(function () {

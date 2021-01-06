@@ -108,7 +108,7 @@
     "test-watch": "tsc -watch -p ./",
     "pretest": "tsc -p ./",
     "test": "node ./out/test/runTest.js",
-    "lint": "eslint -c .eslintrc.js --ext .ts ./src"
+    "lint": "eslint -c .eslintrc.js --ext .ts ./"
   },
   "devDependencies": {
     "@types/chai": "^4.2.14",

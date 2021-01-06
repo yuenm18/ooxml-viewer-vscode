@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { SinonStub, spy } from 'sinon';
 import { EventEmitter } from 'vscode';
-import { FileNode, OOXMLTreeDataProvider } from './../../ooxml-tree-view-provider';
+import { FileNode, OOXMLTreeDataProvider } from './../../src/ooxml-tree-view-provider';
 
 suite('OOXMLViewer Tree View Provider', function () {
   const stubs: SinonStub[] = [];
