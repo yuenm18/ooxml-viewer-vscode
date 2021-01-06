@@ -32,9 +32,18 @@ steps:
     condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
 
   - bash: |
+      echo ">>> Install ooxml-viewer"
+      npm install
+    displayName: Install
+
+  - bash: |
+      echo ">>> Lint ooxml-viewer"
+      npm run lint
+    displayName: Lint
+
+  - bash: |
       echo ">>> Compile ooxml-viewer"
-      npm install && npm run compile
-      echo ">>> Compiled ooxml-viewer"
+      npm run compile
     displayName: Build
     
   - bash: |
