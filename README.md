@@ -31,7 +31,7 @@ To view a diff with the previous version of an OOXML part, right click on the pa
 
 ![Getting the diff of an OOXML Part](https://raw.githubusercontent.com/yuenm18/ooxml-viewer-vscode/master/resources/images/getting-diff.gif)
 
-#### Diff adding a slide to a docx file
+#### Diff adding a slide to a pptx file
 
 ![Getting the diff of an OOXML Part](https://raw.githubusercontent.com/yuenm18/ooxml-viewer-vscode/master/resources/images/getting-diff-add.gif)
 
