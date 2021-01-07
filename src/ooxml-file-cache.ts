@@ -63,11 +63,10 @@ export class OOXMLFileCache {
    * @returns {Promise<void>}
    */
   async updateCachedFile(filePath: string, updatedFileContents: Uint8Array, updateCompareFile: boolean): Promise<void> {
-    const prevFileContents = await this.getCachedFile(filePath);
     await Promise.all([
       this.cacheFile(filePath, updatedFileContents),
       this.cachePrevFile(filePath, updatedFileContents),
-      updateCompareFile ? this.cacheCompareFile(filePath, prevFileContents) : Promise.resolve(),
+      updateCompareFile ? this.cacheCompareFile(filePath, await this.getCachedFile(filePath)) : Promise.resolve(),
     ]);
   }
 
@@ -177,6 +176,17 @@ export class OOXMLFileCache {
   }
 
   /**
+   * Gets a cached compare file.
+   * 
+   * @param {string} filePath The file path in the ooxml file.
+   * @returns {Promise<Uint8Array>} Promise resolving to the contents of the file.
+   */
+  async getCachedCompareFile(filePath: string): Promise<Uint8Array> {
+    const cacheComparePath = this.getCompareFileCachePath(filePath);
+    return this.readFile(cacheComparePath);
+  }
+
+  /**
    * Caches a file.
    * 
    * @param {string} filePath The file path in the ooxml file.
@@ -219,7 +229,7 @@ export class OOXMLFileCache {
    * @returns {Promise<void>}
    */
   private async deleteCachedFile(filePath: string): Promise<void> {
-    const cachePath = join(this.cacheBasePath, filePath);
+    const cachePath = this.getFileCachePath(filePath);
     return this.deleteFile(cachePath);
   }
   
@@ -245,17 +255,6 @@ export class OOXMLFileCache {
     return this.deleteFile(cacheComparePath);
   }
   
-  /**
-   * Gets a cached compare file.
-   * 
-   * @param {string} filePath The file path in the ooxml file.
-   * @returns {Promise<Uint8Array>} Promise resolving to the contents of the file.
-   */
-  async getCachedCompareFile(filePath: string): Promise<Uint8Array> {
-    const cacheComparePath = this.getCompareFileCachePath(filePath);
-    return this.readFile(cacheComparePath);
-  }
-
   /**
    * Gets file path of the cached prev file given the file path in an ooxml file.
    * 

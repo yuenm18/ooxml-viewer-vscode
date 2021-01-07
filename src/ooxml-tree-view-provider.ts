@@ -53,7 +53,7 @@ export class OOXMLTreeDataProvider implements TreeDataProvider<FileNode> {
    * @param element The element for which the parent has to be returned.
    * @return Parent of `element`.
    */
-  getParent?(element: FileNode): ProviderResult<FileNode> {
+  getParent(element: FileNode): ProviderResult<FileNode> {
     return element.parent;
   }
 }
@@ -73,11 +73,11 @@ export class FileNode implements TreeItem {
   }
 
   get command(): Command | undefined {
-    if (this.fullPath) {
+    if (this.fullPath && !this.children.length) {
       return {
-        command: this.children.length ? '' : 'ooxmlViewer.viewFile',
+        command: 'ooxmlViewer.viewFile',
         title: 'View file',
-        tooltip: 'View file tooltip',
+        tooltip: 'View file',
         arguments: [this],
       };
     }
