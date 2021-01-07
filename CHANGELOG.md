@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.0.1] - 2021-01-07
+### Fixed
+- Fix issue where xml file is not completely formatted before opening
+
 ## [1.0.0] - 2021-01-07
 ### Added
 - Capability to edit OOXML document contents
@@ -15,6 +19,7 @@
 ### Added
 - Support for viewing the contents of OOXML documents
 
-[Unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v0.0.1...v1.0.0
 [0.0.1]: https://github.com/yuenm18/ooxml-viewer-vscode/releases/tag/v0.0.1

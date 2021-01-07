@@ -107,7 +107,7 @@ export class OOXMLViewer {
         async progress => {
           progress.report({ message: 'Formatting XML' });
 
-          this.tryFormatXml(fileNode.fullPath);
+          await this.tryFormatXml(fileNode.fullPath);
 
           const filePath = this.cache.getFileCachePath(fileNode.fullPath);
           this.openTextEditors[filePath] = fileNode;
