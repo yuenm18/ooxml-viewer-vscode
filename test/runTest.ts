@@ -17,7 +17,6 @@ async function main() {
     await runTests({
       extensionDevelopmentPath,
       extensionTestsPath,
-      version: 'insiders',
     });
   } catch (err) {
     console.error('Failed to run tests');

@@ -302,7 +302,8 @@ export class OOXMLViewer {
         return;
       }
       
-      const zipFile = await this.zip.file(filePath, fileMinXml, { binary: true }).generateAsync({ type: 'uint8array' });
+      const zipFile = await this.zip.file(filePath, this.textEncoder.encode(fileMinXml), { binary: true })
+        .generateAsync({ type: 'uint8array' });
       await workspace.fs.writeFile(Uri.file(this.ooxmlFilePath), zipFile);
 
       await this.cache.createCachedFile(filePath, fileContents, false);
