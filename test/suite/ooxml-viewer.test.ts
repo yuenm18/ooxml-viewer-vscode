@@ -4,8 +4,8 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { match, SinonStub, stub } from 'sinon';
 import { TextDecoder } from 'util';
-import vkBeautify from 'vkbeautify';
 import { commands, Disposable, ExtensionContext, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window, workspace } from 'vscode';
+import xmlFormatter from 'xml-formatter';
 import { CACHE_FOLDER_NAME } from '../../src/ooxml-file-cache';
 import { FileNode, OOXMLTreeDataProvider } from '../../src/ooxml-tree-view-provider';
 import { OOXMLViewer } from '../../src/ooxml-viewer';
@@ -82,7 +82,7 @@ suite('OOXMLViewer', async function () {
     });
     const writeFileStub = stub(workspace.fs, 'writeFile').callsFake((uri: Uri, u8a: Uint8Array) => {
       expect(uri).to.be.instanceof(Uri);
-      const sent: Buffer = Buffer.from(enc.encode(vkBeautify.xml(xml)));
+      const sent: Buffer = Buffer.from(enc.encode(xmlFormatter(xml, { indentation: '  ' })));
       const received: Buffer = Buffer.from(u8a);
       expect(sent.equals(received)).to.be.true;
       return Promise.resolve();
@@ -118,7 +118,7 @@ suite('OOXMLViewer', async function () {
     const node = new FileNode();
 
     await ooxmlViewer.viewFile(node);
-    
+
     expect(commandsStub.calledWith('vscode.open')).to.be.true;
   });
 
@@ -139,9 +139,9 @@ suite('OOXMLViewer', async function () {
       return Promise.resolve();
     });
     stubs.push(refreshStub, disposeWatchersStub, openEditorsStub, showDocStub, executeStub);
-    
+
     await ooxmlViewer.clear();
-    
+
     expect(refreshStub.calledOnce).to.be.true;
     expect(disposeWatchersStub.calledOnce).to.be.true;
     expect(showDocStub.calledWith(match(textDoc))).to.be.true;
@@ -172,7 +172,7 @@ suite('OOXMLViewer', async function () {
     const writeFileStub = stub(workspace.fs, 'writeFile').callsFake((arg1, arg2) => {
       expect(arg1.fsPath).to.include(CACHE_FOLDER_NAME);
       const dec = new TextDecoder();
-      expect(dec.decode(arg2)).to.eq(vkBeautify.xml(xml));
+      expect(dec.decode(arg2)).to.eq(xmlFormatter(xml, { indentation: '  ' }));
       return Promise.resolve();
     });
     const textDecoderStub = stub(ooxmlViewer.textDecoder, 'decode').callsFake(arg => {
@@ -182,7 +182,7 @@ suite('OOXMLViewer', async function () {
     const node = new FileNode();
     node.fullPath = 'tacocat/racecar.xml';
     node.fileName = 'racecar.xml';
-    
+
     await ooxmlViewer.getDiff(node);
   });
 
@@ -197,7 +197,7 @@ suite('OOXMLViewer', async function () {
     ooxmlViewer.watchers.push(disposable1, disposable2);
 
     ooxmlViewer.disposeWatchers();
-    
+
     expect(disposeStub.calledTwice).to.be.true;
   });
 
@@ -222,11 +222,11 @@ suite('OOXMLViewer', async function () {
     stubs.push(populateOOXMLViewerStub, deleteCachedFilesFileStub, updateCachedFileStub);
     delete ooxmlViewer.zip.files[path];
     const node = findNode(ooxmlViewer.treeDataProvider.rootFileNode, path);
-    
+
     node?.setDeleted();
 
     await populateOOXMLViewerStub.bind(ooxmlViewer)(ooxmlViewer.zip.files, false);
-    
+
     expect(deleteCachedFilesFileStub.called).to.be.true;
   });
 
@@ -237,9 +237,9 @@ suite('OOXMLViewer', async function () {
     const updateCachedFileStub = stub(ooxmlViewer.cache, 'updateCachedFile');
     const deleteCachedFilesFileStub = stub(ooxmlViewer.cache, 'deleteCachedFiles');
     stubs.push(populateOOXMLViewerStub, deleteCachedFilesFileStub, updateCachedFileStub);
-    
+
     delete ooxmlViewer.zip.files[path];
-    
+
     const node = findNode(ooxmlViewer.treeDataProvider.rootFileNode, path);
     await populateOOXMLViewerStub.bind(ooxmlViewer)(ooxmlViewer.zip.files, false);
     expect(deleteCachedFilesFileStub.called).to.be.false;
