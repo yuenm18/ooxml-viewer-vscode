@@ -6,7 +6,7 @@ module.exports = {
   env: { node: true },
   rules: {
     '@typescript-eslint/no-unused-vars': ['warn', { args: 'none' }],
-    'camelcase': ['warn', { properties: 'always' }],
+    camelcase: ['warn', { properties: 'always' }],
     'comma-dangle': [
       'error',
       {
@@ -34,5 +34,6 @@ module.exports = {
     quotes: ['error', 'single', { avoidEscape: true }],
     semi: ['error', 'always'],
     'space-in-parens': ['error', 'never'],
+    'newline-per-chained-call': ['error', { ignoreChainWithDepth: 3 }],
   },
 };

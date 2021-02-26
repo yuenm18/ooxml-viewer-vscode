@@ -1,17 +1,8 @@
 import JSZip from 'jszip';
 import { basename } from 'path';
 import vkBeautify from 'vkbeautify';
-import {
-  commands,
-  Disposable,
-  ExtensionContext,
-  FileSystemWatcher,
-  ProgressLocation,
-  TextDocument,
-  Uri,
-  window,
-  workspace
-} from 'vscode';
+import { commands, Disposable, ExtensionContext, FileSystemWatcher, ProgressLocation, TextDocument, Uri, window, workspace } from 'vscode';
+import xmlFormatter from 'xml-formatter';
 import { ExtensionUtilities } from './extension-utilities';
 import { OOXMLFileCache } from './ooxml-file-cache';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
@@ -23,11 +14,11 @@ export class OOXMLViewer {
   treeDataProvider: OOXMLTreeDataProvider;
   zip: JSZip;
   cache: OOXMLFileCache;
-  
+
   watchers: Disposable[] = [];
   openTextEditors: { [key: string]: FileNode } = {};
   ooxmlFilePath = '';
-  
+
   textEncoder = new TextEncoder();
   textDecoder = new TextDecoder();
 
@@ -41,7 +32,7 @@ export class OOXMLViewer {
     this.treeDataProvider = new OOXMLTreeDataProvider();
     this.zip = new JSZip();
     this.cache = new OOXMLFileCache(context);
-    
+
     this.closeEditors();
   }
 
@@ -141,19 +132,22 @@ export class OOXMLViewer {
       // format the file and its compare
       const fileContents = this.textDecoder.decode(await this.cache.getCachedFile(file.fullPath));
       if (fileContents.startsWith('<?xml')) {
-        await this.cache.updateCachedFile(file.fullPath, this.textEncoder.encode(vkBeautify.xml(fileContents)), false);
+        await this.cache.updateCachedFile(file.fullPath, this.textEncoder.encode(xmlFormatter(fileContents, { indentation: '  ' })), false);
       }
 
       const compareFileContents = this.textDecoder.decode(await this.cache.getCachedCompareFile(file.fullPath));
       if (compareFileContents.startsWith('<?xml')) {
-        await this.cache.updateCompareFile(file.fullPath, this.textEncoder.encode(vkBeautify.xml(compareFileContents)));
+        await this.cache.updateCompareFile(
+          file.fullPath,
+          this.textEncoder.encode(xmlFormatter(compareFileContents, { indentation: '  ' })),
+        );
       }
 
       // diff the primary and compare files
       const fileCachePath = this.cache.getFileCachePath(file.fullPath);
       const fileCompareCachePath = this.cache.getCompareFileCachePath(file.fullPath);
       const title = `${basename(fileCachePath)} ↔ compare.${basename(fileCompareCachePath)}`;
-      
+
       await commands.executeCommand('vscode.diff', Uri.file(fileCompareCachePath), Uri.file(fileCachePath), title);
     } catch (err) {
       console.error(err);
@@ -181,8 +175,7 @@ export class OOXMLViewer {
    * @returns {Promise<void>}
    */
   private async closeEditors(): Promise<void> {
-    return ExtensionUtilities.closeEditors(
-      workspace.textDocuments.filter(t => t.fileName.startsWith(this.cache.cacheBasePath)));
+    return ExtensionUtilities.closeEditors(workspace.textDocuments.filter(t => t.fileName.startsWith(this.cache.cacheBasePath)));
   }
 
   /**
@@ -200,10 +193,7 @@ export class OOXMLViewer {
 
       this.disposeWatchers();
 
-      await Promise.all([
-        this.closeEditors(),
-        this.cache.clear(),
-      ]);
+      await Promise.all([this.closeEditors(), this.cache.clear()]);
     } catch (err) {
       console.error(err);
       window.showErrorMessage('Could not remove ooxml file viewer cache');
@@ -231,7 +221,7 @@ export class OOXMLViewer {
       let currentFileNode = this.treeDataProvider.rootFileNode;
       const names: string[] = fileWithPath.split('/');
       let existingFileNode: FileNode | undefined;
-      
+
       for (const fileOrFolderName of names) {
         existingFileNode = currentFileNode.children.find(c => c.description === fileOrFolderName);
         if (existingFileNode) {
@@ -274,7 +264,7 @@ export class OOXMLViewer {
     // tell vscode the tree has changed
     this.treeDataProvider.refresh();
   }
-  
+
   /**
    * @description Writes changes to OOXML file being inspected when one of its parts is saved.
    * Note that this will trigger `reloadOoxmlFile` to fire if changes are written.
@@ -301,8 +291,9 @@ export class OOXMLViewer {
       if (Buffer.from(fileMinXml).equals(Buffer.from(prevFileMinXml))) {
         return;
       }
-      
-      const zipFile = await this.zip.file(filePath, this.textEncoder.encode(fileMinXml), { binary: true })
+
+      const zipFile = await this.zip
+        .file(filePath, this.textEncoder.encode(fileMinXml), { binary: true })
         .generateAsync({ type: 'uint8array' });
       await workspace.fs.writeFile(Uri.file(this.ooxmlFilePath), zipFile);
 
@@ -353,7 +344,7 @@ export class OOXMLViewer {
 
   /**
    * Traverse tree and delete cached parts that don't exist
-   * 
+   *
    * @description Delete cache files for parts deleted from OOXML file
    * @method removeDeletedParts
    * @async
@@ -373,8 +364,8 @@ export class OOXMLViewer {
             fileNode.setDeleted();
             await this.cache.updateCachedFile(fileNode.fullPath, new Uint8Array(), true);
           } else {
-            // remove files marked as deleted from tree view and cache after the ooxml file 
-            // the second time the ooxml file is saved 
+            // remove files marked as deleted from tree view and cache after the ooxml file
+            // the second time the ooxml file is saved
             await this.cache.deleteCachedFiles(fileNode.fullPath);
             fileNode.parent?.children.splice(fileNode.parent.children.indexOf(fileNode), 1);
           }
@@ -384,7 +375,6 @@ export class OOXMLViewer {
       }
 
       this.treeDataProvider.refresh();
-
     } catch (err) {
       console.error(err);
     }
@@ -435,7 +425,7 @@ export class OOXMLViewer {
   private async tryFormatXml(filePath: string) {
     const xml = this.textDecoder.decode(await this.cache.getCachedFile(filePath));
     if (xml.startsWith('<?xml')) {
-      const text = vkBeautify.xml(xml);
+      const text = xmlFormatter(xml, { indentation: '  ' });
       await this.cache.updateCachedFile(filePath, this.textEncoder.encode(text), false);
       return true;
     }
