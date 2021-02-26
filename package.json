@@ -57,6 +57,7 @@
           ".ods",
           ".odp",
           ".docm",
+          ".dotm",
           ".xlsm",
           ".pptm",
           ".dotx",
@@ -120,14 +121,16 @@
     "@types/sinon": "^9.0.8",
     "@types/vkbeautify": "^0.99.2",
     "@types/vscode": "^1.50.0",
+    "@types/xml-formatter": "^2.1.1",
     "@typescript-eslint/eslint-plugin": "^3.10.1",
     "@typescript-eslint/parser": "^3.10.1",
     "chai": "^4.2.0",
-    "eslint": "^7.12.1",
+    "eslint": "^7.20.0",
     "glob": "^7.1.6",
     "mocha": "^8.2.0",
     "nyc": "^15.1.0",
-    "prettier": "^2.1.2",
+    "prettier": "^2.2.1",
+    "prettier-eslint": "^12.0.0",
     "sinon": "^9.2.1",
     "ts-loader": "^8.0.7",
     "typescript": "^3.9.7",
@@ -137,7 +140,8 @@
     "webpack-cli": "^3.3.12"
   },
   "dependencies": {
-    "jszip": "^3.5.0",
-    "vkbeautify": "^0.99.3"
+    "jszip": "^3.6.0",
+    "vkbeautify": "^0.99.3",
+    "xml-formatter": "^2.4.0"
   }
 }
