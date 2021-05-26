@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import JSZip from 'jszip';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { match, SinonStub, stub } from 'sinon';
+import { match, SinonStub, spy, stub } from 'sinon';
 import { TextDecoder } from 'util';
 import { commands, Disposable, ExtensionContext, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window, workspace } from 'vscode';
 import xmlFormatter from 'xml-formatter';
@@ -39,7 +39,7 @@ suite('OOXMLViewer', async function () {
     const refreshStub = stub(ooxmlViewer.treeDataProvider, 'refresh').returns(undefined);
     const createDirectoryStub = stub(workspace.fs, 'createDirectory').returns(Promise.resolve());
     const jsZipStub = stub(ooxmlViewer.zip, 'file').callsFake(() => {
-      return ({
+      return {
         async(arg: string) {
           expect(arg).to.eq('text');
           return Promise.resolve(
@@ -47,7 +47,7 @@ suite('OOXMLViewer', async function () {
               "<to>Tove</to><from>Jani</from><body>Don't forget me this weekend!</body></note>",
           );
         },
-      } as unknown) as JSZip;
+      } as unknown as JSZip;
     });
     stubs.push(
       stub(ooxmlViewer, <never>'hasFileBeenChangedFromOutside').returns(Promise.resolve(false)),
@@ -187,13 +187,13 @@ suite('OOXMLViewer', async function () {
   });
 
   test('closeWatchers should call restore on the array of file system watchers', function () {
-    const disposeStub = stub();
-    const disposable1 = ({
+    const disposeStub = spy();
+    const disposable1 = {
       dispose: disposeStub,
-    } as never) as Disposable;
-    const disposable2 = ({
+    } as never as Disposable;
+    const disposable2 = {
       dispose: disposeStub,
-    } as never) as Disposable;
+    } as never as Disposable;
     ooxmlViewer.watchers.push(disposable1, disposable2);
 
     ooxmlViewer.disposeWatchers();
@@ -217,9 +217,11 @@ suite('OOXMLViewer', async function () {
     const path = 'ppt/slides/slide1.xml';
     await ooxmlViewer.openOoxmlPackage(Uri.file(testFilePath));
     const populateOOXMLViewerStub = stub(ooxmlViewer, <never>'populateOOXMLViewer').callThrough();
+    const getFileCachePathStub = stub(ooxmlViewer.cache, 'getFileCachePath');
     const updateCachedFileStub = stub(ooxmlViewer.cache, 'updateCachedFile');
     const deleteCachedFilesFileStub = stub(ooxmlViewer.cache, 'deleteCachedFiles');
-    stubs.push(populateOOXMLViewerStub, deleteCachedFilesFileStub, updateCachedFileStub);
+    const readFileStub = stub(ooxmlViewer.cache, <never>'readFile').returns(Promise.resolve(new Uint8Array(8)));
+    stubs.push(populateOOXMLViewerStub, deleteCachedFilesFileStub, updateCachedFileStub, getFileCachePathStub, readFileStub);
     delete ooxmlViewer.zip.files[path];
     const node = findNode(ooxmlViewer.treeDataProvider.rootFileNode, path);
 

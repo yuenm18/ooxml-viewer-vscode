@@ -129,33 +129,33 @@ export class OOXMLFileCache {
       const normalizedPath = trimmedPath.split(sep).slice(1).join('/');
       return normalizedPath;
     }
-    
+
     return cachePath;
   }
-  
+
   /**
    * Determines whether or not the path belongs to the cache.
-   * 
+   *
    * @param {string} filePath The file path.
    * @returns {boolean} Whether or not the path is in the cache.
    */
   pathBelongsToCache(filePath: string): boolean {
-    return filePath.startsWith(this.cacheBasePath);
+    return !!filePath && filePath.startsWith(this.cacheBasePath);
   }
-  
+
   /**
    * Determines whether or not the cache file path is for a normal cache file (not prev or compare).
-   * 
+   *
    * @param {string} cacheFilePath The file path.
    * @returns {boolean} Whether or not the path is in the cache.
    */
   cachePathIsNormal(cacheFilePath: string): boolean {
-    return cacheFilePath.startsWith(join(this.cacheBasePath, NORMAL_SUBFOLDER_NAME));
+    return !!cacheFilePath && cacheFilePath.startsWith(join(this.cacheBasePath, NORMAL_SUBFOLDER_NAME));
   }
 
   /**
    * Gets a cached file.
-   * 
+   *
    * @param {string} filePath The file path in the ooxml file.
    * @returns {Promise<Uint8Array>} Promise resolving to the contents of the file.
    */

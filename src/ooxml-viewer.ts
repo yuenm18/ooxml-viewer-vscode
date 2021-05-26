@@ -389,26 +389,28 @@ export class OOXMLViewer {
    */
   private async reformatOpenTabs(): Promise<void> {
     try {
-      const filePathsInOoxmlPackage = new Set(Object.keys(this.zip.files));
-      workspace.textDocuments
-        .filter(d => this.cache.pathBelongsToCache(d.fileName))
-        .map(d => this.cache.getFilePathFromCacheFilePath(d.fileName))
-        .filter(p => filePathsInOoxmlPackage.has(p))
-        .forEach(async filePath => {
-          try {
-            await this.tryFormatXml(filePath);
-          } catch (err) {
-            console.error(err);
-          }
-        });
+      if (workspace.textDocuments.length) {
+        const filePathsInOoxmlPackage = new Set(Object.keys(this.zip.files));
+        workspace.textDocuments
+          .filter(d => this.cache.pathBelongsToCache(d.fileName))
+          .map(d => this.cache.getFilePathFromCacheFilePath(d.fileName))
+          .filter(p => filePathsInOoxmlPackage.has(p))
+          .forEach(async filePath => {
+            try {
+              await this.tryFormatXml(filePath);
+            } catch (err) {
+              console.error(err);
+            }
+          });
 
-      workspace.textDocuments
-        .filter(d => this.cache.pathBelongsToCache(d.fileName))
-        .filter(d => !filePathsInOoxmlPackage.has(this.cache.getFilePathFromCacheFilePath(d.fileName)))
-        .forEach(async d => {
-          await window.showTextDocument(Uri.file(d.fileName), { preview: true, preserveFocus: false });
-          await commands.executeCommand('workbench.action.closeActiveEditor');
-        });
+        workspace.textDocuments
+          .filter(d => this.cache.pathBelongsToCache(d.fileName))
+          .filter(d => !filePathsInOoxmlPackage.has(this.cache.getFilePathFromCacheFilePath(d.fileName)))
+          .forEach(async d => {
+            await window.showTextDocument(Uri.file(d.fileName), { preview: true, preserveFocus: false });
+            await commands.executeCommand('workbench.action.closeActiveEditor');
+          });
+      }
     } catch (err) {
       console.error(err);
     }
