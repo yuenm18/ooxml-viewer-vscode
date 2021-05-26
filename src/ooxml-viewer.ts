@@ -240,7 +240,7 @@ export class OOXMLViewer {
       currentFileNode.fullPath = fileWithPath;
 
       // cache or update the cache of the node and mark the status of the node
-      const data = await this.zip.file(currentFileNode.fullPath)?.async('uint8array') ?? new Uint8Array();
+      const data = (await this.zip.file(currentFileNode.fullPath)?.async('uint8array')) ?? new Uint8Array();
       if (existingFileNode && !currentFileNode.isDeleted()) {
         const filesAreDifferent = await this.hasFileBeenChangedFromOutside(currentFileNode.fullPath, data);
         await this.cache.updateCachedFile(currentFileNode.fullPath, data, true);
