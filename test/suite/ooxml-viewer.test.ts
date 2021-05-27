@@ -4,7 +4,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { match, SinonStub, spy, stub } from 'sinon';
 import { TextDecoder } from 'util';
-import { commands, Disposable, ExtensionContext, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window, workspace } from 'vscode';
+import { commands, Disposable, ExtensionContext, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window } from 'vscode';
 import xmlFormatter from 'xml-formatter';
 import { CACHE_FOLDER_NAME } from '../../src/ooxml-file-cache';
 import { FileNode, OOXMLTreeDataProvider } from '../../src/ooxml-tree-view-provider';
@@ -146,17 +146,17 @@ suite('OOXMLViewer', async function () {
       expect(rightUri.path).not.to.include('compare');
       return Promise.resolve();
     });
-    const readFileStub = stub(workspace.fs, 'readFile').returns(
+    const readFileStub = stub(ooxmlViewer.cache, 'readFile').returns(
       Promise.resolve({
         toString() {
           return xml;
         },
       } as Uint8Array),
     );
-    const writeFileStub = stub(workspace.fs, 'writeFile').callsFake((arg1, arg2) => {
-      expect(arg1.fsPath).to.include(CACHE_FOLDER_NAME);
+    const writeFileStub = stub(ooxmlViewer.cache, 'writeFile').callsFake((arg1, arg2) => {
+      expect(arg1).to.include(CACHE_FOLDER_NAME);
       const dec = new TextDecoder();
-      expect(dec.decode(arg2)).to.eq(xmlFormatter(xml, { indentation: '  ' }));
+      expect(dec.decode(arg2)).to.eq(xmlFormatter(xml, { indentation: '  ', collapseContent: true }));
       return Promise.resolve();
     });
     const textDecoderStub = stub(ooxmlViewer.textDecoder, 'decode').callsFake(arg => {
