@@ -57,7 +57,7 @@ export class OOXMLViewer {
           await this.resetOOXMLViewer();
 
           // load ooxml file and populate the viewer
-          const data = await workspace.fs.readFile(Uri.file(file.fsPath));
+          const data = await this.cache.readFile(file.fsPath);
           await this.zip.loadAsync(data);
           await this.populateOOXMLViewer(this.zip.files, false);
 
@@ -300,7 +300,7 @@ export class OOXMLViewer {
       const zipFile = await this.zip
         .file(filePath, this.textEncoder.encode(fileMinXml))
         .generateAsync({ type: 'uint8array', mimeType, compression: 'DEFLATE' });
-      await workspace.fs.writeFile(Uri.file(this.ooxmlFilePath), zipFile);
+      await this.cache.writeFile(this.ooxmlFilePath, zipFile);
 
       await this.cache.createCachedFile(filePath, fileContents, false);
       this.treeDataProvider.refresh();
@@ -335,7 +335,7 @@ export class OOXMLViewer {
           progress.report({ message: 'Updating OOXML Parts' });
 
           // unzip ooxml file again
-          const data = await workspace.fs.readFile(Uri.file(filePath));
+          const data = await this.cache.readFile(filePath);
           this.zip = new JSZip();
           await this.zip.loadAsync(data);
 

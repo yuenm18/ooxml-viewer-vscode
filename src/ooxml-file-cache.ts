@@ -280,7 +280,7 @@ export class OOXMLFileCache {
    * @param {boolean} fileContents The file contents.
    * @returns {Promise<void>}
    */
-  private async writeFile(cachedFilePath: string, fileContents: Uint8Array): Promise<void> {
+  async writeFile(cachedFilePath: string, fileContents: Uint8Array): Promise<void> {
     try {
       await workspace.fs.createDirectory(Uri.file(dirname(cachedFilePath)));
       await workspace.fs.writeFile(Uri.file(cachedFilePath), fileContents);
@@ -309,7 +309,7 @@ export class OOXMLFileCache {
    * @param {string} cachedFilePath The path to the cached file.
    * @returns {Promise<Uint8Array>} A promise resolving to the file contents.
    */
-  private async readFile(cachedFilePath: string): Promise<Uint8Array> {
+  async readFile(cachedFilePath: string): Promise<Uint8Array> {
     try {
       return await workspace.fs.readFile(Uri.file(cachedFilePath));
     } catch (err) {

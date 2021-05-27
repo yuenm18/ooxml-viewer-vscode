@@ -67,27 +67,21 @@ suite('OOXMLViewer', async function () {
 
   test('viewFile should open a text editor when called with the path to an xml file', async function () {
     const commandsStub = stub(commands, 'executeCommand');
-    const createDirectoryStub = stub(workspace.fs, 'createDirectory').callsFake(uri => {
-      expect(uri).to.be.instanceof(Uri);
-      return Promise.resolve();
-    });
     const enc = new TextEncoder();
     const xml =
       '<?xml version="1.0" encoding="UTF-8"?><note><to>Tove</to><from>Jani</from>' +
       "<heading>Reminder</heading><body>Don't forget me this weekend!</body></note>";
     const coded = enc.encode(xml);
-    const readFileStub = stub(workspace.fs, 'readFile').callsFake((uri: Uri) => {
-      expect(uri).to.be.instanceof(Uri);
+    const readFileStub = stub(ooxmlViewer.cache, 'readFile').callsFake((path: string) => {
       return Promise.resolve(coded);
     });
-    const writeFileStub = stub(workspace.fs, 'writeFile').callsFake((uri: Uri, u8a: Uint8Array) => {
-      expect(uri).to.be.instanceof(Uri);
-      const sent: Buffer = Buffer.from(enc.encode(xmlFormatter(xml, { indentation: '  ' })));
+    const writeFileStub = stub(ooxmlViewer.cache, 'writeFile').callsFake((path: string, u8a: Uint8Array) => {
+      const sent: Buffer = Buffer.from(enc.encode(xmlFormatter(xml, { indentation: '  ', collapseContent: true })));
       const received: Buffer = Buffer.from(u8a);
       expect(sent.equals(received)).to.be.true;
       return Promise.resolve();
     });
-    stubs.push(commandsStub, createDirectoryStub, readFileStub, writeFileStub);
+    stubs.push(commandsStub, readFileStub, writeFileStub);
     const node = new FileNode();
 
     await ooxmlViewer.viewFile(node);

@@ -33,7 +33,7 @@ suite('OOXMLViewer File Cache', function () {
   });
 
   test('should create cachedFile, prevCachedFile, and compareCachedFile when createCachedFile is called', async function () {
-    const writeFileStub = stub(ooxmlFileCache, <never>'writeFile').returns(Promise.resolve());
+    const writeFileStub = stub(ooxmlFileCache, 'writeFile').returns(Promise.resolve());
     stubs.push(writeFileStub);
     const fileContents = new TextEncoder().encode('test');
 
@@ -52,7 +52,7 @@ suite('OOXMLViewer File Cache', function () {
     'should create cachedFile and prevCachedFile with fileContents' +
       ' and compareCachedFile with empty contents when createCachedFile is called with createEmptyCompareFile=true',
     async function () {
-      const writeFileStub = stub(ooxmlFileCache, <never>'writeFile').returns(Promise.resolve());
+      const writeFileStub = stub(ooxmlFileCache, 'writeFile').returns(Promise.resolve());
       stubs.push(writeFileStub);
       const fileContents = new TextEncoder().encode('test');
 
