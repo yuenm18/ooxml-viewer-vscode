@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import { lookup } from 'mime-types';
 import { basename } from 'path';
 import vkBeautify from 'vkbeautify';
 import { commands, Disposable, ExtensionContext, FileSystemWatcher, ProgressLocation, TextDocument, Uri, window, workspace } from 'vscode';
@@ -291,10 +292,10 @@ export class OOXMLViewer {
       if (Buffer.from(fileMinXml).equals(Buffer.from(prevFileMinXml))) {
         return;
       }
-
+      const mimeType = lookup(basename(this.ooxmlFilePath)) || undefined;
       const zipFile = await this.zip
-        .file(filePath, this.textEncoder.encode(fileMinXml), { binary: true })
-        .generateAsync({ type: 'uint8array' });
+        .file(filePath, this.textEncoder.encode(fileMinXml))
+        .generateAsync({ type: 'uint8array', mimeType, compression: 'DEFLATE' });
       await workspace.fs.writeFile(Uri.file(this.ooxmlFilePath), zipFile);
 
       await this.cache.createCachedFile(filePath, fileContents, false);
