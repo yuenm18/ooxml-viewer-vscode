@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { basename, join } from 'path';
 import { match, SinonStub, stub } from 'sinon';
 import { ExtensionContext, Uri, workspace } from 'vscode';
 import { OOXMLFileCache } from '../../src/ooxml-file-cache';
@@ -110,15 +110,14 @@ suite('OOXMLViewer File Cache', function () {
 
   test('should update compareFile with contents when updateCompareFile is called', async function () {
     const fileContents = new TextEncoder().encode('test');
-    const writeFileStub = stub(workspace.fs, 'writeFile').returns(Promise.resolve());
-    const createDirectoryStub = stub(workspace.fs, 'createDirectory').returns(Promise.resolve());
-    stubs.push(writeFileStub, createDirectoryStub);
+    const writeFileStub = stub(ooxmlFileCache, 'writeFile').returns(Promise.resolve());
+    stubs.push(writeFileStub);
 
     await ooxmlFileCache.updateCompareFile(filePath, fileContents);
 
     expect(writeFileStub.callCount).to.equal(1);
-    expect(createDirectoryStub.callCount).to.equal(1);
-    expect(writeFileStub.calledWith(match(compareFileCacheUri), fileContents)).to.be.true;
+    expect(basename(writeFileStub.args[0][0] as string)).to.deep.eq(basename(filePath));
+    expect(writeFileStub.args[0][1]).to.deep.eq(fileContents);
   });
 
   test('should deleted cachedFile, prevCachedFile and compareCachedFile when deleteCachedFile is called', async function () {
