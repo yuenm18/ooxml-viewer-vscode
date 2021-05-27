@@ -192,14 +192,14 @@ suite('OOXMLViewer File Cache', function () {
 
   test('should get cached file when getCachedFile is called', async function () {
     const fileContents = new TextEncoder().encode('text');
-    const readFileStub = stub(workspace.fs, 'readFile').returns(Promise.resolve(fileContents));
+    const readFileStub = stub(ooxmlFileCache, 'readFile').returns(Promise.resolve(fileContents));
     stubs.push(readFileStub);
 
     const result = await ooxmlFileCache.getCachedFile(filePath);
 
     expect(readFileStub.callCount).to.equal(1);
-    expect(readFileStub.calledWith(match(fileCacheUri))).to.be.true;
-    expect(result).to.be.equal(fileContents);
+    expect((readFileStub.args[0][0] as string).toLowerCase()).to.eq(fileCacheUri.fsPath.toLowerCase());
+    expect(result).to.deep.equal(fileContents);
   });
 
   test('should get cached file when getCachedPrevFile is called', async function () {
