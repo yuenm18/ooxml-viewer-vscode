@@ -91,22 +91,14 @@ suite('OOXMLViewer', async function () {
 
   test("viewFile should open a file if it's not an xml file", async function () {
     const commandsStub = stub(commands, 'executeCommand');
-    const createDirectoryStub = stub(workspace.fs, 'createDirectory').callsFake(uri => {
-      expect(uri).to.be.instanceof(Uri);
-      return Promise.resolve();
-    });
     const enc = new TextEncoder();
     const codeCat = enc.encode('tacocat');
-    const writeFileStub = stub(workspace.fs, 'writeFile').callsFake((uri: Uri, u8a: Uint8Array) => {
-      expect(uri).to.be.instanceof(Uri);
+    const writeFileStub = stub(ooxmlViewer.cache, 'writeFile').callsFake((path: string, u8a: Uint8Array) => {
       expect(u8a).to.eq(codeCat);
       return Promise.resolve();
     });
-    const readFileStub = stub(workspace.fs, 'readFile').callsFake((uri: Uri) => {
-      expect(uri).to.be.instanceof(Uri);
-      return Promise.resolve(new Uint8Array());
-    });
-    stubs.push(commandsStub, createDirectoryStub, writeFileStub, readFileStub);
+    const readFileStub = stub(ooxmlViewer.cache, 'readFile').returns(Promise.resolve(new Uint8Array()));
+    stubs.push(commandsStub, writeFileStub, readFileStub);
     const node = new FileNode();
 
     await ooxmlViewer.viewFile(node);
