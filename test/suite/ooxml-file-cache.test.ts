@@ -52,18 +52,19 @@ suite('OOXMLViewer File Cache', function () {
     'should create cachedFile and prevCachedFile with fileContents' +
       ' and compareCachedFile with empty contents when createCachedFile is called with createEmptyCompareFile=true',
     async function () {
-      const writeFileStub = stub(workspace.fs, 'writeFile').returns(Promise.resolve());
-      const createDirectoryStub = stub(workspace.fs, 'createDirectory').returns(Promise.resolve());
-      stubs.push(writeFileStub, createDirectoryStub);
+      const writeFileStub = stub(ooxmlFileCache, <never>'writeFile').returns(Promise.resolve());
+      stubs.push(writeFileStub);
       const fileContents = new TextEncoder().encode('test');
 
       await ooxmlFileCache.createCachedFile(filePath, fileContents, true);
 
       expect(writeFileStub.callCount).to.equal(3);
-      expect(createDirectoryStub.callCount).to.equal(3);
-      expect(writeFileStub.calledWith(match(fileCacheUri), fileContents)).to.be.true;
-      expect(writeFileStub.calledWith(match(prevFileCacheUri), fileContents)).to.be.true;
-      expect(writeFileStub.calledWith(match(compareFileCacheUri), new Uint8Array())).to.be.true;
+      expect((writeFileStub.args[0][0] as string).toLowerCase()).to.eq(fileCacheUri.fsPath.toLowerCase());
+      expect(writeFileStub.args[0][1]).to.eq(fileContents);
+      expect((writeFileStub.args[1][0] as string).toLowerCase()).to.eq(prevFileCacheUri.fsPath.toLowerCase());
+      expect(writeFileStub.args[1][1]).to.eq(fileContents);
+      expect((writeFileStub.args[2][0] as string).toLowerCase()).to.eq(compareFileCacheUri.fsPath.toLowerCase());
+      expect(writeFileStub.args[2][1]).to.deep.eq(new Uint8Array());
     },
   );
 
