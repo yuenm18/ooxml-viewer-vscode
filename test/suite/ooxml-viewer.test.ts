@@ -35,9 +35,8 @@ suite('OOXMLViewer', async function () {
   });
 
   test('should populate the sidebar tree with the contents of an ooxml file', async function () {
-    const writeFileMock = stub(workspace.fs, 'writeFile').returns(Promise.resolve());
+    const writeFileMock = stub(ooxmlViewer.cache, 'writeFile').returns(Promise.resolve());
     const refreshStub = stub(ooxmlViewer.treeDataProvider, 'refresh').returns(undefined);
-    const createDirectoryStub = stub(workspace.fs, 'createDirectory').returns(Promise.resolve());
     const jsZipStub = stub(ooxmlViewer.zip, 'file').callsFake(() => {
       return {
         async(arg: string) {
@@ -51,7 +50,6 @@ suite('OOXMLViewer', async function () {
     });
     stubs.push(
       stub(ooxmlViewer, <never>'hasFileBeenChangedFromOutside').returns(Promise.resolve(false)),
-      createDirectoryStub,
       jsZipStub,
       refreshStub,
       writeFileMock,
