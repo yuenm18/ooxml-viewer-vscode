@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import { tmpdir } from 'os';
 import { basename, join } from 'path';
-import { match, SinonStub, stub } from 'sinon';
-import { ExtensionContext, Uri, workspace } from 'vscode';
+import { SinonStub, stub } from 'sinon';
+import { ExtensionContext, Uri } from 'vscode';
 import { OOXMLFileCache } from '../../src/ooxml-file-cache';
 
 suite('OOXMLViewer File Cache', function () {
@@ -216,13 +216,13 @@ suite('OOXMLViewer File Cache', function () {
 
   test('should get cached file when getCachedCompareFile is called', async function () {
     const fileContents = new TextEncoder().encode('text');
-    const readFileStub = stub(workspace.fs, 'readFile').returns(Promise.resolve(fileContents));
+    const readFileStub = stub(ooxmlFileCache, 'readFile').returns(Promise.resolve(fileContents));
     stubs.push(readFileStub);
 
     const result = await ooxmlFileCache.getCachedCompareFile(filePath);
 
     expect(readFileStub.callCount).to.equal(1);
-    expect(readFileStub.calledWith(match(compareFileCacheUri))).to.be.true;
+    expect((readFileStub.args[0][0] as string).toLowerCase()).to.eq(compareFileCacheUri.fsPath.toLowerCase());
     expect(result).to.be.equal(fileContents);
   });
 });
