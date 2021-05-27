@@ -121,15 +121,15 @@ suite('OOXMLViewer File Cache', function () {
   });
 
   test('should deleted cachedFile, prevCachedFile and compareCachedFile when deleteCachedFile is called', async function () {
-    const deleteFileStub = stub(workspace.fs, 'delete').returns(Promise.resolve());
+    const deleteFileStub = stub(ooxmlFileCache, <never>'deleteFile').returns(Promise.resolve());
     stubs.push(deleteFileStub);
 
     await ooxmlFileCache.deleteCachedFiles(filePath);
 
     expect(deleteFileStub.callCount).to.equal(3);
-    expect(deleteFileStub.calledWith(match(fileCacheUri))).to.be.true;
-    expect(deleteFileStub.calledWith(match(prevFileCacheUri))).to.be.true;
-    expect(deleteFileStub.calledWith(match(compareFileCacheUri))).to.be.true;
+    expect((deleteFileStub.args[0][0] as string).toLowerCase()).to.eq(fileCacheUri.fsPath.toLowerCase());
+    expect((deleteFileStub.args[1][0] as string).toLowerCase()).to.eq(prevFileCacheUri.fsPath.toLowerCase());
+    expect((deleteFileStub.args[2][0] as string).toLowerCase()).to.eq(compareFileCacheUri.fsPath.toLowerCase());
   });
 
   test('should return file cache path when getFileCachePath is called', function () {

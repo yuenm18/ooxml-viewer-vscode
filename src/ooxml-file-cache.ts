@@ -268,7 +268,7 @@ export class OOXMLFileCache {
    */
   async clear(): Promise<void> {
     if (existsSync(this.cacheBasePath)) {
-      await workspace.fs.delete(Uri.file(this.cacheBasePath), { recursive: true, useTrash: false });
+      await this.deleteFile(this.cacheBasePath);
       await this.initializeCache();
     }
   }
