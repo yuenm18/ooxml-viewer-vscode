@@ -225,37 +225,4 @@ suite('OOXMLViewer File Cache', function () {
     expect(readFileStub.calledWith(match(compareFileCacheUri))).to.be.true;
     expect(result).to.be.equal(fileContents);
   });
-
-  test('should log error and return empty array if readFile fails', async function () {
-    const readFileStub = stub(workspace.fs, 'readFile').throwsException();
-    const errorLogStub = stub(console, 'error');
-    stubs.push(readFileStub, errorLogStub);
-
-    const result = await ooxmlFileCache.getCachedFile(filePath);
-
-    expect(readFileStub.callCount).to.equal(1);
-    expect(readFileStub.calledWith(match(fileCacheUri))).to.be.true;
-    expect(result).to.be.eql(new Uint8Array());
-    expect(errorLogStub.called).to.be.true;
-  });
-
-  test('should log error if creating file fails', async function () {
-    const readFileStub = stub(workspace.fs, 'writeFile').throwsException();
-    const errorLogStub = stub(console, 'error');
-    stubs.push(readFileStub, errorLogStub);
-
-    await ooxmlFileCache.createCachedFile(filePath, new Uint8Array(), false);
-
-    expect(errorLogStub.called).to.be.true;
-  });
-
-  test('should log error if delete fails', async function () {
-    const readFileStub = stub(workspace.fs, 'delete').throwsException();
-    const errorLogStub = stub(console, 'error');
-    stubs.push(readFileStub, errorLogStub);
-
-    await ooxmlFileCache.deleteCachedFiles(filePath);
-
-    expect(errorLogStub.called).to.be.true;
-  });
 });
