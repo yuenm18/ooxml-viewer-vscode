@@ -133,14 +133,18 @@ export class OOXMLViewer {
       // format the file and its compare
       const fileContents = this.textDecoder.decode(await this.cache.getCachedFile(file.fullPath));
       if (fileContents.startsWith('<?xml')) {
-        await this.cache.updateCachedFile(file.fullPath, this.textEncoder.encode(xmlFormatter(fileContents, { indentation: '  ' })), false);
+        await this.cache.updateCachedFile(
+          file.fullPath,
+          this.textEncoder.encode(xmlFormatter(fileContents, { indentation: '  ', collapseContent: true })),
+          false,
+        );
       }
 
       const compareFileContents = this.textDecoder.decode(await this.cache.getCachedCompareFile(file.fullPath));
       if (compareFileContents.startsWith('<?xml')) {
         await this.cache.updateCompareFile(
           file.fullPath,
-          this.textEncoder.encode(xmlFormatter(compareFileContents, { indentation: '  ' })),
+          this.textEncoder.encode(xmlFormatter(compareFileContents, { indentation: '  ', collapseContent: true })),
         );
       }
 
@@ -428,7 +432,7 @@ export class OOXMLViewer {
   private async tryFormatXml(filePath: string) {
     const xml = this.textDecoder.decode(await this.cache.getCachedFile(filePath));
     if (xml.startsWith('<?xml')) {
-      const text = xmlFormatter(xml, { indentation: '  ' });
+      const text = xmlFormatter(xml, { indentation: '  ', collapseContent: true });
       await this.cache.updateCachedFile(filePath, this.textEncoder.encode(text), false);
       return true;
     }
