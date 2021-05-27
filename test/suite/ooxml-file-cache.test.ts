@@ -74,18 +74,19 @@ suite('OOXMLViewer File Cache', function () {
     async function () {
       const fileContents = new TextEncoder().encode('new content');
       const oldFileContents = new TextEncoder().encode('old content');
-      const readFileStub = stub(workspace.fs, 'readFile').returns(Promise.resolve(oldFileContents));
-      const writeFileStub = stub(workspace.fs, 'writeFile').returns(Promise.resolve());
-      const createDirectoryStub = stub(workspace.fs, 'createDirectory').returns(Promise.resolve());
-      stubs.push(readFileStub, writeFileStub, createDirectoryStub);
+      const readFileStub = stub(ooxmlFileCache, 'readFile').returns(Promise.resolve(oldFileContents));
+      const writeFileStub = stub(ooxmlFileCache, 'writeFile').returns(Promise.resolve());
+      stubs.push(readFileStub, writeFileStub);
 
       await ooxmlFileCache.updateCachedFile(filePath, fileContents, true);
 
       expect(writeFileStub.callCount).to.equal(3);
-      expect(createDirectoryStub.callCount).to.equal(3);
-      expect(writeFileStub.calledWith(match(fileCacheUri), fileContents)).to.be.true;
-      expect(writeFileStub.calledWith(match(prevFileCacheUri), fileContents)).to.be.true;
-      expect(writeFileStub.calledWith(match(compareFileCacheUri), oldFileContents)).to.be.true;
+      expect((writeFileStub.args[0][0] as string).toLowerCase()).to.eq(fileCacheUri.fsPath.toLowerCase());
+      expect(writeFileStub.args[0][1]).to.eq(fileContents);
+      expect((writeFileStub.args[1][0] as string).toLowerCase()).to.eq(prevFileCacheUri.fsPath.toLowerCase());
+      expect(writeFileStub.args[1][1]).to.eq(fileContents);
+      expect((writeFileStub.args[2][0] as string).toLowerCase()).to.eq(compareFileCacheUri.fsPath.toLowerCase());
+      expect(writeFileStub.args[2][1]).to.deep.eq(oldFileContents);
     },
   );
 
