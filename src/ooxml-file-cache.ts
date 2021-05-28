@@ -9,19 +9,19 @@ export const COMPARE_SUBFOLDER_NAME = 'compare';
 
 /**
  * The file system cache for ooxml files.
- * 
+ *
  * Normal cache files
  *  - used for displaying formatted files, editting ooxml parts, and as a compare point during a diff
  * Prev cache files
  *  - used as a compare point during saving to determine if the ooxml file should be resaved
- *  - these should always be updated with the normal cache file unless the ooxml parts are being updated 
+ *  - these should always be updated with the normal cache file unless the ooxml parts are being updated
  * Compare cache files
  *  - used as a comparison point for diffs
  */
 export class OOXMLFileCache {
   /**
    * The base path where are files are stored in the cache.
-   * 
+   *
    * @returns {string} The base path of the cache.
    */
   get cacheBasePath(): string {
@@ -30,7 +30,7 @@ export class OOXMLFileCache {
 
   /**
    * Creates a new instance of an ooxml file cache.
-   * 
+   *
    * @constructor
    * @param {ExtensionContext} context The extension context.
    */
@@ -39,8 +39,8 @@ export class OOXMLFileCache {
   }
 
   /**
-   * Caches a file and its prev and compare parts. 
-   * 
+   * Caches a file and its prev and compare parts.
+   *
    * @param {string} filePath The file path in the ooxml file.
    * @param {string} fileContents The contents of the file to cache.
    * @param {boolean} createEmptyCompareFile Whether or not to create an empty compare file.
@@ -72,7 +72,7 @@ export class OOXMLFileCache {
 
   /**
    * Updates the compare file in the file cache.
-   * 
+   *
    * @param {string} filePath The file path in the ooxml file.
    * @param {string} fileContents The contents of the file.
    * @returns {Promise<void>}
@@ -80,24 +80,20 @@ export class OOXMLFileCache {
   async updateCompareFile(filePath: string, fileContents: Uint8Array): Promise<void> {
     return this.cacheCompareFile(filePath, fileContents);
   }
-  
+
   /**
    * Deletes all cached parts of a file.
-   * 
+   *
    * @param {string} filePath The file path in the ooxml file.
    * @returns {Promise<void>}
    */
   async deleteCachedFiles(filePath: string): Promise<void> {
-    await Promise.all([
-      this.deleteCachedFile(filePath),
-      this.deleteCachedPrevFile(filePath),
-      this.deleteCachedCompareFile(filePath),
-    ]);
+    await Promise.all([this.deleteCachedFile(filePath), this.deleteCachedPrevFile(filePath), this.deleteCachedCompareFile(filePath)]);
   }
 
   /**
    * Gets file path of the cached file given the file path in an ooxml file.
-   * 
+   *
    * @param {string} filePath The file path in the ooxml file.
    * @returns {string} The file path of the cached file.
    */
@@ -107,17 +103,17 @@ export class OOXMLFileCache {
 
   /**
    * Gets file path of the cached compare file given the file path in an ooxml file.
-   * 
+   *
    * @param {string} filePath The file path in the ooxml file.
    * @returns {string} The file path of the cached compare file.
    */
   getCompareFileCachePath(filePath: string): string {
     return join(this.cacheBasePath, COMPARE_SUBFOLDER_NAME, filePath);
   }
-  
+
   /**
    * Gets file path from the cache file path.
-   * 
+   *
    * @param {string} fileCachePath The file path in the cache.
    * @returns {string} The file path in the ooxml document file.
    */
@@ -129,33 +125,33 @@ export class OOXMLFileCache {
       const normalizedPath = trimmedPath.split(sep).slice(1).join('/');
       return normalizedPath;
     }
-    
+
     return cachePath;
   }
-  
+
   /**
    * Determines whether or not the path belongs to the cache.
-   * 
+   *
    * @param {string} filePath The file path.
    * @returns {boolean} Whether or not the path is in the cache.
    */
   pathBelongsToCache(filePath: string): boolean {
-    return filePath.startsWith(this.cacheBasePath);
+    return !!filePath && filePath.startsWith(this.cacheBasePath);
   }
-  
+
   /**
    * Determines whether or not the cache file path is for a normal cache file (not prev or compare).
-   * 
+   *
    * @param {string} cacheFilePath The file path.
    * @returns {boolean} Whether or not the path is in the cache.
    */
   cachePathIsNormal(cacheFilePath: string): boolean {
-    return cacheFilePath.startsWith(join(this.cacheBasePath, NORMAL_SUBFOLDER_NAME));
+    return !!cacheFilePath && cacheFilePath.startsWith(join(this.cacheBasePath, NORMAL_SUBFOLDER_NAME));
   }
 
   /**
    * Gets a cached file.
-   * 
+   *
    * @param {string} filePath The file path in the ooxml file.
    * @returns {Promise<Uint8Array>} Promise resolving to the contents of the file.
    */
@@ -166,7 +162,7 @@ export class OOXMLFileCache {
 
   /**
    * Gets a cached prev file.
-   * 
+   *
    * @param {string} filePath The file path in the ooxml file.
    * @returns {Promise<Uint8Array>} Promise resolving to the contents of the file.
    */
@@ -177,7 +173,7 @@ export class OOXMLFileCache {
 
   /**
    * Gets a cached compare file.
-   * 
+   *
    * @param {string} filePath The file path in the ooxml file.
    * @returns {Promise<Uint8Array>} Promise resolving to the contents of the file.
    */
@@ -188,7 +184,7 @@ export class OOXMLFileCache {
 
   /**
    * Caches a file.
-   * 
+   *
    * @param {string} filePath The file path in the ooxml file.
    * @param {string} fileContents The contents of the file.
    * @returns {Promise<void>}
@@ -200,7 +196,7 @@ export class OOXMLFileCache {
 
   /**
    * Caches a file prev.
-   * 
+   *
    * @param {string} filePath The file path in the ooxml file.
    * @param {string} fileContents The contents of the file.
    * @returns {Promise<void>}
@@ -212,7 +208,7 @@ export class OOXMLFileCache {
 
   /**
    * Caches a file compare.
-   * 
+   *
    * @param {string} filePath The file path in the ooxml file.
    * @param {string} fileContents The contents of the file.
    * @returns {Promise<void>}
@@ -221,10 +217,10 @@ export class OOXMLFileCache {
     const cacheComparePath = this.getCompareFileCachePath(filePath);
     return this.writeFile(cacheComparePath, fileContents);
   }
-  
+
   /**
    * Deletes a cached file.
-   * 
+   *
    * @param {string} filePath The file path in the ooxml file.
    * @returns {Promise<void>}
    */
@@ -232,10 +228,10 @@ export class OOXMLFileCache {
     const cachePath = this.getFileCachePath(filePath);
     return this.deleteFile(cachePath);
   }
-  
+
   /**
    * Deletes a cached prev file.
-   * 
+   *
    * @param {string} filePath The file path in the ooxml file.
    * @returns {Promise<void>}
    */
@@ -243,10 +239,10 @@ export class OOXMLFileCache {
     const cachePrevPath = this.getPrevFileCachePath(filePath);
     return this.deleteFile(cachePrevPath);
   }
-  
+
   /**
    * Deletes a cached compare file.
-   * 
+   *
    * @param {string} filePath The file path in the ooxml file.
    * @returns {Promise<void>}
    */
@@ -254,10 +250,10 @@ export class OOXMLFileCache {
     const cacheComparePath = this.getCompareFileCachePath(filePath);
     return this.deleteFile(cacheComparePath);
   }
-  
+
   /**
    * Gets file path of the cached prev file given the file path in an ooxml file.
-   * 
+   *
    * @param {string} filePath The file path in the ooxml file.
    * @returns {string} The file path of the cached prev file.
    */
@@ -267,24 +263,24 @@ export class OOXMLFileCache {
 
   /**
    * Clears the cache.
-   * 
+   *
    * @returns {Promise<void>}
    */
   async clear(): Promise<void> {
     if (existsSync(this.cacheBasePath)) {
-      await workspace.fs.delete(Uri.file(this.cacheBasePath), { recursive: true, useTrash: false });
+      await this.deleteFile(this.cacheBasePath);
       await this.initializeCache();
     }
   }
 
   /**
    * Create a file from a part of the zip file.
-   * 
+   *
    * @param {string} cachedFilePath The path to the cached file.
    * @param {boolean} fileContents The file contents.
    * @returns {Promise<void>}
    */
-  private async writeFile(cachedFilePath: string, fileContents: Uint8Array): Promise<void> {
+  async writeFile(cachedFilePath: string, fileContents: Uint8Array): Promise<void> {
     try {
       await workspace.fs.createDirectory(Uri.file(dirname(cachedFilePath)));
       await workspace.fs.writeFile(Uri.file(cachedFilePath), fileContents);
@@ -295,7 +291,7 @@ export class OOXMLFileCache {
 
   /**
    * Deletes a file in the cache.
-   * 
+   *
    * @param {string} cachedFilePath The path to the cached file.
    * @returns {Promise<void>}
    */
@@ -309,11 +305,11 @@ export class OOXMLFileCache {
 
   /**
    * Reads a file in the cache.
-   * 
+   *
    * @param {string} cachedFilePath The path to the cached file.
    * @returns {Promise<Uint8Array>} A promise resolving to the file contents.
    */
-  private async readFile(cachedFilePath: string): Promise<Uint8Array> {
+  async readFile(cachedFilePath: string): Promise<Uint8Array> {
     try {
       return await workspace.fs.readFile(Uri.file(cachedFilePath));
     } catch (err) {
@@ -325,7 +321,7 @@ export class OOXMLFileCache {
 
   /**
    * Initiailizes the cache.
-   * 
+   *
    * @returns {Promise<void>}
    */
   private async initializeCache(): Promise<void> {

@@ -2,9 +2,9 @@ import { expect } from 'chai';
 import JSZip from 'jszip';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { match, SinonStub, stub } from 'sinon';
+import { match, SinonStub, spy, stub } from 'sinon';
 import { TextDecoder } from 'util';
-import { commands, Disposable, ExtensionContext, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window, workspace } from 'vscode';
+import { commands, Disposable, ExtensionContext, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window } from 'vscode';
 import xmlFormatter from 'xml-formatter';
 import { CACHE_FOLDER_NAME } from '../../src/ooxml-file-cache';
 import { FileNode, OOXMLTreeDataProvider } from '../../src/ooxml-tree-view-provider';
@@ -35,11 +35,10 @@ suite('OOXMLViewer', async function () {
   });
 
   test('should populate the sidebar tree with the contents of an ooxml file', async function () {
-    const writeFileMock = stub(workspace.fs, 'writeFile').returns(Promise.resolve());
+    const writeFileMock = stub(ooxmlViewer.cache, 'writeFile').returns(Promise.resolve());
     const refreshStub = stub(ooxmlViewer.treeDataProvider, 'refresh').returns(undefined);
-    const createDirectoryStub = stub(workspace.fs, 'createDirectory').returns(Promise.resolve());
     const jsZipStub = stub(ooxmlViewer.zip, 'file').callsFake(() => {
-      return ({
+      return {
         async(arg: string) {
           expect(arg).to.eq('text');
           return Promise.resolve(
@@ -47,11 +46,10 @@ suite('OOXMLViewer', async function () {
               "<to>Tove</to><from>Jani</from><body>Don't forget me this weekend!</body></note>",
           );
         },
-      } as unknown) as JSZip;
+      } as unknown as JSZip;
     });
     stubs.push(
       stub(ooxmlViewer, <never>'hasFileBeenChangedFromOutside').returns(Promise.resolve(false)),
-      createDirectoryStub,
       jsZipStub,
       refreshStub,
       writeFileMock,
@@ -67,27 +65,21 @@ suite('OOXMLViewer', async function () {
 
   test('viewFile should open a text editor when called with the path to an xml file', async function () {
     const commandsStub = stub(commands, 'executeCommand');
-    const createDirectoryStub = stub(workspace.fs, 'createDirectory').callsFake(uri => {
-      expect(uri).to.be.instanceof(Uri);
-      return Promise.resolve();
-    });
     const enc = new TextEncoder();
     const xml =
       '<?xml version="1.0" encoding="UTF-8"?><note><to>Tove</to><from>Jani</from>' +
       "<heading>Reminder</heading><body>Don't forget me this weekend!</body></note>";
     const coded = enc.encode(xml);
-    const readFileStub = stub(workspace.fs, 'readFile').callsFake((uri: Uri) => {
-      expect(uri).to.be.instanceof(Uri);
+    const readFileStub = stub(ooxmlViewer.cache, 'readFile').callsFake((path: string) => {
       return Promise.resolve(coded);
     });
-    const writeFileStub = stub(workspace.fs, 'writeFile').callsFake((uri: Uri, u8a: Uint8Array) => {
-      expect(uri).to.be.instanceof(Uri);
-      const sent: Buffer = Buffer.from(enc.encode(xmlFormatter(xml, { indentation: '  ' })));
+    const writeFileStub = stub(ooxmlViewer.cache, 'writeFile').callsFake((path: string, u8a: Uint8Array) => {
+      const sent: Buffer = Buffer.from(enc.encode(xmlFormatter(xml, { indentation: '  ', collapseContent: true })));
       const received: Buffer = Buffer.from(u8a);
       expect(sent.equals(received)).to.be.true;
       return Promise.resolve();
     });
-    stubs.push(commandsStub, createDirectoryStub, readFileStub, writeFileStub);
+    stubs.push(commandsStub, readFileStub, writeFileStub);
     const node = new FileNode();
 
     await ooxmlViewer.viewFile(node);
@@ -99,22 +91,14 @@ suite('OOXMLViewer', async function () {
 
   test("viewFile should open a file if it's not an xml file", async function () {
     const commandsStub = stub(commands, 'executeCommand');
-    const createDirectoryStub = stub(workspace.fs, 'createDirectory').callsFake(uri => {
-      expect(uri).to.be.instanceof(Uri);
-      return Promise.resolve();
-    });
     const enc = new TextEncoder();
     const codeCat = enc.encode('tacocat');
-    const writeFileStub = stub(workspace.fs, 'writeFile').callsFake((uri: Uri, u8a: Uint8Array) => {
-      expect(uri).to.be.instanceof(Uri);
+    const writeFileStub = stub(ooxmlViewer.cache, 'writeFile').callsFake((path: string, u8a: Uint8Array) => {
       expect(u8a).to.eq(codeCat);
       return Promise.resolve();
     });
-    const readFileStub = stub(workspace.fs, 'readFile').callsFake((uri: Uri) => {
-      expect(uri).to.be.instanceof(Uri);
-      return Promise.resolve(new Uint8Array());
-    });
-    stubs.push(commandsStub, createDirectoryStub, writeFileStub, readFileStub);
+    const readFileStub = stub(ooxmlViewer.cache, 'readFile').returns(Promise.resolve(new Uint8Array()));
+    stubs.push(commandsStub, writeFileStub, readFileStub);
     const node = new FileNode();
 
     await ooxmlViewer.viewFile(node);
@@ -162,17 +146,17 @@ suite('OOXMLViewer', async function () {
       expect(rightUri.path).not.to.include('compare');
       return Promise.resolve();
     });
-    const readFileStub = stub(workspace.fs, 'readFile').returns(
+    const readFileStub = stub(ooxmlViewer.cache, 'readFile').returns(
       Promise.resolve({
         toString() {
           return xml;
         },
       } as Uint8Array),
     );
-    const writeFileStub = stub(workspace.fs, 'writeFile').callsFake((arg1, arg2) => {
-      expect(arg1.fsPath).to.include(CACHE_FOLDER_NAME);
+    const writeFileStub = stub(ooxmlViewer.cache, 'writeFile').callsFake((arg1, arg2) => {
+      expect(arg1).to.include(CACHE_FOLDER_NAME);
       const dec = new TextDecoder();
-      expect(dec.decode(arg2)).to.eq(xmlFormatter(xml, { indentation: '  ' }));
+      expect(dec.decode(arg2)).to.eq(xmlFormatter(xml, { indentation: '  ', collapseContent: true }));
       return Promise.resolve();
     });
     const textDecoderStub = stub(ooxmlViewer.textDecoder, 'decode').callsFake(arg => {
@@ -187,13 +171,13 @@ suite('OOXMLViewer', async function () {
   });
 
   test('closeWatchers should call restore on the array of file system watchers', function () {
-    const disposeStub = stub();
-    const disposable1 = ({
+    const disposeStub = spy();
+    const disposable1 = {
       dispose: disposeStub,
-    } as never) as Disposable;
-    const disposable2 = ({
+    } as never as Disposable;
+    const disposable2 = {
       dispose: disposeStub,
-    } as never) as Disposable;
+    } as never as Disposable;
     ooxmlViewer.watchers.push(disposable1, disposable2);
 
     ooxmlViewer.disposeWatchers();
@@ -217,9 +201,11 @@ suite('OOXMLViewer', async function () {
     const path = 'ppt/slides/slide1.xml';
     await ooxmlViewer.openOoxmlPackage(Uri.file(testFilePath));
     const populateOOXMLViewerStub = stub(ooxmlViewer, <never>'populateOOXMLViewer').callThrough();
+    const getFileCachePathStub = stub(ooxmlViewer.cache, 'getFileCachePath');
     const updateCachedFileStub = stub(ooxmlViewer.cache, 'updateCachedFile');
     const deleteCachedFilesFileStub = stub(ooxmlViewer.cache, 'deleteCachedFiles');
-    stubs.push(populateOOXMLViewerStub, deleteCachedFilesFileStub, updateCachedFileStub);
+    const readFileStub = stub(ooxmlViewer.cache, <never>'readFile').returns(Promise.resolve(new Uint8Array(8)));
+    stubs.push(populateOOXMLViewerStub, deleteCachedFilesFileStub, updateCachedFileStub, getFileCachePathStub, readFileStub);
     delete ooxmlViewer.zip.files[path];
     const node = findNode(ooxmlViewer.treeDataProvider.rootFileNode, path);
 

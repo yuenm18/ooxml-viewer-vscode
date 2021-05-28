@@ -1,4 +1,5 @@
 import JSZip from 'jszip';
+import { lookup } from 'mime-types';
 import { basename } from 'path';
 import vkBeautify from 'vkbeautify';
 import { commands, Disposable, ExtensionContext, FileSystemWatcher, ProgressLocation, TextDocument, Uri, window, workspace } from 'vscode';
@@ -56,7 +57,7 @@ export class OOXMLViewer {
           await this.resetOOXMLViewer();
 
           // load ooxml file and populate the viewer
-          const data = await workspace.fs.readFile(Uri.file(file.fsPath));
+          const data = await this.cache.readFile(file.fsPath);
           await this.zip.loadAsync(data);
           await this.populateOOXMLViewer(this.zip.files, false);
 
@@ -132,14 +133,18 @@ export class OOXMLViewer {
       // format the file and its compare
       const fileContents = this.textDecoder.decode(await this.cache.getCachedFile(file.fullPath));
       if (fileContents.startsWith('<?xml')) {
-        await this.cache.updateCachedFile(file.fullPath, this.textEncoder.encode(xmlFormatter(fileContents, { indentation: '  ' })), false);
+        await this.cache.updateCachedFile(
+          file.fullPath,
+          this.textEncoder.encode(xmlFormatter(fileContents, { indentation: '  ', collapseContent: true })),
+          false,
+        );
       }
 
       const compareFileContents = this.textDecoder.decode(await this.cache.getCachedCompareFile(file.fullPath));
       if (compareFileContents.startsWith('<?xml')) {
         await this.cache.updateCompareFile(
           file.fullPath,
-          this.textEncoder.encode(xmlFormatter(compareFileContents, { indentation: '  ' })),
+          this.textEncoder.encode(xmlFormatter(compareFileContents, { indentation: '  ', collapseContent: true })),
         );
       }
 
@@ -240,7 +245,7 @@ export class OOXMLViewer {
       currentFileNode.fullPath = fileWithPath;
 
       // cache or update the cache of the node and mark the status of the node
-      const data = await this.zip.file(currentFileNode.fullPath)?.async('uint8array') ?? new Uint8Array();
+      const data = (await this.zip.file(currentFileNode.fullPath)?.async('uint8array')) ?? new Uint8Array();
       if (existingFileNode && !currentFileNode.isDeleted()) {
         const filesAreDifferent = await this.hasFileBeenChangedFromOutside(currentFileNode.fullPath, data);
         await this.cache.updateCachedFile(currentFileNode.fullPath, data, true);
@@ -291,11 +296,11 @@ export class OOXMLViewer {
       if (Buffer.from(fileMinXml).equals(Buffer.from(prevFileMinXml))) {
         return;
       }
-
+      const mimeType = lookup(basename(this.ooxmlFilePath)) || undefined;
       const zipFile = await this.zip
-        .file(filePath, this.textEncoder.encode(fileMinXml), { binary: true })
-        .generateAsync({ type: 'uint8array' });
-      await workspace.fs.writeFile(Uri.file(this.ooxmlFilePath), zipFile);
+        .file(filePath, this.textEncoder.encode(fileMinXml))
+        .generateAsync({ type: 'uint8array', mimeType, compression: 'DEFLATE' });
+      await this.cache.writeFile(this.ooxmlFilePath, zipFile);
 
       await this.cache.createCachedFile(filePath, fileContents, false);
       this.treeDataProvider.refresh();
@@ -330,7 +335,7 @@ export class OOXMLViewer {
           progress.report({ message: 'Updating OOXML Parts' });
 
           // unzip ooxml file again
-          const data = await workspace.fs.readFile(Uri.file(filePath));
+          const data = await this.cache.readFile(filePath);
           this.zip = new JSZip();
           await this.zip.loadAsync(data);
 
@@ -425,7 +430,7 @@ export class OOXMLViewer {
   private async tryFormatXml(filePath: string) {
     const xml = this.textDecoder.decode(await this.cache.getCachedFile(filePath));
     if (xml.startsWith('<?xml')) {
-      const text = xmlFormatter(xml, { indentation: '  ' });
+      const text = xmlFormatter(xml, { indentation: '  ', collapseContent: true });
       await this.cache.updateCachedFile(filePath, this.textEncoder.encode(text), false);
       return true;
     }

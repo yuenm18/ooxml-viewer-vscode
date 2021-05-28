@@ -3,6 +3,8 @@
 [![Visual Studio Marketplace](https://vsmarketplacebadge.apphb.com/version/yuenm18.ooxml-viewer.svg)](https://marketplace.visualstudio.com/items?itemName=yuenm18.ooxml-viewer)
 [![Build Status](https://dev.azure.com/yuenm18/Extensions/_apis/build/status/yuenm18.ooxml-viewer-vscode?branchName=master)](https://dev.azure.com/yuenm18/Extensions/_build/latest?definitionId=2&branchName=master)
 
+\* Please note, files must be stored locally, i.e. not in OneNote, Dropbox, etc.
+
 ## Features
 
 - [Display the contents of OOXML documents in VS Code](#displays-the-contents-of-ooxml-documents-in-vs-code)
@@ -38,7 +40,6 @@ To view a diff with the previous version of an OOXML part, right click on the pa
 #### Diff removing a slide from a pptx file
 
 ![Getting the diff of an OOXML Part](https://raw.githubusercontent.com/yuenm18/ooxml-viewer-vscode/master/resources/images/getting-diff-delete.gif)
-
 
 ## Release Notes
 
