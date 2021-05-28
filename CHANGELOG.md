@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [1.1.1] - 2021-05-28
+### Fixed
+- Xml spacing issue with saved documents that resulted in Word not being able to open documents with shapes or 3D models [#20](https://github.com/yuenm18/ooxml-viewer-vscode/issues/20)
+
+### Changed
+- Add DEFLATE compression to ooxml packages
+
 ## [1.1.0] - 2021-02-25
 ### Added
 - Support for *.dotm* files [#16](https://github.com/yuenm18/ooxml-viewer-vscode/issues/16)
@@ -30,7 +37,8 @@
 ### Added
 - Support for viewing the contents of OOXML documents
 
-[Unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.0.0...v1.0.1
