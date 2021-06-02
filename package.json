@@ -15,7 +15,10 @@
   },
   "icon": "resources/icons/icon.png",
   "keywords": [
-    "ooxml"
+    "ooxml",
+    "oxml",
+    "open office xml",
+    "office open xml"
   ],
   "engines": {
     "vscode": "^1.50.0"
