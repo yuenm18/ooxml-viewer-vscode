@@ -1,4 +1,3 @@
-import { find, FindResult } from 'find-in-files';
 import { existsSync } from 'fs';
 import { dirname, join, sep } from 'path';
 import { ExtensionContext, Uri, workspace } from 'vscode';
@@ -331,10 +330,5 @@ export class OOXMLFileCache {
    */
   private async initializeCache(): Promise<void> {
     await workspace.fs.createDirectory(Uri.file(this.cacheBasePath));
-  }
-
-  async searchFileCache(searchTerm: string): Promise<FindResult> {
-    const folderCachePath = this.normalSubfolderPath;
-    return await find(searchTerm, folderCachePath);
   }
 }

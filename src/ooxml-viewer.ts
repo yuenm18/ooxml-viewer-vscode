@@ -1,3 +1,4 @@
+import { find } from 'find-in-files';
 import JSZip from 'jszip';
 import { lookup } from 'mime-types';
 import { basename, sep } from 'path';
@@ -484,7 +485,7 @@ export class OOXMLViewer {
     if (!searchTerm) {
       return;
     }
-    const result = await this.cache.searchFileCache(searchTerm);
+    const result = await find(searchTerm, this.cache.normalSubfolderPath);
     const html = ExtensionUtilities.generateHtml(result);
     const panel: WebviewPanel = window.createWebviewPanel('ooxmlViewer', 'Search Results', ViewColumn.One, { enableScripts: true });
     panel.webview.html = html;
