@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import { lookup } from 'mime-types';
-import { basename } from 'path';
+import { basename, sep } from 'path';
 import vkBeautify from 'vkbeautify';
 import {
   commands,
@@ -491,9 +491,13 @@ export class OOXMLViewer {
 
     panel.webview.onDidReceiveMessage(
       message => {
+        const node = this.findTreeNode(message.text, this.treeDataProvider.rootFileNode.children);
         switch (message.command) {
-          case 'alert':
-            window.showErrorMessage(message.text);
+          case 'openPart':
+            if (node) {
+              this.viewFile(node);
+            }
+            // window.showErrorMessage(message.text);
             return;
         }
       },
@@ -501,4 +505,25 @@ export class OOXMLViewer {
       this.watchers,
     );
   }
+
+  findTreeNode = (path: string, fileNodes: FileNode[]): FileNode | undefined => {
+    for (let i = 0; i < fileNodes.length; i++) {
+      const node = fileNodes[i];
+      const nodePath = node.fullPath.split('/');
+      const filePath = path.replace(this.cache.cacheBasePath, '').split(sep);
+      const filePathStr = filePath.slice(2, filePath.length).join('-');
+      const nodePathStr = nodePath.join('-');
+      if (filePathStr === nodePathStr) {
+        return node;
+      } else {
+        if (node.children) {
+          const found = this.findTreeNode(path, node.children);
+
+          if (found) {
+            return found;
+          }
+        }
+      }
+    }
+  };
 }
