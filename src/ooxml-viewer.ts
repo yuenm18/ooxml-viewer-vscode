@@ -491,7 +491,7 @@ export class OOXMLViewer {
 
     panel.webview.onDidReceiveMessage(
       message => {
-        const node = this.findTreeNode(message.text, this.treeDataProvider.rootFileNode.children);
+        const node = this.findTreeNode(this.treeDataProvider.rootFileNode.children, message.text);
         switch (message.command) {
           case 'openPart':
             if (node) {
@@ -506,18 +506,19 @@ export class OOXMLViewer {
     );
   }
 
-  findTreeNode = (path: string, fileNodes: FileNode[]): FileNode | undefined => {
+  findTreeNode = (fileNodes: FileNode[], path: string): FileNode | undefined => {
     for (let i = 0; i < fileNodes.length; i++) {
       const node = fileNodes[i];
       const nodePath = node.fullPath.split('/');
-      const filePath = path.replace(this.cache.cacheBasePath, '').split(sep);
-      const filePathStr = filePath.slice(2, filePath.length).join('-');
+      const filePath = path.replace(this.cache.cacheBasePath + sep, '').split(sep);
+      const filePathArr = filePath.slice(1, filePath.length);
+      const filePathStr = filePathArr.join('-');
       const nodePathStr = nodePath.join('-');
       if (filePathStr === nodePathStr) {
         return node;
       } else {
         if (node.children) {
-          const found = this.findTreeNode(path, node.children);
+          const found = this.findTreeNode(node.children, path);
 
           if (found) {
             return found;

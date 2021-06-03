@@ -1,6 +1,7 @@
 import { FindResult } from 'find-in-files';
-import { basename } from 'path';
+import { sep } from 'path';
 import { commands, Position, Range, TextDocument, TextEditor, TextEditorEdit, window } from 'vscode';
+import packageJson from '../package.json';
 
 export class ExtensionUtilities {
   /**
@@ -85,7 +86,7 @@ export class ExtensionUtilities {
                               onclick="openPart(this.id)"
                             >
                             <div class="ms-2 me-auto">
-                              <div class="fw-bold">${basename(key)}</div>
+                              <div class="fw-bold">${key.split(packageJson.name)[1].split(sep).slice(3).join(sep)}</div>
                             </div>
                             <span class="badge bg-primary rounded-pill text-white">${results[key].count}</span>
                           </li>`;
@@ -115,9 +116,9 @@ export class ExtensionUtilities {
 
             function openPart (id) {
               vscode.postMessage({
-                       command: 'openPart',
-                       text: id,
-                     });
+                command: 'openPart',
+                text: id,
+              });
             }
           </script>
           </body>
