@@ -1,3 +1,5 @@
+import { FindResult } from 'find-in-files';
+import { basename } from 'path';
 import { commands, Position, Range, TextDocument, TextEditor, TextEditorEdit, window } from 'vscode';
 
 export class ExtensionUtilities {
@@ -49,7 +51,6 @@ export class ExtensionUtilities {
       }
     });
   }
-  
 
   /**
    * @description Closes text editors.
@@ -71,5 +72,67 @@ export class ExtensionUtilities {
     } catch (err) {
       console.error(err);
     }
+  }
+
+  static generateHtml(results: FindResult): string {
+    let searchResultHtml = '<div class="list-group">';
+
+    Object.keys(results).forEach((key: string) => {
+      searchResultHtml += `<button
+                              id="${key}"
+                              type="button"
+                              class="list-group-item list-group-item-action d-flex justify-content-between align-items-start"
+                              onclick="doIt(this.id)"
+                            >
+                            <div class="ms-2 me-auto">
+                              <div class="fw-bold">${basename(key)}</div>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">${results[key].count}</span>
+                          </li>`;
+    });
+
+    searchResultHtml += '</div>';
+
+    return `<!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous"></head>
+          <title>OOXML Validation Errors</title>
+          <body>
+            <div class="container">
+              <div class="row">
+                <div class="col">
+                <button type="button" id="tacocat" onclick="doIt(this.id)">Click me</button>
+                <span id="foobar">Click me</span>
+                  ${searchResultHtml}
+                </div>
+              </div>
+                </div>
+              </div>
+            </div>
+            <script>
+            const vscode = acquireVsCodeApi();
+            const spn = document.getElementById('foobar');
+            spn.innerText = '0';
+            let count = 0;
+            function doIt (id) {
+              spn.innerText = 'Position: ( ' + id ;
+              vscode.postMessage({
+                       command: 'alert',
+                       text: '🐛  on line ' + id,
+                     });
+            }
+                // (function() {
+
+                  // btn.onclick = vscode.postMessage({
+                  //     command: 'alert',
+                  //     text: '🐛  on line ' + count,
+                  //   });
+                // }())
+          </script>
+          </body>
+        </html>`;
   }
 }

@@ -1,3 +1,4 @@
+import { find, FindResult } from 'find-in-files';
 import { existsSync } from 'fs';
 import { dirname, join, sep } from 'path';
 import { ExtensionContext, Uri, workspace } from 'vscode';
@@ -26,6 +27,10 @@ export class OOXMLFileCache {
    */
   get cacheBasePath(): string {
     return join(this.context.storageUri?.fsPath || '', CACHE_FOLDER_NAME);
+  }
+
+  get normalSubfolderPath(): string {
+    return join(this.cacheBasePath, NORMAL_SUBFOLDER_NAME);
   }
 
   /**
@@ -98,7 +103,7 @@ export class OOXMLFileCache {
    * @returns {string} The file path of the cached file.
    */
   getFileCachePath(filePath: string): string {
-    return join(this.cacheBasePath, NORMAL_SUBFOLDER_NAME, filePath);
+    return join(this.normalSubfolderPath, filePath);
   }
 
   /**
@@ -326,5 +331,10 @@ export class OOXMLFileCache {
    */
   private async initializeCache(): Promise<void> {
     await workspace.fs.createDirectory(Uri.file(this.cacheBasePath));
+  }
+
+  async searchFileCache(searchTerm: string): Promise<FindResult> {
+    const folderCachePath = this.normalSubfolderPath;
+    return await find(searchTerm, folderCachePath);
   }
 }

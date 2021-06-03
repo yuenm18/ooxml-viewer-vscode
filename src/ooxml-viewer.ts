@@ -2,7 +2,19 @@ import JSZip from 'jszip';
 import { lookup } from 'mime-types';
 import { basename } from 'path';
 import vkBeautify from 'vkbeautify';
-import { commands, Disposable, ExtensionContext, FileSystemWatcher, ProgressLocation, TextDocument, Uri, window, workspace } from 'vscode';
+import {
+  commands,
+  Disposable,
+  ExtensionContext,
+  FileSystemWatcher,
+  ProgressLocation,
+  TextDocument,
+  Uri,
+  ViewColumn,
+  WebviewPanel,
+  window,
+  workspace
+} from 'vscode';
 import xmlFormatter from 'xml-formatter';
 import { ExtensionUtilities } from './extension-utilities';
 import { OOXMLFileCache } from './ooxml-file-cache';
@@ -465,5 +477,28 @@ export class OOXMLViewer {
     }
 
     return false;
+  }
+
+  async searchOxmlParts(): Promise<void> {
+    const searchTerm = await window.showInputBox({ title: 'Search OXML Parts', prompt: 'Enter a search term.' });
+    if (!searchTerm) {
+      return;
+    }
+    const result = await this.cache.searchFileCache(searchTerm);
+    const html = ExtensionUtilities.generateHtml(result);
+    const panel: WebviewPanel = window.createWebviewPanel('ooxmlViewer', 'Search Results', ViewColumn.One, { enableScripts: true });
+    panel.webview.html = html;
+
+    panel.webview.onDidReceiveMessage(
+      message => {
+        switch (message.command) {
+          case 'alert':
+            window.showErrorMessage(message.text);
+            return;
+        }
+      },
+      undefined,
+      this.watchers,
+    );
   }
 }
