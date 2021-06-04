@@ -75,7 +75,7 @@ export class ExtensionUtilities {
     }
   }
 
-  static generateHtml(results: FindResult): string {
+  static generateHtml(results: FindResult, title: string): string {
     let searchResultHtml = '<div class="list-group">';
 
     Object.keys(results).forEach((key: string) => {
@@ -105,7 +105,12 @@ export class ExtensionUtilities {
             <div class="container">
               <div class="row">
                 <div class="col">
-                  ${searchResultHtml}
+                  <h1 class="text-center">"${title}"</h1>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col">
+                  ${searchResultHtml || 'Nothing found'}
                 </div>
               </div>
                 </div>

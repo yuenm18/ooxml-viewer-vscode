@@ -5,10 +5,13 @@ import { basename, sep } from 'path';
 import vkBeautify from 'vkbeautify';
 import {
   commands,
+  DecorationOptions,
   Disposable,
   ExtensionContext,
   FileSystemWatcher,
+  OverviewRulerLane,
   ProgressLocation,
+  Range,
   TextDocument,
   Uri,
   ViewColumn,
@@ -116,7 +119,7 @@ export class OOXMLViewer {
 
           const filePath = this.cache.getFileCachePath(fileNode.fullPath);
           this.openTextEditors[filePath] = fileNode;
-          commands.executeCommand('vscode.open', Uri.file(filePath));
+          await commands.executeCommand('vscode.open', Uri.file(filePath));
         },
       );
     } catch (e) {
@@ -486,17 +489,22 @@ export class OOXMLViewer {
       return;
     }
     const result = await find(searchTerm, this.cache.normalSubfolderPath);
-    const html = ExtensionUtilities.generateHtml(result);
+    const html = ExtensionUtilities.generateHtml(result, searchTerm);
     const panel: WebviewPanel = window.createWebviewPanel('ooxmlViewer', 'Search Results', ViewColumn.One, { enableScripts: true });
     panel.webview.html = html;
 
     panel.webview.onDidReceiveMessage(
-      message => {
-        const node = this.findTreeNode(this.treeDataProvider.rootFileNode.children, message.text);
-        switch (message.command) {
+      async ({ text: filePath, command }) => {
+        const node = this.findTreeNode(this.treeDataProvider.rootFileNode.children, filePath);
+        switch (command) {
           case 'openPart':
             if (node) {
-              this.viewFile(node);
+              await this.viewFile(node);
+              this.highlightSearchTerm(searchTerm);
+              // for (let i = 0; i < activeTextEditor.document.lineCount; i++) {
+              //   const line = activeTextEditor.document.lineAt(i);
+              //   // console.log(i, line);
+              // }
             }
             // window.showErrorMessage(message.text);
             return;
@@ -507,7 +515,7 @@ export class OOXMLViewer {
     );
   }
 
-  findTreeNode = (fileNodes: FileNode[], path: string): FileNode | undefined => {
+  findTreeNode(fileNodes: FileNode[], path: string): FileNode | undefined {
     for (let i = 0; i < fileNodes.length; i++) {
       const node = fileNodes[i];
       const nodePath = node.fullPath.split('/');
@@ -527,5 +535,40 @@ export class OOXMLViewer {
         }
       }
     }
-  };
+  }
+
+  private highlightSearchTerm(search: string): void {
+    const { activeTextEditor } = window;
+
+    if (!activeTextEditor) {
+      return;
+    }
+    const matches: DecorationOptions[] = [];
+    // const decorationOptions: DecorationOptions[] = [];
+    const wordDecorationType = window.createTextEditorDecorationType({
+      // borderWidth: '1px',
+      // borderStyle: 'solid',
+      overviewRulerColor: 'yellow',
+      overviewRulerLane: OverviewRulerLane.Full,
+      backgroundColor: 'rgba(255, 255, 0, 1)',
+      light: {
+        borderColor: 'darkblue',
+      },
+      dark: {
+        borderColor: 'lightblue',
+      },
+    });
+    this.watchers.push(wordDecorationType);
+    const text = activeTextEditor.document.getText();
+    const regEx = new RegExp(search, 'g');
+    let match;
+    while ((match = regEx.exec(text))) {
+      const startPos = activeTextEditor.document.positionAt(match.index);
+      const endPos = activeTextEditor.document.positionAt(match.index + match[0].length);
+      const decoration = { range: new Range(startPos, endPos) };
+
+      matches.push(decoration);
+    }
+    activeTextEditor.setDecorations(wordDecorationType, matches);
+  }
 }
