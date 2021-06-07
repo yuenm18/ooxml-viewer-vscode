@@ -101,11 +101,21 @@ export class ExtensionUtilities {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous"></head>
           <title>OOXML Validation Errors</title>
+          <style>
+            [type='button']:hover {
+              cursor: pointer;
+            }
+          </style>
           <body>
             <div class="container">
               <div class="row">
                 <div class="col">
-                  <h1 class="text-center">"${title}"</h1>
+                  <h1 class="text-center">"Search Term: ${title}"</h1>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col d-flex justify-content-between align-items-start">
+                <h2>Part</h2><h2>Found</h2>
                 </div>
               </div>
               <div class="row">
