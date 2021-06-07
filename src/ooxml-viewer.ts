@@ -13,6 +13,7 @@ import {
   ProgressLocation,
   Range,
   TextDocument,
+  TreeView,
   Uri,
   ViewColumn,
   WebviewPanel,
@@ -20,6 +21,7 @@ import {
   workspace
 } from 'vscode';
 import xmlFormatter from 'xml-formatter';
+import packageJson from '../package.json';
 import { ExtensionUtilities } from './extension-utilities';
 import { OOXMLFileCache } from './ooxml-file-cache';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
@@ -29,6 +31,8 @@ import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
  */
 export class OOXMLViewer {
   treeDataProvider: OOXMLTreeDataProvider;
+  treeView: TreeView<FileNode>;
+
   zip: JSZip;
   cache: OOXMLFileCache;
 
@@ -47,6 +51,9 @@ export class OOXMLViewer {
    */
   constructor(context: ExtensionContext) {
     this.treeDataProvider = new OOXMLTreeDataProvider();
+    this.treeView = window.createTreeView('ooxmlViewer', { treeDataProvider: this.treeDataProvider });
+    this.treeView.title = packageJson.displayName;
+    context.subscriptions.push(this.treeView);
     this.zip = new JSZip();
     this.cache = new OOXMLFileCache(context);
 
@@ -63,6 +70,7 @@ export class OOXMLViewer {
   async openOoxmlPackage(file: Uri): Promise<void> {
     try {
       this.ooxmlFilePath = file.fsPath;
+      this.treeView.title = basename(file.fsPath);
       await window.withProgress(
         {
           location: ProgressLocation.Notification,
@@ -134,6 +142,7 @@ export class OOXMLViewer {
    * @returns {Promise<void>} Promise that returns void
    */
   clear(): Promise<void> {
+    this.treeView.title = packageJson.displayName;
     return this.resetOOXMLViewer();
   }
 
