@@ -70,7 +70,7 @@ export class OOXMLViewer {
   async openOoxmlPackage(file: Uri): Promise<void> {
     try {
       this.ooxmlFilePath = file.fsPath;
-      this.treeView.title = basename(file.fsPath);
+      this.treeView.title = `${packageJson.displayName} - ${basename(file.fsPath)}`;
       await window.withProgress(
         {
           location: ProgressLocation.Notification,
