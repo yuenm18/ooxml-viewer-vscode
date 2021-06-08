@@ -492,43 +492,54 @@ export class OOXMLViewer {
     return false;
   }
 
+  /**
+   * @description search OXML parts for a string and display the results in a web view
+   * @method searchOxmlParts
+   * @returns {Promise<void>}
+   */
   async searchOxmlParts(): Promise<void> {
-    const searchTerm = await window.showInputBox({ title: 'Search OXML Parts', prompt: 'Enter a search term.' });
-    if (!searchTerm) {
-      return;
-    }
-    const result = await find(searchTerm, this.cache.normalSubfolderPath);
-    const html = ExtensionUtilities.generateHtml(result, searchTerm);
-    const panel: WebviewPanel = window.createWebviewPanel('ooxmlViewer', 'Search Results', ViewColumn.One, { enableScripts: true });
-    panel.webview.html = html;
+    try {
+      const searchTerm = await window.showInputBox({ title: 'Search OXML Parts', prompt: 'Enter a search term.' });
+      if (!searchTerm) {
+        return;
+      }
+      const result = await find(searchTerm, this.cache.normalSubfolderPath);
+      const panel: WebviewPanel = window.createWebviewPanel('ooxmlViewer', 'Search Results', ViewColumn.One, { enableScripts: true });
+      const html = ExtensionUtilities.generateHtml(result, searchTerm, panel.webview);
+      panel.webview.html = html;
 
-    panel.webview.onDidReceiveMessage(
-      async ({ text: filePath, command }) => {
-        const node = this.findTreeNode(this.treeDataProvider.rootFileNode.children, filePath);
-        switch (command) {
-          case 'openPart':
-            if (node) {
-              await this.viewFile(node);
-              this.highlightSearchTerm(searchTerm);
-              // for (let i = 0; i < activeTextEditor.document.lineCount; i++) {
-              //   const line = activeTextEditor.document.lineAt(i);
-              //   // console.log(i, line);
-              // }
-            }
-            // window.showErrorMessage(message.text);
-            return;
-        }
-      },
-      undefined,
-      this.watchers,
-    );
+      panel.webview.onDidReceiveMessage(
+        async ({ text: filePath, command }) => {
+          const node = this.findTreeNode(this.treeDataProvider.rootFileNode.children, filePath);
+          switch (command) {
+            case 'openPart':
+              if (node) {
+                await this.viewFile(node);
+                this.highlightSearchTerm(searchTerm);
+              }
+              return;
+          }
+        },
+        undefined,
+        this.watchers,
+      );
+    } catch (err) {
+      console.error(err.message || err);
+    }
   }
 
-  findTreeNode(fileNodes: FileNode[], path: string): FileNode | undefined {
+  /**
+   * @description recursively finds a tree node from a file tree that matches a given system path
+   * @method findTreeNode
+   * @param {FileNode[]} fileNodes an array of FileNode to search
+   * @param {string} fullFilePath the full system path of the FileNode to search for
+   * @returns {FileNode | undefined} the matching FileNode or undefined if not found
+   */
+  findTreeNode(fileNodes: FileNode[], fullFilePath: string): FileNode | undefined {
     for (let i = 0; i < fileNodes.length; i++) {
       const node = fileNodes[i];
       const nodePath = node.fullPath.split('/');
-      const filePath = path.replace(this.cache.cacheBasePath + sep, '').split(sep);
+      const filePath = fullFilePath.replace(this.cache.cacheBasePath + sep, '').split(sep);
       const filePathArr = filePath.slice(1, filePath.length);
       const filePathStr = filePathArr.join('-');
       const nodePathStr = nodePath.join('-');
@@ -536,7 +547,7 @@ export class OOXMLViewer {
         return node;
       } else {
         if (node.children) {
-          const found = this.findTreeNode(node.children, path);
+          const found = this.findTreeNode(node.children, fullFilePath);
 
           if (found) {
             return found;
@@ -546,38 +557,47 @@ export class OOXMLViewer {
     }
   }
 
-  private highlightSearchTerm(search: string): void {
-    const { activeTextEditor } = window;
+  /**
+   * @method highlightSearchTerm
+   * @description highlight the search term in the active text editor
+   * @param {string} searchTerm the string to search
+   * @returns void
+   */
+  private highlightSearchTerm(searchTerm: string): void {
+    try {
+      const { activeTextEditor } = window;
 
-    if (!activeTextEditor) {
-      return;
-    }
-    const matches: DecorationOptions[] = [];
-    // const decorationOptions: DecorationOptions[] = [];
-    const wordDecorationType = window.createTextEditorDecorationType({
-      // borderWidth: '1px',
-      // borderStyle: 'solid',
-      overviewRulerColor: 'yellow',
-      overviewRulerLane: OverviewRulerLane.Full,
-      backgroundColor: 'rgba(255, 255, 0, 1)',
-      light: {
-        borderColor: 'darkblue',
-      },
-      dark: {
-        borderColor: 'lightblue',
-      },
-    });
-    this.watchers.push(wordDecorationType);
-    const text = activeTextEditor.document.getText();
-    const regEx = new RegExp(search, 'g');
-    let match;
-    while ((match = regEx.exec(text))) {
-      const startPos = activeTextEditor.document.positionAt(match.index);
-      const endPos = activeTextEditor.document.positionAt(match.index + match[0].length);
-      const decoration = { range: new Range(startPos, endPos) };
+      if (!activeTextEditor) {
+        return;
+      }
+      const matches: DecorationOptions[] = [];
+      const wordDecorationType = window.createTextEditorDecorationType({
+        overviewRulerLane: OverviewRulerLane.Full,
+        light: {
+          borderColor: 'darkblue',
+          overviewRulerColor: 'green',
+          backgroundColor: 'rgba(0, 255, 0, .5)',
+        },
+        dark: {
+          borderColor: 'lightblue',
+          overviewRulerColor: 'yellow',
+          backgroundColor: 'rgba(255, 255, 0, .5)',
+        },
+      });
+      this.watchers.push(wordDecorationType);
+      const text = activeTextEditor.document.getText();
+      const regEx = new RegExp(searchTerm, 'g');
+      let match;
+      while ((match = regEx.exec(text))) {
+        const startPos = activeTextEditor.document.positionAt(match.index);
+        const endPos = activeTextEditor.document.positionAt(match.index + match[0].length);
+        const decoration = { range: new Range(startPos, endPos) };
 
-      matches.push(decoration);
+        matches.push(decoration);
+      }
+      activeTextEditor.setDecorations(wordDecorationType, matches);
+    } catch (err) {
+      console.error(err.message || err);
     }
-    activeTextEditor.setDecorations(wordDecorationType, matches);
   }
 }
