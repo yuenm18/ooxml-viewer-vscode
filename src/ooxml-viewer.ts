@@ -503,6 +503,8 @@ export class OOXMLViewer {
         query: searchTerm,
         filesToInclude: this.cache.normalSubfolderPath,
         triggerSearch: true,
+        isCaseSensitive: false,
+        matchWholeWord: false,
       });
     } catch (err) {
       console.error(err.message || err);
