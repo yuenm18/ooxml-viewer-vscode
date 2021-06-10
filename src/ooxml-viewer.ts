@@ -35,7 +35,6 @@ export class OOXMLViewer {
   openTextEditors: { [key: string]: FileNode } = {};
   xmlFormatConfig = { indentation: '  ', collapseContent: true };
   ooxmlFilePath = '';
-  context: ExtensionContext;
 
   textEncoder = new TextEncoder();
   textDecoder = new TextDecoder();
@@ -50,10 +49,9 @@ export class OOXMLViewer {
     this.treeDataProvider = new OOXMLTreeDataProvider();
     this.treeView = window.createTreeView('ooxmlViewer', { treeDataProvider: this.treeDataProvider });
     this.treeView.title = packageJson.displayName;
-    this.context = context;
-    this.context.subscriptions.push(this.treeView);
+    context.subscriptions.push(this.treeView);
     this.zip = new JSZip();
-    this.cache = new OOXMLFileCache(this.context);
+    this.cache = new OOXMLFileCache(context);
 
     this.closeEditors();
   }
