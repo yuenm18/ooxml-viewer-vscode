@@ -1,22 +1,16 @@
-import { find } from 'find-in-files';
 import JSZip from 'jszip';
 import { lookup } from 'mime-types';
-import { basename, join, sep } from 'path';
+import { basename } from 'path';
 import vkBeautify from 'vkbeautify';
 import {
   commands,
-  DecorationOptions,
   Disposable,
   ExtensionContext,
   FileSystemWatcher,
-  OverviewRulerLane,
   ProgressLocation,
-  Range,
   TextDocument,
   TreeView,
   Uri,
-  ViewColumn,
-  WebviewPanel,
   window,
   workspace
 } from 'vscode';
@@ -38,6 +32,7 @@ export class OOXMLViewer {
 
   watchers: Disposable[] = [];
   openTextEditors: { [key: string]: FileNode } = {};
+  xmlFormatConfig = { indentation: '  ', collapseContent: true };
   ooxmlFilePath = '';
   context: ExtensionContext;
 
@@ -160,19 +155,12 @@ export class OOXMLViewer {
       // format the file and its compare
       const fileContents = this.textDecoder.decode(await this.cache.getCachedFile(file.fullPath));
       if (fileContents.startsWith('<?xml')) {
-        await this.cache.updateCachedFile(
-          file.fullPath,
-          this.textEncoder.encode(xmlFormatter(fileContents, { indentation: '  ', collapseContent: true })),
-          false,
-        );
+        await this.cache.updateCachedFile(file.fullPath, this.textEncoder.encode(xmlFormatter(fileContents, this.xmlFormatConfig)), false);
       }
 
       const compareFileContents = this.textDecoder.decode(await this.cache.getCachedCompareFile(file.fullPath));
       if (compareFileContents.startsWith('<?xml')) {
-        await this.cache.updateCompareFile(
-          file.fullPath,
-          this.textEncoder.encode(xmlFormatter(compareFileContents, { indentation: '  ', collapseContent: true })),
-        );
+        await this.cache.updateCompareFile(file.fullPath, this.textEncoder.encode(xmlFormatter(compareFileContents, this.xmlFormatConfig)));
       }
 
       // diff the primary and compare files
@@ -457,7 +445,7 @@ export class OOXMLViewer {
   private async tryFormatXml(filePath: string) {
     const xml = this.textDecoder.decode(await this.cache.getCachedFile(filePath));
     if (xml.startsWith('<?xml')) {
-      const text = xmlFormatter(xml, { indentation: '  ', collapseContent: true });
+      const text = xmlFormatter(xml, this.xmlFormatConfig);
       await this.cache.updateCachedFile(filePath, this.textEncoder.encode(text), false);
       return true;
     }
@@ -505,102 +493,18 @@ export class OOXMLViewer {
       if (!searchTerm) {
         return;
       }
-      const result = await find(searchTerm, this.cache.normalSubfolderPath);
-      const panel: WebviewPanel = window.createWebviewPanel('ooxmlViewer', 'Search Results', ViewColumn.One, {
-        enableScripts: true,
-        localResourceRoots: [Uri.file(join(this.context.extensionPath, 'resources', 'bin'))],
+
+      const watcher = workspace.onDidOpenTextDocument((textDocument: TextDocument) => {
+        this.cache.writeFile(textDocument.fileName, this.textEncoder.encode(xmlFormatter(textDocument.getText(), this.xmlFormatConfig)));
       });
-      const html = ExtensionUtilities.generateHtml(result, searchTerm, panel.webview, this.context.extensionUri);
-      panel.webview.html = html;
 
-      panel.webview.onDidReceiveMessage(
-        async ({ text: filePath, command }) => {
-          const node = this.findTreeNode(this.treeDataProvider.rootFileNode.children, filePath);
-          switch (command) {
-            case 'openPart':
-              if (node) {
-                await this.viewFile(node);
-                this.highlightSearchTerm(searchTerm);
-              }
-              return;
-          }
-        },
-        undefined,
-        this.watchers,
-      );
-    } catch (err) {
-      console.error(err.message || err);
-    }
-  }
+      this.watchers.push(watcher);
 
-  /**
-   * @description recursively finds a tree node from a file tree that matches a given system path
-   * @method findTreeNode
-   * @param {FileNode[]} fileNodes an array of FileNode to search
-   * @param {string} fullFilePath the full system path of the FileNode to search for
-   * @returns {FileNode | undefined} the matching FileNode or undefined if not found
-   */
-  findTreeNode(fileNodes: FileNode[], fullFilePath: string): FileNode | undefined {
-    for (let i = 0; i < fileNodes.length; i++) {
-      const node = fileNodes[i];
-      const nodePath = node.fullPath.split('/');
-      const filePath = fullFilePath.replace(this.cache.cacheBasePath + sep, '').split(sep);
-      const filePathArr = filePath.slice(1, filePath.length);
-      const filePathStr = filePathArr.join('-');
-      const nodePathStr = nodePath.join('-');
-      if (filePathStr === nodePathStr) {
-        return node;
-      } else {
-        if (node.children) {
-          const found = this.findTreeNode(node.children, fullFilePath);
-
-          if (found) {
-            return found;
-          }
-        }
-      }
-    }
-  }
-
-  /**
-   * @method highlightSearchTerm
-   * @description highlight the search term in the active text editor
-   * @param {string} searchTerm the string to search
-   * @returns void
-   */
-  private highlightSearchTerm(searchTerm: string): void {
-    try {
-      const { activeTextEditor } = window;
-
-      if (!activeTextEditor) {
-        return;
-      }
-      const matches: DecorationOptions[] = [];
-      const wordDecorationType = window.createTextEditorDecorationType({
-        overviewRulerLane: OverviewRulerLane.Full,
-        light: {
-          borderColor: 'darkblue',
-          overviewRulerColor: 'green',
-          backgroundColor: 'rgba(0, 255, 0, .5)',
-        },
-        dark: {
-          borderColor: 'lightblue',
-          overviewRulerColor: 'yellow',
-          backgroundColor: 'rgba(255, 255, 0, .5)',
-        },
+      await commands.executeCommand('workbench.action.findInFiles', {
+        query: searchTerm,
+        filesToInclude: this.cache.normalSubfolderPath,
+        triggerSearch: true,
       });
-      this.watchers.push(wordDecorationType);
-      const text = activeTextEditor.document.getText();
-      const regEx = new RegExp(searchTerm, 'g');
-      let match;
-      while ((match = regEx.exec(text))) {
-        const startPos = activeTextEditor.document.positionAt(match.index);
-        const endPos = activeTextEditor.document.positionAt(match.index + match[0].length);
-        const decoration = { range: new Range(startPos, endPos) };
-
-        matches.push(decoration);
-      }
-      activeTextEditor.setDecorations(wordDecorationType, matches);
     } catch (err) {
       console.error(err.message || err);
     }

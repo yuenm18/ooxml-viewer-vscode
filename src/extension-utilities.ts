@@ -1,7 +1,4 @@
-import { FindResult } from 'find-in-files';
-import { sep } from 'path';
-import { commands, Position, Range, TextDocument, TextEditor, TextEditorEdit, Uri, Webview, window } from 'vscode';
-import packageJson from '../package.json';
+import { commands, Position, Range, TextDocument, TextEditor, TextEditorEdit, window } from 'vscode';
 
 export class ExtensionUtilities {
   /**
@@ -73,76 +70,5 @@ export class ExtensionUtilities {
     } catch (err) {
       console.error(err);
     }
-  }
-
-  /**
-   * @description Generates the HTML for the search webview
-   * @method generateHtml
-   * @param {FindResult} result the search result object from find-in-files
-   * @param {string} searchTerm the search term
-   * @returns {string} the html string to display in the webview
-   */
-  static generateHtml(result: FindResult, searchTerm: string, webview: Webview, extensionUri: Uri): string {
-    const scriptPathOnDisk = Uri.joinPath(extensionUri, 'resources', 'bin', 'main.js');
-    const stylePathOnDisk = Uri.joinPath(extensionUri, 'resources', 'bin', 'style.css');
-    const scriptUri = webview.asWebviewUri(scriptPathOnDisk);
-    const styleUri = webview.asWebviewUri(stylePathOnDisk);
-    const scriptRegex = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script\s*>/gi;
-    const cleanSearchTerm = searchTerm.replace(scriptRegex, '');
-
-    let searchResultHtml = '<div class="list-group">';
-
-    Object.keys(result).forEach((key: string) => {
-      searchResultHtml += `<button
-                              id="${key}"
-                              type="button"
-                              class="list-group-item list-group-item-action d-flex justify-content-between align-items-start"
-                              onclick="openPart(this.id)"
-                            >
-                            <div class="ms-2 me-auto">
-                              <div class="fw-bold">${key.split(packageJson.name)[1].split(sep).slice(3).join(sep)}</div>
-                            </div>
-                            <span class="badge bg-primary rounded-pill text-white">${result[key].count}</span>
-                          </li>`;
-    });
-
-    searchResultHtml += '</div>';
-
-    return `<!DOCTYPE html>
-      <html lang="en">
-      <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <meta
-            http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css; script-src ${webview.cspSource} 'unsafe-inline';"
-          />
-
-          <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous"></head>
-          <link rel="stylesheet" href="${styleUri}">
-          <title>OOXML Validation Errors</title>
-      </head>
-          <body>
-            <div class="container">
-              <div class="row">
-                <div class="col">
-                  <h1 class="text-center">Search Term: "${cleanSearchTerm}"</h1>
-                </div>
-              </div>
-              <div class="row">
-                <div class="col d-flex justify-content-between align-items-start">
-                <h2>Part</h2><h2>Found</h2>
-                </div>
-              </div>
-              <div class="row">
-                <div class="col">
-                  ${searchResultHtml || 'Nothing found'}
-                </div>
-              </div>
-                </div>
-              </div>
-            </div>
-            <script src="${scriptUri}"></script>
-          </body>
-        </html>`;
   }
 }
