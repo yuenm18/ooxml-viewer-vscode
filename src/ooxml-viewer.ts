@@ -1,7 +1,7 @@
 import { find } from 'find-in-files';
 import JSZip from 'jszip';
 import { lookup } from 'mime-types';
-import { basename, sep } from 'path';
+import { basename, join, sep } from 'path';
 import vkBeautify from 'vkbeautify';
 import {
   commands,
@@ -39,6 +39,7 @@ export class OOXMLViewer {
   watchers: Disposable[] = [];
   openTextEditors: { [key: string]: FileNode } = {};
   ooxmlFilePath = '';
+  context: ExtensionContext;
 
   textEncoder = new TextEncoder();
   textDecoder = new TextDecoder();
@@ -53,9 +54,10 @@ export class OOXMLViewer {
     this.treeDataProvider = new OOXMLTreeDataProvider();
     this.treeView = window.createTreeView('ooxmlViewer', { treeDataProvider: this.treeDataProvider });
     this.treeView.title = packageJson.displayName;
-    context.subscriptions.push(this.treeView);
+    this.context = context;
+    this.context.subscriptions.push(this.treeView);
     this.zip = new JSZip();
-    this.cache = new OOXMLFileCache(context);
+    this.cache = new OOXMLFileCache(this.context);
 
     this.closeEditors();
   }
@@ -504,8 +506,11 @@ export class OOXMLViewer {
         return;
       }
       const result = await find(searchTerm, this.cache.normalSubfolderPath);
-      const panel: WebviewPanel = window.createWebviewPanel('ooxmlViewer', 'Search Results', ViewColumn.One, { enableScripts: true });
-      const html = ExtensionUtilities.generateHtml(result, searchTerm, panel.webview);
+      const panel: WebviewPanel = window.createWebviewPanel('ooxmlViewer', 'Search Results', ViewColumn.One, {
+        enableScripts: true,
+        localResourceRoots: [Uri.file(join(this.context.extensionPath, 'resources', 'bin'))],
+      });
+      const html = ExtensionUtilities.generateHtml(result, searchTerm, panel.webview, this.context.extensionUri);
       panel.webview.html = html;
 
       panel.webview.onDidReceiveMessage(
