@@ -1,6 +1,7 @@
+import { find } from 'find-in-files';
 import JSZip from 'jszip';
 import { lookup } from 'mime-types';
-import { basename } from 'path';
+import { basename, sep } from 'path';
 import vkBeautify from 'vkbeautify';
 import {
   commands,
@@ -17,7 +18,7 @@ import {
 import xmlFormatter from 'xml-formatter';
 import packageJson from '../package.json';
 import { ExtensionUtilities } from './extension-utilities';
-import { OOXMLFileCache } from './ooxml-file-cache';
+import { NORMAL_SUBFOLDER_NAME, OOXMLFileCache } from './ooxml-file-cache';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
 
 /**
@@ -67,7 +68,7 @@ export class OOXMLViewer {
   async openOoxmlPackage(file: Uri): Promise<void> {
     try {
       this.ooxmlFilePath = file.fsPath;
-      this.treeView.title = `${packageJson.displayName} - ${basename(file.fsPath)}`;
+      this.treeView.title = `${packageJson.displayName} | ${basename(file.fsPath)}`;
       await window.withProgress(
         {
           location: ProgressLocation.Notification,
@@ -493,12 +494,12 @@ export class OOXMLViewer {
       if (!searchTerm) {
         return;
       }
+      const result = await find(searchTerm, this.cache.normalSubfolderPath);
 
-      const watcher = workspace.onDidOpenTextDocument((textDocument: TextDocument) => {
-        this.cache.writeFile(textDocument.fileName, this.textEncoder.encode(xmlFormatter(textDocument.getText(), this.xmlFormatConfig)));
+      Object.keys(result).forEach(async (filePath: string) => {
+        const ooxmlPath = filePath.split(NORMAL_SUBFOLDER_NAME)[1].split(sep).join('/');
+        await this.tryFormatXml(ooxmlPath);
       });
-
-      this.watchers.push(watcher);
 
       await commands.executeCommand('workbench.action.findInFiles', {
         query: searchTerm,
