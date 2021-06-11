@@ -21,7 +21,8 @@ suite('OOXMLViewer', async function () {
       storageUri: {
         fsPath: join(tmpdir(), 'ooxml-viewer'),
       },
-    } as ExtensionContext;
+      subscriptions: [],
+    } as unknown as ExtensionContext;
     ooxmlViewer = new OOXMLViewer(context);
   });
 
