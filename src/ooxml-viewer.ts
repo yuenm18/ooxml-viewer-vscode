@@ -138,7 +138,6 @@ export class OOXMLViewer {
    * @returns {Promise<void>} Promise that returns void
    */
   clear(): Promise<void> {
-    this.treeView.title = packageJson.displayName;
     return this.resetOOXMLViewer();
   }
 
@@ -209,6 +208,7 @@ export class OOXMLViewer {
       this.zip = new JSZip();
       this.treeDataProvider.rootFileNode = new FileNode();
       this.treeDataProvider.refresh();
+      this.treeView.title = packageJson.displayName;
 
       this.disposeWatchers();
 
@@ -492,9 +492,9 @@ export class OOXMLViewer {
       if (!searchTerm) {
         return;
       }
-      const result = await find(searchTerm, this.cache.normalSubfolderPath);
+      const results = await find(searchTerm, this.cache.normalSubfolderPath);
 
-      Object.keys(result).forEach(async (filePath: string) => {
+      Object.keys(results).forEach(async (filePath: string) => {
         const ooxmlPath = filePath.split(NORMAL_SUBFOLDER_NAME)[1].split(sep).join('/');
         await this.tryFormatXml(ooxmlPath);
       });
