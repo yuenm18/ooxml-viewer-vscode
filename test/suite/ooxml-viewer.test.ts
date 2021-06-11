@@ -1,12 +1,13 @@
 import { expect } from 'chai';
+import findInFiles, { FindResult } from 'find-in-files';
 import JSZip from 'jszip';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { join, sep } from 'path';
 import { match, SinonStub, spy, stub } from 'sinon';
 import { TextDecoder } from 'util';
 import { commands, Disposable, ExtensionContext, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window } from 'vscode';
 import xmlFormatter from 'xml-formatter';
-import { CACHE_FOLDER_NAME } from '../../src/ooxml-file-cache';
+import { CACHE_FOLDER_NAME, NORMAL_SUBFOLDER_NAME } from '../../src/ooxml-file-cache';
 import { FileNode, OOXMLTreeDataProvider } from '../../src/ooxml-tree-view-provider';
 import { OOXMLViewer } from '../../src/ooxml-viewer';
 
@@ -231,5 +232,54 @@ suite('OOXMLViewer', async function () {
     await populateOOXMLViewerStub.bind(ooxmlViewer)(ooxmlViewer.zip.files, false);
     expect(deleteCachedFilesFileStub.called).to.be.false;
     expect(node?.isDeleted()).to.be.true;
+  });
+
+  test('It should return and not perform a search if no search term is entered', async function () {
+    const showInputStub = stub(window, 'showInputBox').returns(Promise.resolve(''));
+    const tryFormatXmlStub = stub(ooxmlViewer, <never>'tryFormatXml');
+    const executeCommandStub = stub(commands, 'executeCommand');
+    const findStub = stub(findInFiles, 'find');
+    stubs.push(showInputStub, tryFormatXmlStub, executeCommandStub, findStub);
+
+    await ooxmlViewer.searchOxmlParts();
+    expect(tryFormatXmlStub.callCount).to.eq(0);
+    expect(executeCommandStub.callCount).to.eq(0);
+    expect(findStub.callCount).to.eq(0);
+  });
+
+  test('It should show an input box and use the input to perform a search of the OOXML parts', async function () {
+    const searchTerm = 'meatballs';
+    const filePath0 = `helloworld${sep + NORMAL_SUBFOLDER_NAME + sep}racecar${sep}radar`;
+    const filePath1 = `foo${sep + NORMAL_SUBFOLDER_NAME + sep}bar${sep}baz`;
+    const filePath2 = `I${sep + NORMAL_SUBFOLDER_NAME + sep}want${sep}breakfast`;
+    const showInputStub = stub(window, 'showInputBox').returns(Promise.resolve(searchTerm));
+    const tryFormatXmlStub = stub(ooxmlViewer, <never>'tryFormatXml');
+    const executeCommandStub = stub(commands, 'executeCommand');
+    const findStub = stub(findInFiles, 'find').returns(
+      Promise.resolve({
+        [filePath0]: {},
+        [filePath1]: {},
+        [filePath2]: {},
+      } as unknown as FindResult),
+    );
+
+    stubs.push(showInputStub, tryFormatXmlStub, executeCommandStub, findStub);
+
+    await ooxmlViewer.searchOxmlParts();
+
+    expect(findStub.args[0][0]).to.eq(searchTerm);
+    expect(findStub.args[0][1]).to.eq(ooxmlViewer.cache.normalSubfolderPath);
+    expect(tryFormatXmlStub.callCount).to.eq(3);
+    expect(tryFormatXmlStub.args[0][0]).to.eq(filePath0.split(NORMAL_SUBFOLDER_NAME)[1].split(sep).join('/'));
+    expect(tryFormatXmlStub.args[1][0]).to.eq(filePath1.split(NORMAL_SUBFOLDER_NAME)[1].split(sep).join('/'));
+    expect(tryFormatXmlStub.args[2][0]).to.eq(filePath2.split(NORMAL_SUBFOLDER_NAME)[1].split(sep).join('/'));
+    expect(executeCommandStub.args[0][0]).to.eq('workbench.action.findInFiles');
+    expect(executeCommandStub.args[0][1]).to.deep.eq({
+      query: searchTerm,
+      filesToInclude: ooxmlViewer.cache.normalSubfolderPath,
+      triggerSearch: true,
+      isCaseSensitive: false,
+      matchWholeWord: false,
+    });
   });
 });
