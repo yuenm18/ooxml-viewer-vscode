@@ -168,7 +168,8 @@ export class OOXMLViewer {
 
       await commands.executeCommand('vscode.diff', Uri.file(fileCompareCachePath), Uri.file(fileCachePath), title);
     } catch (err) {
-      console.error(err);
+      console.error(err.message || err);
+      window.showErrorMessage(err.message || err);
     }
   }
 
@@ -355,7 +356,8 @@ export class OOXMLViewer {
 
           await this.populateOOXMLViewer(this.zip.files, true);
         } catch (err) {
-          console.error(err);
+          console.error(err.message);
+          window.showErrorMessage(err.message || err);
         }
       },
     );
@@ -395,7 +397,8 @@ export class OOXMLViewer {
 
       this.treeDataProvider.refresh();
     } catch (err) {
-      console.error(err);
+      console.error(err.message || err);
+      window.showErrorMessage(err.message || err);
     }
   }
 
@@ -429,7 +432,8 @@ export class OOXMLViewer {
           await commands.executeCommand('workbench.action.closeActiveEditor');
         });
     } catch (err) {
-      console.error(err);
+      console.error(err.message || err);
+      window.showErrorMessage(err.message || err);
     }
   }
 
@@ -476,6 +480,7 @@ export class OOXMLViewer {
       return minFileText !== minPrevFileText;
     } catch (err) {
       console.error(err.message || err);
+      window.showErrorMessage(err.message || err);
     }
 
     return false;
@@ -508,6 +513,7 @@ export class OOXMLViewer {
       });
     } catch (err) {
       console.error(err.message || err);
+      window.showErrorMessage(err.message || err);
     }
   }
 }

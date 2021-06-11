@@ -172,6 +172,21 @@ suite('OOXMLViewer', async function () {
     await ooxmlViewer.getDiff(node);
   });
 
+  test('getDiff should call display an error message when an error is thrown', async function () {
+    const err = new Error('Pants on backwards');
+    const encoderStub = stub(ooxmlViewer.textDecoder, 'decode').throws(err);
+    const getCachedFileStub = stub(ooxmlViewer.cache, 'getCachedFile').returns(Promise.resolve(new Uint8Array()));
+    const consoleErrorStub = stub(console, 'error');
+    const showErrorStub = stub(window, 'showErrorMessage');
+
+    stubs.push(encoderStub, consoleErrorStub, showErrorStub, getCachedFileStub);
+
+    await ooxmlViewer.getDiff(new FileNode());
+
+    expect(consoleErrorStub.args[0][0]).to.eq(err.message);
+    expect(showErrorStub.args[0][0]).to.eq(err.message);
+  });
+
   test('closeWatchers should call restore on the array of file system watchers', function () {
     const disposeStub = spy();
     const disposable1 = {

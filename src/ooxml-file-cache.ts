@@ -1,6 +1,6 @@
 import { existsSync } from 'fs';
 import { dirname, join, sep } from 'path';
-import { ExtensionContext, Uri, workspace } from 'vscode';
+import { ExtensionContext, Uri, window, workspace } from 'vscode';
 
 export const CACHE_FOLDER_NAME = 'cache';
 export const NORMAL_SUBFOLDER_NAME = 'normal';
@@ -289,7 +289,9 @@ export class OOXMLFileCache {
       await workspace.fs.createDirectory(Uri.file(dirname(cachedFilePath)));
       await workspace.fs.writeFile(Uri.file(cachedFilePath), fileContents);
     } catch (err) {
-      console.error(`Unable to create file '${cachedFilePath}'`, err);
+      const msg = `Unable to create file '${cachedFilePath}\n ${err.message || err}`;
+      console.error(msg);
+      window.showErrorMessage(msg);
     }
   }
 
@@ -303,7 +305,9 @@ export class OOXMLFileCache {
     try {
       await workspace.fs.delete(Uri.file(cachedFilePath), { recursive: true, useTrash: false });
     } catch (err) {
-      console.error(`Unable to delete file '${cachedFilePath}'`, err);
+      const msg = `Unable to delete file '${cachedFilePath}\n ${err.message || err}`;
+      console.error(msg);
+      window.showErrorMessage(msg);
     }
   }
 
@@ -317,7 +321,9 @@ export class OOXMLFileCache {
     try {
       return await workspace.fs.readFile(Uri.file(cachedFilePath));
     } catch (err) {
-      console.error(`Unable to read file '${cachedFilePath}'`, err);
+      const msg = `Unable to read file '${cachedFilePath}\n ${err.message || err}`;
+      console.error(msg);
+      window.showErrorMessage(msg);
     }
 
     return new Uint8Array();
