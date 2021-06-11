@@ -234,7 +234,7 @@ suite('OOXMLViewer', async function () {
     expect(node?.isDeleted()).to.be.true;
   });
 
-  test('It should return and not perform a search if no search term is entered', async function () {
+  test('searchOoxmlParts should return and not perform a search if no search term is entered', async function () {
     const showInputStub = stub(window, 'showInputBox').returns(Promise.resolve(''));
     const tryFormatXmlStub = stub(ooxmlViewer, <never>'tryFormatXml');
     const executeCommandStub = stub(commands, 'executeCommand');
@@ -247,7 +247,7 @@ suite('OOXMLViewer', async function () {
     expect(findStub.callCount).to.eq(0);
   });
 
-  test('It should show an input box and use the input to perform a search of the OOXML parts', async function () {
+  test('searchOoxmlParts should show an input box and use the input to perform a search of the OOXML parts', async function () {
     const searchTerm = 'meatballs';
     const filePath0 = `helloworld${sep + NORMAL_SUBFOLDER_NAME + sep}racecar${sep}radar`;
     const filePath1 = `foo${sep + NORMAL_SUBFOLDER_NAME + sep}bar${sep}baz`;
@@ -281,5 +281,15 @@ suite('OOXMLViewer', async function () {
       isCaseSensitive: false,
       matchWholeWord: false,
     });
+  });
+
+  test('searchOoxmlParts should console.error an error if an error is thrown', async function () {
+    const err = new Error('out of tacos');
+    const showInputStub = stub(window, 'showInputBox').returns(Promise.reject(err));
+    const consoleErrorStub = stub(console, 'error');
+    stubs.push(showInputStub, consoleErrorStub);
+
+    await ooxmlViewer.searchOxmlParts();
+    expect(consoleErrorStub.args[0][0]).to.eq(err.message);
   });
 });
