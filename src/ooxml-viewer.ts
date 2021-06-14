@@ -138,6 +138,7 @@ export class OOXMLViewer {
    * @returns {Promise<void>} Promise that returns void
    */
   clear(): Promise<void> {
+    this.treeView.title = packageJson.displayName;
     return this.resetOOXMLViewer();
   }
 
@@ -209,7 +210,6 @@ export class OOXMLViewer {
       this.zip = new JSZip();
       this.treeDataProvider.rootFileNode = new FileNode();
       this.treeDataProvider.refresh();
-      this.treeView.title = packageJson.displayName;
 
       this.disposeWatchers();
 
