@@ -90,6 +90,20 @@
           "group": "navigation",
           "when": "view == ooxmlViewer"
         }
+      ],
+      "commandPalette": [
+        {
+          "command": "ooxmlViewer.openOoxmlPackage",
+          "when": "false"
+        },
+        {
+          "command": "ooxmlViewer.clear",
+          "when": "false"
+        },
+        {
+          "command": "ooxmlViewer.showDiff",
+          "when": "false"
+        }
       ]
     },
     "views": {
