@@ -315,7 +315,7 @@ export class OOXMLViewer {
       const zipFile = await this.zip
         .file(filePath, this.textEncoder.encode(fileMinXml))
         .generateAsync({ type: 'uint8array', mimeType, compression: 'DEFLATE' });
-      await this.cache.writeFile(this.ooxmlFilePath, zipFile);
+      await this.cache.writeFile(this.ooxmlFilePath, zipFile, true);
 
       await this.cache.createCachedFile(filePath, fileContents, false);
       this.treeDataProvider.refresh();
@@ -327,6 +327,9 @@ export class OOXMLViewer {
         );
 
         await ExtensionUtilities.makeTextEditorDirty(window.activeTextEditor);
+      } else {
+        console.error(err.message || err);
+        window.showErrorMessage(err.message || err);
       }
     }
   }
