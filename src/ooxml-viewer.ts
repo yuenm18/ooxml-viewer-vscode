@@ -98,7 +98,7 @@ export class OOXMLViewer {
       );
     } catch (err) {
       console.error(err);
-      window.showErrorMessage(`Could not load ${file.fsPath}`, err);
+      await window.showErrorMessage(`Could not load ${file.fsPath}`, err);
     }
   }
 
@@ -128,7 +128,7 @@ export class OOXMLViewer {
       );
     } catch (e) {
       console.error(e);
-      window.showErrorMessage(`Could not load ${fileNode.fullPath}`);
+      await window.showErrorMessage(`Could not load ${fileNode.fullPath}`);
     }
   }
 
@@ -170,7 +170,7 @@ export class OOXMLViewer {
       await commands.executeCommand('vscode.diff', Uri.file(fileCompareCachePath), Uri.file(fileCachePath), title);
     } catch (err) {
       console.error(err.message || err);
-      window.showErrorMessage(err.message || err);
+      await window.showErrorMessage(err.message || err);
     }
   }
 
@@ -210,13 +210,12 @@ export class OOXMLViewer {
       this.zip = new JSZip();
       this.treeDataProvider.rootFileNode = new FileNode();
       this.treeDataProvider.refresh();
-
       this.disposeWatchers();
 
       await Promise.all([this.closeEditors(), this.cache.clear()]);
     } catch (err) {
       console.error(err);
-      window.showErrorMessage('Could not remove ooxml file viewer cache');
+      await window.showErrorMessage('Could not remove ooxml file viewer cache');
     }
   }
 
@@ -321,7 +320,7 @@ export class OOXMLViewer {
       this.treeDataProvider.refresh();
     } catch (err) {
       if (err?.code === 'EBUSY' || err?.message.toLowerCase().includes('ebusy')) {
-        window.showWarningMessage(
+        await window.showWarningMessage(
           `File not saved.\n${basename(this.ooxmlFilePath)} is open in another program.\nClose that program before making any changes.`,
           { modal: true },
         );
@@ -329,7 +328,7 @@ export class OOXMLViewer {
         await ExtensionUtilities.makeTextEditorDirty(window.activeTextEditor);
       } else {
         console.error(err.message || err);
-        window.showErrorMessage(err.message || err);
+        await window.showErrorMessage(err.message || err);
       }
     }
   }
@@ -360,7 +359,7 @@ export class OOXMLViewer {
           await this.populateOOXMLViewer(this.zip.files, true);
         } catch (err) {
           console.error(err.message);
-          window.showErrorMessage(err.message || err);
+          await window.showErrorMessage(err.message || err);
         }
       },
     );
@@ -401,7 +400,7 @@ export class OOXMLViewer {
       this.treeDataProvider.refresh();
     } catch (err) {
       console.error(err.message || err);
-      window.showErrorMessage(err.message || err);
+      await window.showErrorMessage(err.message || err);
     }
   }
 
@@ -436,7 +435,7 @@ export class OOXMLViewer {
         });
     } catch (err) {
       console.error(err.message || err);
-      window.showErrorMessage(err.message || err);
+      await window.showErrorMessage(err.message || err);
     }
   }
 
@@ -483,7 +482,7 @@ export class OOXMLViewer {
       return minFileText !== minPrevFileText;
     } catch (err) {
       console.error(err.message || err);
-      window.showErrorMessage(err.message || err);
+      await window.showErrorMessage(err.message || err);
     }
 
     return false;

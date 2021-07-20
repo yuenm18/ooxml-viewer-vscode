@@ -294,7 +294,7 @@ export class OOXMLFileCache {
       } else {
         const msg = `Unable to create file '${cachedFilePath}\n ${err.message || err}`;
         console.error(msg);
-        window.showErrorMessage(msg);
+        await window.showErrorMessage(msg);
       }
     }
   }
@@ -311,7 +311,7 @@ export class OOXMLFileCache {
     } catch (err) {
       const msg = `Unable to delete file '${cachedFilePath}\n ${err.message || err}`;
       console.error(msg);
-      window.showErrorMessage(msg);
+      await window.showErrorMessage(msg);
     }
   }
 
@@ -327,7 +327,7 @@ export class OOXMLFileCache {
     } catch (err) {
       const msg = `Unable to read file '${cachedFilePath}\n ${err.message || err}`;
       console.error(msg);
-      window.showErrorMessage(msg);
+      await window.showErrorMessage(msg);
     }
 
     return new Uint8Array();
