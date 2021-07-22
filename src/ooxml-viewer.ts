@@ -6,6 +6,7 @@ import vkBeautify from 'vkbeautify';
 import {
   commands,
   Disposable,
+  env,
   ExtensionContext,
   FileSystemWatcher,
   ProgressLocation,
@@ -27,7 +28,6 @@ import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
 export class OOXMLViewer {
   treeDataProvider: OOXMLTreeDataProvider;
   treeView: TreeView<FileNode>;
-
   zip: JSZip;
   cache: OOXMLFileCache;
 
@@ -195,7 +195,33 @@ export class OOXMLViewer {
    * @returns {Promise<void>}
    */
   private async closeEditors(): Promise<void> {
-    return ExtensionUtilities.closeEditors(workspace.textDocuments.filter(t => t.fileName.startsWith(this.cache.cacheBasePath)));
+    /**
+     * This nonsense is necessary to close all open OOXML Viewer files on startup, because of this issue with VS Code:
+     * https://github.com/microsoft/vscode/issues/15178
+     * on startup, VS Code only recognizes the open tab in workspace.textDocuments, giving it a length of 1 so,
+     * ExtensionUtilities.closeEditors(workspace.textDocuments), so we loop through all the text editors making them visible so
+     * they're in the workspace.textDocuments array.
+     *
+     * And we use the clipboard to get the file name, because window.activeTextEditor.document is undefined with binary files,
+     * so we can't use window.activeTextEditor.document.fileName
+     * https://github.com/Microsoft/vscode/issues/2582#issuecomment-246692860
+     *
+     */
+    let fileName: string | undefined;
+    const fileNames: string[] = [];
+    await commands.executeCommand('workbench.action.files.copyPathOfActiveFile');
+    fileName = await env.clipboard.readText();
+
+    while (!fileNames.includes(fileName)) {
+      fileNames.push(fileName);
+
+      await commands.executeCommand('workbench.action.nextEditor');
+
+      await commands.executeCommand('workbench.action.files.copyPathOfActiveFile');
+      fileName = await env.clipboard.readText();
+    }
+
+    return await ExtensionUtilities.closeEditors(workspace.textDocuments.filter(td => td.fileName.startsWith(this.cache.cacheBasePath)));
   }
 
   /**

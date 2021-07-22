@@ -121,7 +121,6 @@ suite('OOXMLViewer', async function () {
       return Promise.resolve({} as TextEditor);
     });
     const executeStub = stub(commands, 'executeCommand').callsFake(arg => {
-      expect(arg).to.eq('workbench.action.closeActiveEditor');
       return Promise.resolve();
     });
     stubs.push(refreshStub, disposeWatchersStub, openEditorsStub, showDocStub, executeStub);
@@ -131,7 +130,8 @@ suite('OOXMLViewer', async function () {
     expect(refreshStub.calledOnce).to.be.true;
     expect(disposeWatchersStub.calledOnce).to.be.true;
     expect(showDocStub.calledWith(match(textDoc))).to.be.true;
-    expect(executeStub.calledWith('workbench.action.closeActiveEditor')).to.be.true;
+    expect(executeStub.args[0][0]).eq('workbench.action.files.copyPathOfActiveFile');
+    expect(executeStub.args[1][0]).eq('workbench.action.nextEditor');
   });
 
   test('getDiff should use vscode.diff to get the difference between two files', async function () {
