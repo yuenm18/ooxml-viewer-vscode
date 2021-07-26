@@ -520,17 +520,19 @@ export class OOXMLViewer {
    * @returns {Promise<void>}
    */
   async searchOxmlParts(): Promise<void> {
+    const warningMsg = 'A file must be open in the OOXML Viewer to search its parts.';
     try {
+      await workspace.fs.stat(Uri.file(this.cache.normalSubfolderPath));
       const searchTerm = await window.showInputBox({ title: 'Search OXML Parts', prompt: 'Enter a search term.' });
       if (!searchTerm) {
         return;
       }
       const results = await find(searchTerm, this.cache.normalSubfolderPath);
 
-      Object.keys(results).forEach(async (filePath: string) => {
+      for (const filePath in results) {
         const ooxmlPath = filePath.split(NORMAL_SUBFOLDER_NAME)[1].split(sep).join('/');
         await this.tryFormatXml(ooxmlPath);
-      });
+      }
 
       await commands.executeCommand('workbench.action.findInFiles', {
         query: searchTerm,
@@ -540,8 +542,13 @@ export class OOXMLViewer {
         matchWholeWord: false,
       });
     } catch (err) {
-      console.error(err.message || err);
-      window.showErrorMessage(err.message || err);
+      if (err?.code === 'ENOENT' || err?.code === 'FileNotFound') {
+        window.showWarningMessage(warningMsg);
+      } else {
+        const msg = err.message || err;
+        console.error(msg);
+        window.showErrorMessage(msg);
+      }
     }
   }
 }

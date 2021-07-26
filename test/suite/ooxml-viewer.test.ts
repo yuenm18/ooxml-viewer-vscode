@@ -298,13 +298,46 @@ suite('OOXMLViewer', async function () {
     });
   });
 
-  test('searchOoxmlParts should console.error an error if an error is thrown', async function () {
+  test('searchOoxmlParts should console.error and window.showErrorMessage an error if an error is thrown', async function () {
     const err = new Error('out of tacos');
     const showInputStub = stub(window, 'showInputBox').returns(Promise.reject(err));
     const consoleErrorStub = stub(console, 'error');
-    stubs.push(showInputStub, consoleErrorStub);
+    const showErrorMessageStub = stub(window, 'showErrorMessage');
+    stubs.push(showInputStub, consoleErrorStub, showErrorMessageStub);
 
     await ooxmlViewer.searchOxmlParts();
     expect(consoleErrorStub.args[0][0]).to.eq(err.message);
+    expect(showErrorMessageStub.args[0][0]).to.eq(err.message);
+  });
+
+  class VSError extends Error {
+    code: string;
+
+    constructor(data: { code: string }) {
+      super();
+      this.code = data.code;
+    }
+  }
+
+  test('searchOoxmlParts should window.showWarningMessage if no file is open in the viewer with ENOENT', async function () {
+    const err = new VSError({ code: 'ENOENT' });
+    const msg = 'A file must be open in the OOXML Viewer to search its parts.';
+    const showInputStub = stub(window, 'showInputBox').returns(Promise.reject(err));
+    const showWarningMessageStub = stub(window, 'showWarningMessage');
+    stubs.push(showInputStub, showWarningMessageStub);
+
+    await ooxmlViewer.searchOxmlParts();
+    expect(showWarningMessageStub.args[0][0]).to.eq(msg);
+  });
+
+  test('searchOoxmlParts should window.showWarningMessage if no file is open in the viewer with FileNotFound', async function () {
+    const err = new VSError({ code: 'FileNotFound' });
+    const msg = 'A file must be open in the OOXML Viewer to search its parts.';
+    const showInputStub = stub(window, 'showInputBox').returns(Promise.reject(err));
+    const showWarningMessageStub = stub(window, 'showWarningMessage');
+    stubs.push(showInputStub, showWarningMessageStub);
+
+    await ooxmlViewer.searchOxmlParts();
+    expect(showWarningMessageStub.args[0][0]).to.eq(msg);
   });
 });
