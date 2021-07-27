@@ -1,9 +1,8 @@
-.vscode/
-vscode-test
-node_modules/
-out/
-src/
-.gitignore
-tsconfig.json
-tslint.json
-webpack.config.js
+*/**
+
+!dist
+!package.json
+!resources
+!README.md
+!CHANGELOG.md
+!LICENSE
