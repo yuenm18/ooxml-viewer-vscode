@@ -130,8 +130,7 @@ suite('OOXMLViewer', async function () {
     expect(refreshStub.calledOnce).to.be.true;
     expect(disposeWatchersStub.calledOnce).to.be.true;
     expect(showDocStub.calledWith(match(textDoc))).to.be.true;
-    expect(executeStub.args[0][0]).eq('workbench.action.files.copyPathOfActiveFile');
-    expect(executeStub.args[1][0]).eq('workbench.action.nextEditor');
+    expect(executeStub.args[0][0]).eq('workbench.action.closeActiveEditor');
   });
 
   test('getDiff should use vscode.diff to get the difference between two files', async function () {
