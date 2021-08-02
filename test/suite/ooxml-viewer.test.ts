@@ -33,9 +33,6 @@ suite('OOXMLViewer', async function () {
   });
 
   test('searchOoxmlParts should return and not perform a search if no search term is entered', async function () {
-    console.log(
-      '🚀 ~ file: ooxml-viewer.test.ts ~ line 335 ~ searchOoxmlParts should return and not perform a search if no search term is entered',
-    );
     const showInputStub = stub(window, 'showInputBox').returns(Promise.resolve(''));
     const tryFormatXmlStub = stub(ooxmlViewer, <never>'tryFormatXml');
     const executeCommandStub = stub(commands, 'executeCommand');
@@ -265,10 +262,6 @@ suite('OOXMLViewer', async function () {
   });
 
   test('searchOoxmlParts should show an input box and use the input to perform a search of the OOXML parts', async function () {
-    console.log(
-      '🚀 ~ file: ooxml-viewer.test.ts ~ line 265 ~ "searchOoxmlParts should show an input box and use the input to perform a search of the OOXML parts"',
-    );
-
     const searchTerm = 'meatballs';
     const filePath0 = `helloworld${sep + NORMAL_SUBFOLDER_NAME + sep}racecar${sep}radar`;
     const filePath1 = `foo${sep + NORMAL_SUBFOLDER_NAME + sep}bar${sep}baz`;

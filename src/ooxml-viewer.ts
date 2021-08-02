@@ -508,16 +508,13 @@ export class OOXMLViewer {
     try {
       await workspace.fs.stat(Uri.file(this.cache.normalSubfolderPath));
       const searchTerm = await window.showInputBox({ title: 'Search OXML Parts', prompt: 'Enter a search term.' });
-      console.log('🚀 ~ file: ooxml-viewer.ts ~ line 511 ~ OOXMLViewer ~ searchOxmlParts ~ searchTerm', searchTerm);
       if (!searchTerm) {
         return;
       }
       const results = await find(searchTerm, this.cache.normalSubfolderPath);
-      console.log('🚀 ~ file: ooxml-viewer.ts ~ line 516 ~ OOXMLViewer ~ searchOxmlParts ~ results', results);
 
       for (const filePath in results) {
         const ooxmlPath = filePath.split(NORMAL_SUBFOLDER_NAME)[1].split(sep).join('/');
-        console.log('🚀 ~ file: ooxml-viewer.ts ~ line 520 ~ OOXMLViewer ~ searchOxmlParts ~ ooxmlPath', ooxmlPath);
         await this.tryFormatXml(ooxmlPath);
       }
 
