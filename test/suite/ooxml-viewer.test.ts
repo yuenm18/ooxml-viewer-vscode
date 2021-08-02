@@ -28,7 +28,10 @@ suite('OOXMLViewer', async function () {
   });
 
   teardown(function () {
-    stubs.forEach(s => s.restore());
+    stubs.forEach(s => {
+      console.log('🚀 ~ file: ooxml-viewer.test.ts ~ line 32 ~ s', s.name);
+      s.restore();
+    });
     stubs.length = 0;
   });
 
@@ -333,7 +336,7 @@ suite('OOXMLViewer', async function () {
 
   test('searchOoxmlParts should return and not perform a search if no search term is entered', async function () {
     console.log(
-      '🚀 ~ file: ooxml-viewer.test.ts ~ line 252 ~ searchOoxmlParts should return and not perform a search if no search term is entered',
+      '🚀 ~ file: ooxml-viewer.test.ts ~ line 335 ~ searchOoxmlParts should return and not perform a search if no search term is entered',
     );
     const showInputStub = stub(window, 'showInputBox').returns(Promise.resolve(''));
     const tryFormatXmlStub = stub(ooxmlViewer, <never>'tryFormatXml');
