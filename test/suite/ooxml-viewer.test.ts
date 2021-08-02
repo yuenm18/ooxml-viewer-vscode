@@ -17,7 +17,7 @@ suite('OOXMLViewer', async function () {
   const stubs: SinonStub[] = [];
   const testFilePath = join(__dirname, '..', '..', '..', 'test', 'test-data', 'Test.pptx');
 
-  setup(function () {
+  suiteSetup(function () {
     const context = {
       storageUri: {
         fsPath: join(tmpdir(), 'ooxml-viewer'),
@@ -28,10 +28,7 @@ suite('OOXMLViewer', async function () {
   });
 
   teardown(function () {
-    stubs.forEach(s => {
-      console.log('🚀 ~ file: ooxml-viewer.test.ts ~ line 32 ~ s', s.name);
-      s.restore();
-    });
+    stubs.forEach(s => s.restore());
     stubs.length = 0;
   });
 
