@@ -458,7 +458,7 @@ export class OOXMLViewer {
    * @returns {Promise<boolean>} A Promise resolving to whether or not the file has been formatted.
    */
   private async tryFormatXml(filePath: string) {
-    console.log('%c⧭', 'color: #ffa640', filePath);
+    console.log('🚀 ~ file: ooxml-viewer.ts ~ line 461 ~ OOXMLViewer ~ tryFormatXml ~ filePath', filePath);
     const xml = this.textDecoder.decode(await this.cache.getCachedFile(filePath));
     if (xml.startsWith('<?xml')) {
       const text = xmlFormatter(xml, this.xmlFormatConfig);
@@ -509,16 +509,16 @@ export class OOXMLViewer {
     try {
       await workspace.fs.stat(Uri.file(this.cache.normalSubfolderPath));
       const searchTerm = await window.showInputBox({ title: 'Search OXML Parts', prompt: 'Enter a search term.' });
-      console.log('%c⧭', 'color: #0088cc', searchTerm);
+      console.log('🚀 ~ file: ooxml-viewer.ts ~ line 511 ~ OOXMLViewer ~ searchOxmlParts ~ searchTerm', searchTerm);
       if (!searchTerm) {
         return;
       }
       const results = await find(searchTerm, this.cache.normalSubfolderPath);
-      console.log('%c⧭', 'color: #917399', results);
+      console.log('🚀 ~ file: ooxml-viewer.ts ~ line 516 ~ OOXMLViewer ~ searchOxmlParts ~ results', results);
 
       for (const filePath in results) {
         const ooxmlPath = filePath.split(NORMAL_SUBFOLDER_NAME)[1].split(sep).join('/');
-        console.log('%c⧭', 'color: #d90000', ooxmlPath);
+        console.log('🚀 ~ file: ooxml-viewer.ts ~ line 520 ~ OOXMLViewer ~ searchOxmlParts ~ ooxmlPath', ooxmlPath);
         await this.tryFormatXml(ooxmlPath);
       }
 
