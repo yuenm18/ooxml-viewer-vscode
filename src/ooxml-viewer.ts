@@ -458,7 +458,6 @@ export class OOXMLViewer {
    * @returns {Promise<boolean>} A Promise resolving to whether or not the file has been formatted.
    */
   private async tryFormatXml(filePath: string) {
-    console.log('🚀 ~ file: ooxml-viewer.ts ~ line 461 ~ OOXMLViewer ~ tryFormatXml ~ filePath', filePath);
     const xml = this.textDecoder.decode(await this.cache.getCachedFile(filePath));
     if (xml.startsWith('<?xml')) {
       const text = xmlFormatter(xml, this.xmlFormatConfig);

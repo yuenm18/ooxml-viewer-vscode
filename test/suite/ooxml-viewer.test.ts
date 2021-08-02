@@ -248,22 +248,6 @@ suite('OOXMLViewer', async function () {
     expect(node?.isDeleted()).to.be.true;
   });
 
-  test('searchOoxmlParts should return and not perform a search if no search term is entered', async function () {
-    console.log(
-      '🚀 ~ file: ooxml-viewer.test.ts ~ line 252 ~ searchOoxmlParts should return and not perform a search if no search term is entered',
-    );
-    const showInputStub = stub(window, 'showInputBox').returns(Promise.resolve(''));
-    const tryFormatXmlStub = stub(ooxmlViewer, <never>'tryFormatXml');
-    const executeCommandStub = stub(commands, 'executeCommand');
-    const findStub = stub(findInFiles, 'find');
-    stubs.push(showInputStub, tryFormatXmlStub, executeCommandStub, findStub);
-
-    await ooxmlViewer.searchOxmlParts();
-    expect(tryFormatXmlStub.callCount).to.eq(0);
-    expect(executeCommandStub.callCount).to.eq(0);
-    expect(findStub.callCount).to.eq(0);
-  });
-
   test('searchOoxmlParts should show an input box and use the input to perform a search of the OOXML parts', async function () {
     console.log(
       '🚀 ~ file: ooxml-viewer.test.ts ~ line 265 ~ "searchOoxmlParts should show an input box and use the input to perform a search of the OOXML parts"',
@@ -345,5 +329,21 @@ suite('OOXMLViewer', async function () {
 
     await ooxmlViewer.searchOxmlParts();
     expect(showWarningMessageStub.args[0][0]).to.eq(msg);
+  });
+
+  test('searchOoxmlParts should return and not perform a search if no search term is entered', async function () {
+    console.log(
+      '🚀 ~ file: ooxml-viewer.test.ts ~ line 252 ~ searchOoxmlParts should return and not perform a search if no search term is entered',
+    );
+    const showInputStub = stub(window, 'showInputBox').returns(Promise.resolve(''));
+    const tryFormatXmlStub = stub(ooxmlViewer, <never>'tryFormatXml');
+    const executeCommandStub = stub(commands, 'executeCommand');
+    const findStub = stub(findInFiles, 'find');
+    stubs.push(showInputStub, tryFormatXmlStub, executeCommandStub, findStub);
+
+    await ooxmlViewer.searchOxmlParts();
+    expect(tryFormatXmlStub.callCount).to.eq(0);
+    expect(executeCommandStub.callCount).to.eq(0);
+    expect(findStub.callCount).to.eq(0);
   });
 });
