@@ -150,7 +150,7 @@ export class OOXMLFileCache {
    * @returns {boolean} Whether or not the path is in the cache.
    */
   cachePathIsNormal(cacheFilePath: string): boolean {
-    return !!cacheFilePath && cacheFilePath.startsWith(join(this.cacheBasePath, NORMAL_SUBFOLDER_NAME));
+    return !!cacheFilePath && cacheFilePath.startsWith(this.normalSubfolderPath);
   }
 
   /**
