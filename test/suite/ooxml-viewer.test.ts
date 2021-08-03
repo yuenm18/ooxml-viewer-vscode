@@ -39,7 +39,7 @@ suite('OOXMLViewer', async function () {
     const findStub = stub(findInFiles, 'find');
     stubs.push(showInputStub, tryFormatXmlStub, executeCommandStub, findStub);
 
-    await ooxmlViewer.searchOxmlParts();
+    await ooxmlViewer.searchOoxmlParts();
     expect(tryFormatXmlStub.callCount).to.eq(0);
     expect(executeCommandStub.callCount).to.eq(0);
     expect(findStub.callCount).to.eq(0);
@@ -279,7 +279,7 @@ suite('OOXMLViewer', async function () {
 
     stubs.push(showInputStub, tryFormatXmlStub, executeCommandStub, findStub);
 
-    await ooxmlViewer.searchOxmlParts();
+    await ooxmlViewer.searchOoxmlParts();
 
     expect(findStub.args[0][0]).to.eq(searchTerm);
     expect(findStub.args[0][1]).to.eq(ooxmlViewer.cache.normalSubfolderPath);
@@ -304,7 +304,7 @@ suite('OOXMLViewer', async function () {
     const showErrorMessageStub = stub(window, 'showErrorMessage');
     stubs.push(showInputStub, consoleErrorStub, showErrorMessageStub);
 
-    await ooxmlViewer.searchOxmlParts();
+    await ooxmlViewer.searchOoxmlParts();
     expect(consoleErrorStub.args[0][0]).to.eq(err.message);
     expect(showErrorMessageStub.args[0][0]).to.eq(err.message);
   });
@@ -325,7 +325,7 @@ suite('OOXMLViewer', async function () {
     const showWarningMessageStub = stub(window, 'showWarningMessage');
     stubs.push(showInputStub, showWarningMessageStub);
 
-    await ooxmlViewer.searchOxmlParts();
+    await ooxmlViewer.searchOoxmlParts();
     expect(showWarningMessageStub.args[0][0]).to.eq(msg);
   });
 
@@ -336,7 +336,7 @@ suite('OOXMLViewer', async function () {
     const showWarningMessageStub = stub(window, 'showWarningMessage');
     stubs.push(showInputStub, showWarningMessageStub);
 
-    await ooxmlViewer.searchOxmlParts();
+    await ooxmlViewer.searchOoxmlParts();
     expect(showWarningMessageStub.args[0][0]).to.eq(msg);
   });
 });

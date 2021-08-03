@@ -13,7 +13,7 @@ export function activate(context: ExtensionContext): void {
     commands.registerCommand('ooxmlViewer.viewFile', async (fileNode: FileNode) => ooxmlViewer.viewFile(fileNode)),
     commands.registerCommand('ooxmlViewer.clear', () => ooxmlViewer.clear()),
     commands.registerCommand('ooxmlViewer.showDiff', async (file: FileNode) => ooxmlViewer.getDiff(file)),
-    commands.registerCommand('ooxmlViewer.searchParts', async () => ooxmlViewer.searchOxmlParts()),
+    commands.registerCommand('ooxmlViewer.searchParts', async () => ooxmlViewer.searchOoxmlParts()),
   );
 }
 

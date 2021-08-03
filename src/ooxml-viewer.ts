@@ -499,15 +499,15 @@ export class OOXMLViewer {
   }
 
   /**
-   * @description search OXML parts for a string and display the results in a web view
-   * @method searchOxmlParts
+   * @description search OOXML parts for a string and display the results in a web view
+   * @method searchOoxmlParts
    * @returns {Promise<void>}
    */
-  async searchOxmlParts(): Promise<void> {
+  async searchOoxmlParts(): Promise<void> {
     const warningMsg = 'A file must be open in the OOXML Viewer to search its parts.';
     try {
       await workspace.fs.stat(Uri.file(this.cache.normalSubfolderPath));
-      const searchTerm = await window.showInputBox({ title: 'Search OXML Parts', prompt: 'Enter a search term.' });
+      const searchTerm = await window.showInputBox({ title: 'Search OOXML Parts', prompt: 'Enter a search term.' });
       if (!searchTerm) {
         return;
       }
