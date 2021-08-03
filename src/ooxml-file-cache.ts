@@ -310,7 +310,7 @@ export class OOXMLFileCache {
     try {
       await workspace.fs.delete(Uri.file(cachedFilePath), { recursive: true, useTrash: false });
     } catch (err) {
-      const msg = `Unable to delete file '${cachedFilePath}\n${err.message || err}`;
+      const msg = `Unable to delete file '${cachedFilePath}'\n${err.message || err}`;
       console.error(msg);
       await window.showErrorMessage(msg);
     }
@@ -326,7 +326,7 @@ export class OOXMLFileCache {
     try {
       return await workspace.fs.readFile(Uri.file(cachedFilePath));
     } catch (err) {
-      const msg = `Unable to read file '${cachedFilePath}\n${err.message || err}`;
+      const msg = `Unable to read file '${cachedFilePath}'\n${err.message || err}`;
       console.error(msg);
       await window.showErrorMessage(msg);
     }
