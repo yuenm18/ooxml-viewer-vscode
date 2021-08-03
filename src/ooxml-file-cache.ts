@@ -11,7 +11,7 @@ export const COMPARE_SUBFOLDER_NAME = 'compare';
  * The file system cache for ooxml files.
  *
  * Normal cache files
- *  - used for displaying formatted files, editting ooxml parts, and as a compare point during a diff
+ *  - used for displaying formatted files, editing ooxml parts, and as a compare point during a diff
  * Prev cache files
  *  - used as a compare point during saving to determine if the ooxml file should be resaved
  *  - these should always be updated with the normal cache file unless the ooxml parts are being updated
@@ -335,7 +335,7 @@ export class OOXMLFileCache {
   }
 
   /**
-   * Initiailizes the cache.
+   * Initializes the cache.
    *
    * @returns {Promise<void>}
    */
