@@ -284,12 +284,13 @@ export class OOXMLFileCache {
    * @param {boolean} fileContents The file contents.
    * @returns {Promise<void>}
    */
-  async writeFile(cachedFilePath: string, fileContents: Uint8Array, throwError = false): Promise<void> {
+  async writeFile(cachedFilePath: string, fileContents: Uint8Array, throwErrorForType?: string): Promise<void> {
     try {
       await workspace.fs.createDirectory(Uri.file(dirname(cachedFilePath)));
       await workspace.fs.writeFile(Uri.file(cachedFilePath), fileContents);
     } catch (err) {
-      if (throwError) {
+      const errorType = throwErrorForType ? throwErrorForType.toLowerCase() : '';
+      if (errorType && (err?.code.toLowerCase() === errorType || err?.message.toLowerCase().includes(errorType))) {
         throw new Error(err);
       } else {
         const msg = `Unable to create file '${cachedFilePath}'\n${err.message || err}`;
