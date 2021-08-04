@@ -1,6 +1,6 @@
 import { existsSync } from 'fs';
 import { dirname, join, sep } from 'path';
-import { ExtensionContext, Uri, workspace } from 'vscode';
+import { ExtensionContext, Uri, window, workspace } from 'vscode';
 
 export const CACHE_FOLDER_NAME = 'cache';
 export const NORMAL_SUBFOLDER_NAME = 'normal';
@@ -11,7 +11,7 @@ export const COMPARE_SUBFOLDER_NAME = 'compare';
  * The file system cache for ooxml files.
  *
  * Normal cache files
- *  - used for displaying formatted files, editting ooxml parts, and as a compare point during a diff
+ *  - used for displaying formatted files, editing ooxml parts, and as a compare point during a diff
  * Prev cache files
  *  - used as a compare point during saving to determine if the ooxml file should be resaved
  *  - these should always be updated with the normal cache file unless the ooxml parts are being updated
@@ -26,6 +26,10 @@ export class OOXMLFileCache {
    */
   get cacheBasePath(): string {
     return join(this.context.storageUri?.fsPath || '', CACHE_FOLDER_NAME);
+  }
+
+  get normalSubfolderPath(): string {
+    return join(this.cacheBasePath, NORMAL_SUBFOLDER_NAME);
   }
 
   /**
@@ -98,7 +102,7 @@ export class OOXMLFileCache {
    * @returns {string} The file path of the cached file.
    */
   getFileCachePath(filePath: string): string {
-    return join(this.cacheBasePath, NORMAL_SUBFOLDER_NAME, filePath);
+    return join(this.normalSubfolderPath, filePath);
   }
 
   /**
@@ -146,7 +150,7 @@ export class OOXMLFileCache {
    * @returns {boolean} Whether or not the path is in the cache.
    */
   cachePathIsNormal(cacheFilePath: string): boolean {
-    return !!cacheFilePath && cacheFilePath.startsWith(join(this.cacheBasePath, NORMAL_SUBFOLDER_NAME));
+    return !!cacheFilePath && cacheFilePath.startsWith(this.normalSubfolderPath);
   }
 
   /**
@@ -280,12 +284,19 @@ export class OOXMLFileCache {
    * @param {boolean} fileContents The file contents.
    * @returns {Promise<void>}
    */
-  async writeFile(cachedFilePath: string, fileContents: Uint8Array): Promise<void> {
+  async writeFile(cachedFilePath: string, fileContents: Uint8Array, throwErrorForType?: string): Promise<void> {
     try {
       await workspace.fs.createDirectory(Uri.file(dirname(cachedFilePath)));
       await workspace.fs.writeFile(Uri.file(cachedFilePath), fileContents);
     } catch (err) {
-      console.error(`Unable to create file '${cachedFilePath}'`, err);
+      const errorType = throwErrorForType ? throwErrorForType.toLowerCase() : '';
+      if (errorType && (err?.code.toLowerCase() === errorType || err?.message.toLowerCase().includes(errorType))) {
+        throw new Error(err);
+      } else {
+        const msg = `Unable to create file '${cachedFilePath}'\n${err.message || err}`;
+        console.error(msg);
+        await window.showErrorMessage(msg);
+      }
     }
   }
 
@@ -299,7 +310,9 @@ export class OOXMLFileCache {
     try {
       await workspace.fs.delete(Uri.file(cachedFilePath), { recursive: true, useTrash: false });
     } catch (err) {
-      console.error(`Unable to delete file '${cachedFilePath}'`, err);
+      const msg = `Unable to delete file '${cachedFilePath}'\n${err.message || err}`;
+      console.error(msg);
+      await window.showErrorMessage(msg);
     }
   }
 
@@ -313,14 +326,16 @@ export class OOXMLFileCache {
     try {
       return await workspace.fs.readFile(Uri.file(cachedFilePath));
     } catch (err) {
-      console.error(`Unable to read file '${cachedFilePath}'`, err);
+      const msg = `Unable to read file '${cachedFilePath}'\n${err.message || err}`;
+      console.error(msg);
+      await window.showErrorMessage(msg);
     }
 
     return new Uint8Array();
   }
 
   /**
-   * Initiailizes the cache.
+   * Initializes the cache.
    *
    * @returns {Promise<void>}
    */

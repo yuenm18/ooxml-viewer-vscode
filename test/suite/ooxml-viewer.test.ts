@@ -1,12 +1,13 @@
 import { expect } from 'chai';
+import findInFiles, { FindResult } from 'find-in-files';
 import JSZip from 'jszip';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { join, sep } from 'path';
 import { match, SinonStub, spy, stub } from 'sinon';
 import { TextDecoder } from 'util';
 import { commands, Disposable, ExtensionContext, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window } from 'vscode';
 import xmlFormatter from 'xml-formatter';
-import { CACHE_FOLDER_NAME } from '../../src/ooxml-file-cache';
+import { CACHE_FOLDER_NAME, NORMAL_SUBFOLDER_NAME } from '../../src/ooxml-file-cache';
 import { FileNode, OOXMLTreeDataProvider } from '../../src/ooxml-tree-view-provider';
 import { OOXMLViewer } from '../../src/ooxml-viewer';
 
@@ -16,18 +17,32 @@ suite('OOXMLViewer', async function () {
   const stubs: SinonStub[] = [];
   const testFilePath = join(__dirname, '..', '..', '..', 'test', 'test-data', 'Test.pptx');
 
-  setup(function () {
+  suiteSetup(function () {
     const context = {
       storageUri: {
         fsPath: join(tmpdir(), 'ooxml-viewer'),
       },
-    } as ExtensionContext;
+      subscriptions: [],
+    } as unknown as ExtensionContext;
     ooxmlViewer = new OOXMLViewer(context);
   });
 
   teardown(function () {
     stubs.forEach(s => s.restore());
     stubs.length = 0;
+  });
+
+  test('searchOoxmlParts should return and not perform a search if no search term is entered', async function () {
+    const showInputStub = stub(window, 'showInputBox').returns(Promise.resolve(''));
+    const tryFormatXmlStub = stub(ooxmlViewer, <never>'tryFormatXml');
+    const executeCommandStub = stub(commands, 'executeCommand');
+    const findStub = stub(findInFiles, 'find');
+    stubs.push(showInputStub, tryFormatXmlStub, executeCommandStub, findStub);
+
+    await ooxmlViewer.searchOoxmlParts();
+    expect(tryFormatXmlStub.callCount).to.eq(0);
+    expect(executeCommandStub.callCount).to.eq(0);
+    expect(findStub.callCount).to.eq(0);
   });
 
   test('should have an instance of OOXMLTreeDataProvider', function () {
@@ -119,7 +134,6 @@ suite('OOXMLViewer', async function () {
       return Promise.resolve({} as TextEditor);
     });
     const executeStub = stub(commands, 'executeCommand').callsFake(arg => {
-      expect(arg).to.eq('workbench.action.closeActiveEditor');
       return Promise.resolve();
     });
     stubs.push(refreshStub, disposeWatchersStub, openEditorsStub, showDocStub, executeStub);
@@ -129,7 +143,7 @@ suite('OOXMLViewer', async function () {
     expect(refreshStub.calledOnce).to.be.true;
     expect(disposeWatchersStub.calledOnce).to.be.true;
     expect(showDocStub.calledWith(match(textDoc))).to.be.true;
-    expect(executeStub.calledWith('workbench.action.closeActiveEditor')).to.be.true;
+    expect(executeStub.args[0][0]).eq('workbench.action.closeActiveEditor');
   });
 
   test('getDiff should use vscode.diff to get the difference between two files', async function () {
@@ -168,6 +182,21 @@ suite('OOXMLViewer', async function () {
     node.fileName = 'racecar.xml';
 
     await ooxmlViewer.getDiff(node);
+  });
+
+  test('getDiff should call display an error message when an error is thrown', async function () {
+    const err = new Error('Pants on backwards');
+    const encoderStub = stub(ooxmlViewer.textDecoder, 'decode').throws(err);
+    const getCachedFileStub = stub(ooxmlViewer.cache, 'getCachedFile').returns(Promise.resolve(new Uint8Array()));
+    const consoleErrorStub = stub(console, 'error');
+    const showErrorStub = stub(window, 'showErrorMessage');
+
+    stubs.push(encoderStub, consoleErrorStub, showErrorStub, getCachedFileStub);
+
+    await ooxmlViewer.getDiff(new FileNode());
+
+    expect(consoleErrorStub.args[0][0]).to.eq(err.message);
+    expect(showErrorStub.args[0][0]).to.eq(err.message);
   });
 
   test('closeWatchers should call restore on the array of file system watchers', function () {
@@ -230,5 +259,84 @@ suite('OOXMLViewer', async function () {
     await populateOOXMLViewerStub.bind(ooxmlViewer)(ooxmlViewer.zip.files, false);
     expect(deleteCachedFilesFileStub.called).to.be.false;
     expect(node?.isDeleted()).to.be.true;
+  });
+
+  test('searchOoxmlParts should show an input box and use the input to perform a search of the OOXML parts', async function () {
+    const searchTerm = 'meatballs';
+    const filePath0 = `helloworld${sep + NORMAL_SUBFOLDER_NAME + sep}racecar${sep}radar`;
+    const filePath1 = `foo${sep + NORMAL_SUBFOLDER_NAME + sep}bar${sep}baz`;
+    const filePath2 = `I${sep + NORMAL_SUBFOLDER_NAME + sep}want${sep}breakfast`;
+    const showInputStub = stub(window, 'showInputBox').returns(Promise.resolve(searchTerm));
+    const tryFormatXmlStub = stub(ooxmlViewer, <never>'tryFormatXml');
+    const executeCommandStub = stub(commands, 'executeCommand');
+    const findStub = stub(findInFiles, 'find').returns(
+      Promise.resolve({
+        [filePath0]: {},
+        [filePath1]: {},
+        [filePath2]: {},
+      } as unknown as FindResult),
+    );
+
+    stubs.push(showInputStub, tryFormatXmlStub, executeCommandStub, findStub);
+
+    await ooxmlViewer.searchOoxmlParts();
+
+    expect(findStub.args[0][0]).to.eq(searchTerm);
+    expect(findStub.args[0][1]).to.eq(ooxmlViewer.cache.normalSubfolderPath);
+    expect(tryFormatXmlStub.callCount).to.eq(3);
+    expect(tryFormatXmlStub.args[0][0]).to.eq(filePath0.split(NORMAL_SUBFOLDER_NAME)[1].split(sep).join('/'));
+    expect(tryFormatXmlStub.args[1][0]).to.eq(filePath1.split(NORMAL_SUBFOLDER_NAME)[1].split(sep).join('/'));
+    expect(tryFormatXmlStub.args[2][0]).to.eq(filePath2.split(NORMAL_SUBFOLDER_NAME)[1].split(sep).join('/'));
+    expect(executeCommandStub.args[0][0]).to.eq('workbench.action.findInFiles');
+    expect(executeCommandStub.args[0][1]).to.deep.eq({
+      query: searchTerm,
+      filesToInclude: ooxmlViewer.cache.normalSubfolderPath,
+      triggerSearch: true,
+      isCaseSensitive: false,
+      matchWholeWord: false,
+    });
+  });
+
+  test('searchOoxmlParts should console.error and window.showErrorMessage an error if an error is thrown', async function () {
+    const err = new Error('out of tacos');
+    const showInputStub = stub(window, 'showInputBox').returns(Promise.reject(err));
+    const consoleErrorStub = stub(console, 'error');
+    const showErrorMessageStub = stub(window, 'showErrorMessage');
+    stubs.push(showInputStub, consoleErrorStub, showErrorMessageStub);
+
+    await ooxmlViewer.searchOoxmlParts();
+    expect(consoleErrorStub.args[0][0]).to.eq(err.message);
+    expect(showErrorMessageStub.args[0][0]).to.eq(err.message);
+  });
+
+  class VSError extends Error {
+    code: string;
+
+    constructor(data: { code: string }) {
+      super();
+      this.code = data.code;
+    }
+  }
+
+  test('searchOoxmlParts should window.showWarningMessage if no file is open in the viewer with ENOENT', async function () {
+    const err = new VSError({ code: 'ENOENT' });
+    const msg = 'A file must be open in the OOXML Viewer to search its parts.';
+    const showInputStub = stub(window, 'showInputBox').returns(Promise.reject(err));
+    const showWarningMessageStub = stub(window, 'showWarningMessage');
+    stubs.push(showInputStub, showWarningMessageStub);
+
+    await ooxmlViewer.searchOoxmlParts();
+    expect(showWarningMessageStub.args[0][0]).to.eq(msg);
+  });
+
+  test('searchOoxmlParts should window.showWarningMessage if no file is open in the viewer with FileNotFound', async function () {
+    const err = new VSError({ code: 'FileNotFound' });
+    const msg = 'A file must be open in the OOXML Viewer to search its parts.';
+    const showInputStub = stub(window, 'showInputBox').returns(Promise.reject(err));
+    const showWarningMessageStub = stub(window, 'showWarningMessage');
+    stubs.push(showInputStub, showWarningMessageStub);
+
+    await ooxmlViewer.searchOoxmlParts();
+    expect(showWarningMessageStub.args[0][0]).to.eq(msg);
   });
 });

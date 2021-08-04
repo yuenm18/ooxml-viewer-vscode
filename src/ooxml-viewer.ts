@@ -1,11 +1,24 @@
+import { find } from 'find-in-files';
 import JSZip from 'jszip';
 import { lookup } from 'mime-types';
-import { basename } from 'path';
+import { basename, sep } from 'path';
 import vkBeautify from 'vkbeautify';
-import { commands, Disposable, ExtensionContext, FileSystemWatcher, ProgressLocation, TextDocument, Uri, window, workspace } from 'vscode';
+import {
+  commands,
+  Disposable,
+  ExtensionContext,
+  FileSystemWatcher,
+  ProgressLocation,
+  TextDocument,
+  TreeView,
+  Uri,
+  window,
+  workspace
+} from 'vscode';
 import xmlFormatter from 'xml-formatter';
+import packageJson from '../package.json';
 import { ExtensionUtilities } from './extension-utilities';
-import { OOXMLFileCache } from './ooxml-file-cache';
+import { NORMAL_SUBFOLDER_NAME, OOXMLFileCache } from './ooxml-file-cache';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
 
 /**
@@ -13,11 +26,13 @@ import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
  */
 export class OOXMLViewer {
   treeDataProvider: OOXMLTreeDataProvider;
+  treeView: TreeView<FileNode>;
   zip: JSZip;
   cache: OOXMLFileCache;
 
   watchers: Disposable[] = [];
   openTextEditors: { [key: string]: FileNode } = {};
+  xmlFormatConfig = { indentation: '  ', collapseContent: true };
   ooxmlFilePath = '';
 
   textEncoder = new TextEncoder();
@@ -31,10 +46,13 @@ export class OOXMLViewer {
    */
   constructor(context: ExtensionContext) {
     this.treeDataProvider = new OOXMLTreeDataProvider();
+    this.treeView = window.createTreeView('ooxmlViewer', { treeDataProvider: this.treeDataProvider });
+    this.treeView.title = packageJson.displayName;
+    context.subscriptions.push(this.treeView);
     this.zip = new JSZip();
     this.cache = new OOXMLFileCache(context);
 
-    this.closeEditors();
+    this.closeEditorsOnStartup();
   }
 
   /**
@@ -47,6 +65,7 @@ export class OOXMLViewer {
   async openOoxmlPackage(file: Uri): Promise<void> {
     try {
       this.ooxmlFilePath = file.fsPath;
+      this.treeView.title = `${packageJson.displayName} | ${basename(file.fsPath)}`;
       await window.withProgress(
         {
           location: ProgressLocation.Notification,
@@ -78,7 +97,7 @@ export class OOXMLViewer {
       );
     } catch (err) {
       console.error(err);
-      window.showErrorMessage(`Could not load ${file.fsPath}`, err);
+      await window.showErrorMessage(`Could not load ${file.fsPath}`, err);
     }
   }
 
@@ -103,12 +122,12 @@ export class OOXMLViewer {
 
           const filePath = this.cache.getFileCachePath(fileNode.fullPath);
           this.openTextEditors[filePath] = fileNode;
-          commands.executeCommand('vscode.open', Uri.file(filePath));
+          await commands.executeCommand('vscode.open', Uri.file(filePath));
         },
       );
     } catch (e) {
       console.error(e);
-      window.showErrorMessage(`Could not load ${fileNode.fullPath}`);
+      await window.showErrorMessage(`Could not load ${fileNode.fullPath}`);
     }
   }
 
@@ -118,6 +137,7 @@ export class OOXMLViewer {
    * @returns {Promise<void>} Promise that returns void
    */
   clear(): Promise<void> {
+    this.treeView.title = packageJson.displayName;
     return this.resetOOXMLViewer();
   }
 
@@ -133,19 +153,12 @@ export class OOXMLViewer {
       // format the file and its compare
       const fileContents = this.textDecoder.decode(await this.cache.getCachedFile(file.fullPath));
       if (fileContents.startsWith('<?xml')) {
-        await this.cache.updateCachedFile(
-          file.fullPath,
-          this.textEncoder.encode(xmlFormatter(fileContents, { indentation: '  ', collapseContent: true })),
-          false,
-        );
+        await this.cache.updateCachedFile(file.fullPath, this.textEncoder.encode(xmlFormatter(fileContents, this.xmlFormatConfig)), false);
       }
 
       const compareFileContents = this.textDecoder.decode(await this.cache.getCachedCompareFile(file.fullPath));
       if (compareFileContents.startsWith('<?xml')) {
-        await this.cache.updateCompareFile(
-          file.fullPath,
-          this.textEncoder.encode(xmlFormatter(compareFileContents, { indentation: '  ', collapseContent: true })),
-        );
+        await this.cache.updateCompareFile(file.fullPath, this.textEncoder.encode(xmlFormatter(compareFileContents, this.xmlFormatConfig)));
       }
 
       // diff the primary and compare files
@@ -155,7 +168,8 @@ export class OOXMLViewer {
 
       await commands.executeCommand('vscode.diff', Uri.file(fileCompareCachePath), Uri.file(fileCachePath), title);
     } catch (err) {
-      console.error(err);
+      console.error(err.message || err);
+      await window.showErrorMessage(err.message || err);
     }
   }
 
@@ -184,6 +198,17 @@ export class OOXMLViewer {
   }
 
   /**
+   * @description Closes all active editor tabs on VS Code opening
+   * @method closeEditors
+   * @private
+   * @async
+   * @returns {Promise<void>}
+   */
+  private async closeEditorsOnStartup(): Promise<void> {
+    return ExtensionUtilities.closeEditorsOnStartup(this.cache.cacheBasePath);
+  }
+
+  /**
    * @description Sets this.zip to an empty zip file, deletes the cache folder, closes all watchers, and closes all editor tabs
    * @method resetOOXMLViewer
    * @private
@@ -195,13 +220,12 @@ export class OOXMLViewer {
       this.zip = new JSZip();
       this.treeDataProvider.rootFileNode = new FileNode();
       this.treeDataProvider.refresh();
-
       this.disposeWatchers();
 
       await Promise.all([this.closeEditors(), this.cache.clear()]);
     } catch (err) {
       console.error(err);
-      window.showErrorMessage('Could not remove ooxml file viewer cache');
+      await window.showErrorMessage('Could not remove ooxml file viewer cache');
     }
   }
 
@@ -300,19 +324,17 @@ export class OOXMLViewer {
       const zipFile = await this.zip
         .file(filePath, this.textEncoder.encode(fileMinXml))
         .generateAsync({ type: 'uint8array', mimeType, compression: 'DEFLATE' });
-      await this.cache.writeFile(this.ooxmlFilePath, zipFile);
+      await this.cache.writeFile(this.ooxmlFilePath, zipFile, 'EBUSY');
 
       await this.cache.createCachedFile(filePath, fileContents, false);
       this.treeDataProvider.refresh();
     } catch (err) {
-      if (err?.code === 'EBUSY' || err?.message.toLowerCase().includes('ebusy')) {
-        window.showWarningMessage(
-          `File not saved.\n${basename(this.ooxmlFilePath)} is open in another program.\nClose that program before making any changes.`,
-          { modal: true },
-        );
+      await window.showWarningMessage(
+        `File not saved.\n${basename(this.ooxmlFilePath)} is open in another program.\nClose that program before making any changes.`,
+        { modal: true },
+      );
 
-        await ExtensionUtilities.makeTextEditorDirty(window.activeTextEditor);
-      }
+      await ExtensionUtilities.makeTextEditorDirty(window.activeTextEditor);
     }
   }
 
@@ -341,7 +363,8 @@ export class OOXMLViewer {
 
           await this.populateOOXMLViewer(this.zip.files, true);
         } catch (err) {
-          console.error(err);
+          console.error(err.message);
+          await window.showErrorMessage(err.message || err);
         }
       },
     );
@@ -381,7 +404,8 @@ export class OOXMLViewer {
 
       this.treeDataProvider.refresh();
     } catch (err) {
-      console.error(err);
+      console.error(err.message || err);
+      await window.showErrorMessage(err.message || err);
     }
   }
 
@@ -415,7 +439,8 @@ export class OOXMLViewer {
           await commands.executeCommand('workbench.action.closeActiveEditor');
         });
     } catch (err) {
-      console.error(err);
+      console.error(err.message || err);
+      await window.showErrorMessage(err.message || err);
     }
   }
 
@@ -430,7 +455,7 @@ export class OOXMLViewer {
   private async tryFormatXml(filePath: string) {
     const xml = this.textDecoder.decode(await this.cache.getCachedFile(filePath));
     if (xml.startsWith('<?xml')) {
-      const text = xmlFormatter(xml, { indentation: '  ', collapseContent: true });
+      const text = xmlFormatter(xml, this.xmlFormatConfig);
       await this.cache.updateCachedFile(filePath, this.textEncoder.encode(text), false);
       return true;
     }
@@ -462,8 +487,47 @@ export class OOXMLViewer {
       return minFileText !== minPrevFileText;
     } catch (err) {
       console.error(err.message || err);
+      await window.showErrorMessage(err.message || err);
     }
 
     return false;
+  }
+
+  /**
+   * @description search OOXML parts for a string and display the results in a web view
+   * @method searchOoxmlParts
+   * @returns {Promise<void>}
+   */
+  async searchOoxmlParts(): Promise<void> {
+    const warningMsg = 'A file must be open in the OOXML Viewer to search its parts.';
+    try {
+      await workspace.fs.stat(Uri.file(this.cache.normalSubfolderPath));
+      const searchTerm = await window.showInputBox({ title: 'Search OOXML Parts', prompt: 'Enter a search term.' });
+      if (!searchTerm) {
+        return;
+      }
+      const results = await find(searchTerm, this.cache.normalSubfolderPath);
+
+      for (const filePath in results) {
+        const ooxmlPath = filePath.split(NORMAL_SUBFOLDER_NAME)[1].split(sep).join('/');
+        await this.tryFormatXml(ooxmlPath);
+      }
+
+      await commands.executeCommand('workbench.action.findInFiles', {
+        query: searchTerm,
+        filesToInclude: this.cache.normalSubfolderPath,
+        triggerSearch: true,
+        isCaseSensitive: false,
+        matchWholeWord: false,
+      });
+    } catch (err) {
+      if (err?.code === 'ENOENT' || err?.code === 'FileNotFound') {
+        window.showWarningMessage(warningMsg);
+      } else {
+        const msg = err.message || err;
+        console.error(msg);
+        window.showErrorMessage(msg);
+      }
+    }
   }
 }
