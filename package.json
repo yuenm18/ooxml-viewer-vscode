@@ -2,7 +2,7 @@
   "name": "ooxml-viewer",
   "displayName": "OOXML Viewer",
   "description": "Displays the contents of OOXML files",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "license": "MIT",
   "publisher": "yuenm18",
   "homepage": "https://github.com/yuenm18/ooxml-viewer-vscode/blob/master/README.md",
