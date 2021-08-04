@@ -1,4 +1,4 @@
-import { commands, ExtensionContext, Uri, window } from 'vscode';
+import { commands, ExtensionContext, Uri, window, workspace } from 'vscode';
 import { FileNode } from './ooxml-tree-view-provider';
 import { OOXMLViewer } from './ooxml-viewer';
 
@@ -6,8 +6,9 @@ let ooxmlViewer: OOXMLViewer;
 
 export function activate(context: ExtensionContext): void {
   ooxmlViewer = new OOXMLViewer(context);
-
+  
   context.subscriptions.push(
+    workspace.onDidOpenTextDocument(async (document) => ooxmlViewer.tryFormatDocument(document.fileName)),
     window.registerTreeDataProvider('ooxmlViewer', ooxmlViewer.treeDataProvider),
     commands.registerCommand('ooxmlViewer.openOoxmlPackage', async (file: Uri) => ooxmlViewer.openOoxmlPackage(file)),
     commands.registerCommand('ooxmlViewer.viewFile', async (fileNode: FileNode) => ooxmlViewer.viewFile(fileNode)),

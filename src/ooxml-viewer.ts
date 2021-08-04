@@ -1,7 +1,6 @@
-import { find } from 'find-in-files';
 import JSZip from 'jszip';
 import { lookup } from 'mime-types';
-import { basename, sep } from 'path';
+import { basename } from 'path';
 import vkBeautify from 'vkbeautify';
 import {
   commands,
@@ -18,7 +17,7 @@ import {
 import xmlFormatter from 'xml-formatter';
 import packageJson from '../package.json';
 import { ExtensionUtilities } from './extension-utilities';
-import { NORMAL_SUBFOLDER_NAME, OOXMLFileCache } from './ooxml-file-cache';
+import { OOXMLFileCache } from './ooxml-file-cache';
 import { FileNode, OOXMLTreeDataProvider } from './ooxml-tree-view-provider';
 
 /**
@@ -170,6 +169,59 @@ export class OOXMLViewer {
     } catch (err) {
       console.error(err.message || err);
       await window.showErrorMessage(err.message || err);
+    }
+  }
+
+  /**
+   * @description Format the document if it is a is a cached normal file
+   * @method tryFormatDocument
+   * @async
+   * @returns Promise{void}
+   */
+  async tryFormatDocument(filePath: string): Promise<void> {
+    if (this.cache.cachePathIsNormal(filePath)) {
+      await window.withProgress(
+        {
+          location: ProgressLocation.Notification,
+          title: 'OOXML Viewer',
+        },
+        async progress => {
+          progress.report({ message: 'Formatting XML' });
+          await this.tryFormatXml(this.cache.getFilePathFromCacheFilePath(filePath));
+        },
+      );
+    }
+  }
+
+  /**
+   * @description Search OOXML parts for a string and display the results in a web view
+   * @method searchOoxmlParts
+   * @returns {Promise<void>}
+   */
+  async searchOoxmlParts(): Promise<void> {
+    const warningMsg = 'A file must be open in the OOXML Viewer to search its parts.';
+    try {
+      await workspace.fs.stat(Uri.file(this.cache.normalSubfolderPath));
+      const searchTerm = await window.showInputBox({ title: 'Search OOXML Parts', prompt: 'Enter a search term.' });
+      if (!searchTerm) {
+        return;
+      }
+
+      await commands.executeCommand('workbench.action.findInFiles', {
+        query: searchTerm,
+        filesToInclude: this.cache.normalSubfolderPath,
+        triggerSearch: true,
+        isCaseSensitive: false,
+        matchWholeWord: false,
+      });
+    } catch (err) {
+      if (err?.code === 'ENOENT' || err?.code === 'FileNotFound') {
+        window.showWarningMessage(warningMsg);
+      } else {
+        const msg = err.message || err;
+        console.error(msg);
+        window.showErrorMessage(msg);
+      }
     }
   }
 
@@ -491,43 +543,5 @@ export class OOXMLViewer {
     }
 
     return false;
-  }
-
-  /**
-   * @description search OOXML parts for a string and display the results in a web view
-   * @method searchOoxmlParts
-   * @returns {Promise<void>}
-   */
-  async searchOoxmlParts(): Promise<void> {
-    const warningMsg = 'A file must be open in the OOXML Viewer to search its parts.';
-    try {
-      await workspace.fs.stat(Uri.file(this.cache.normalSubfolderPath));
-      const searchTerm = await window.showInputBox({ title: 'Search OOXML Parts', prompt: 'Enter a search term.' });
-      if (!searchTerm) {
-        return;
-      }
-      const results = await find(searchTerm, this.cache.normalSubfolderPath);
-
-      for (const filePath in results) {
-        const ooxmlPath = filePath.split(NORMAL_SUBFOLDER_NAME)[1].split(sep).join('/');
-        await this.tryFormatXml(ooxmlPath);
-      }
-
-      await commands.executeCommand('workbench.action.findInFiles', {
-        query: searchTerm,
-        filesToInclude: this.cache.normalSubfolderPath,
-        triggerSearch: true,
-        isCaseSensitive: false,
-        matchWholeWord: false,
-      });
-    } catch (err) {
-      if (err?.code === 'ENOENT' || err?.code === 'FileNotFound') {
-        window.showWarningMessage(warningMsg);
-      } else {
-        const msg = err.message || err;
-        console.error(msg);
-        window.showErrorMessage(msg);
-      }
-    }
   }
 }
