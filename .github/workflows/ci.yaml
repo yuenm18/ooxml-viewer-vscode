@@ -1,0 +1,39 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      include:
+      - master
+    tags:
+      include:
+      - v*
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: Build and Test on ${{ matrix.os }}
+    strategy:
+      os: [ 'ubuntu-20.04', 'macOS-10.15', 'windows-2019' ]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+    - name: Install Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '16.x'
+    - name: Start xvfb
+      run: /usr/bin/Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+      if: runner.os == 'Linux'
+    - name: Install
+      run: npm install
+    - name: Lint
+      run: npm run lint
+    - name: Build
+      run: npm run compile
+    - name: Run Tests
+      bash: npm test
+      env:
+        DISPLAY: ':99.0'
