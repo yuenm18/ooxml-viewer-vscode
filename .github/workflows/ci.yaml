@@ -32,6 +32,6 @@ jobs:
     - name: Build
       run: npm run compile
     - name: Run Tests
-      bash: npm test
+      run: npm test
       env:
         DISPLAY: ':99.0'
