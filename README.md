@@ -1,7 +1,7 @@
 # OOXML Viewer VSCode Extension
 
+[![Continuous Integration](https://github.com/yuenm18/ooxml-viewer-vscode/actions/workflows/ci.yaml/badge.svg)](https://github.com/yuenm18/ooxml-viewer-vscode/actions/workflows/ci.yaml)
 [![Visual Studio Marketplace](https://vsmarketplacebadge.apphb.com/version/yuenm18.ooxml-viewer.svg)](https://marketplace.visualstudio.com/items?itemName=yuenm18.ooxml-viewer)
-[![Build Status](https://dev.azure.com/yuenm18/Extensions/_apis/build/status/yuenm18.ooxml-viewer-vscode?branchName=master)](https://dev.azure.com/yuenm18/Extensions/_build/latest?definitionId=2&branchName=master)
 
 \* Please note, files must be stored locally, i.e. not in OneNote, Dropbox, etc.
 
