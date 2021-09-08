@@ -3,11 +3,9 @@ name: Continuous Integration
 on:
   push:
     branches:
-      include:
-      - master
+    - master
     tags:
-      include:
-      - v*
+    - v*
   pull_request:
   workflow_dispatch:
 
