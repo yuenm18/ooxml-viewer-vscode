@@ -103,4 +103,17 @@ export class ExtensionUtilities {
       }
     }
   }
+
+  static async handleError(err: unknown): Promise<void> {
+    let msg = 'unknown error';
+
+    if (typeof err === 'string') {
+      msg = err;
+    } else if (err instanceof Error) {
+      msg = err.message;
+    }
+
+    console.error(msg);
+    await window.showErrorMessage(msg);
+  }
 }

@@ -1,6 +1,7 @@
 import { existsSync } from 'fs';
 import { dirname, join, sep } from 'path';
-import { ExtensionContext, Uri, window, workspace } from 'vscode';
+import { ExtensionContext, FileSystemError, Uri, workspace } from 'vscode';
+import { ExtensionUtilities } from './extension-utilities';
 
 export const CACHE_FOLDER_NAME = 'cache';
 export const NORMAL_SUBFOLDER_NAME = 'normal';
@@ -289,13 +290,15 @@ export class OOXMLFileCache {
       await workspace.fs.createDirectory(Uri.file(dirname(cachedFilePath)));
       await workspace.fs.writeFile(Uri.file(cachedFilePath), fileContents);
     } catch (err) {
-      const errorType = throwErrorForType ? throwErrorForType.toLowerCase() : '';
-      if (errorType && (err?.code.toLowerCase() === errorType || err?.message.toLowerCase().includes(errorType))) {
-        throw new Error(err);
+      const e = (err as FileSystemError);
+
+      if (
+        throwErrorForType &&
+        (e?.code.toLowerCase() === throwErrorForType.toLowerCase() || e?.message.toLowerCase().includes(throwErrorForType.toLowerCase()))
+      ) {
+        throw e;
       } else {
-        const msg = `Unable to create file '${cachedFilePath}'\n${err.message || err}`;
-        console.error(msg);
-        await window.showErrorMessage(msg);
+        await ExtensionUtilities.handleError(err);
       }
     }
   }
@@ -310,9 +313,7 @@ export class OOXMLFileCache {
     try {
       await workspace.fs.delete(Uri.file(cachedFilePath), { recursive: true, useTrash: false });
     } catch (err) {
-      const msg = `Unable to delete file '${cachedFilePath}'\n${err.message || err}`;
-      console.error(msg);
-      await window.showErrorMessage(msg);
+      await ExtensionUtilities.handleError(err);
     }
   }
 
@@ -326,9 +327,7 @@ export class OOXMLFileCache {
     try {
       return await workspace.fs.readFile(Uri.file(cachedFilePath));
     } catch (err) {
-      const msg = `Unable to read file '${cachedFilePath}'\n${err.message || err}`;
-      console.error(msg);
-      await window.showErrorMessage(msg);
+      await ExtensionUtilities.handleError(err);
     }
 
     return new Uint8Array();

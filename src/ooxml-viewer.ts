@@ -6,6 +6,7 @@ import {
   commands,
   Disposable,
   ExtensionContext,
+  FileSystemError,
   FileSystemWatcher,
   ProgressLocation,
   TextDocument,
@@ -95,8 +96,7 @@ export class OOXMLViewer {
         },
       );
     } catch (err) {
-      console.error(err);
-      await window.showErrorMessage(`Could not load ${file.fsPath}`, err);
+      await ExtensionUtilities.handleError(err);
     }
   }
 
@@ -124,9 +124,8 @@ export class OOXMLViewer {
           await commands.executeCommand('vscode.open', Uri.file(filePath));
         },
       );
-    } catch (e) {
-      console.error(e);
-      await window.showErrorMessage(`Could not load ${fileNode.fullPath}`);
+    } catch (err) {
+      await ExtensionUtilities.handleError(err);
     }
   }
 
@@ -167,8 +166,7 @@ export class OOXMLViewer {
 
       await commands.executeCommand('vscode.diff', Uri.file(fileCompareCachePath), Uri.file(fileCachePath), title);
     } catch (err) {
-      console.error(err.message || err);
-      await window.showErrorMessage(err.message || err);
+      await ExtensionUtilities.handleError(err);
     }
   }
 
@@ -215,12 +213,10 @@ export class OOXMLViewer {
         matchWholeWord: false,
       });
     } catch (err) {
-      if (err?.code === 'ENOENT' || err?.code === 'FileNotFound') {
+      if (err instanceof FileSystemError && (err?.code === 'ENOENT' || err?.code === 'FileNotFound')) {
         window.showWarningMessage(warningMsg);
       } else {
-        const msg = err.message || err;
-        console.error(msg);
-        window.showErrorMessage(msg);
+        await ExtensionUtilities.handleError(err);
       }
     }
   }
@@ -276,8 +272,7 @@ export class OOXMLViewer {
 
       await Promise.all([this.closeEditors(), this.cache.clear()]);
     } catch (err) {
-      console.error(err);
-      await window.showErrorMessage('Could not remove ooxml file viewer cache');
+      await ExtensionUtilities.handleError(err);
     }
   }
 
@@ -415,8 +410,7 @@ export class OOXMLViewer {
 
           await this.populateOOXMLViewer(this.zip.files, true);
         } catch (err) {
-          console.error(err.message);
-          await window.showErrorMessage(err.message || err);
+          await ExtensionUtilities.handleError(err);
         }
       },
     );
@@ -456,8 +450,7 @@ export class OOXMLViewer {
 
       this.treeDataProvider.refresh();
     } catch (err) {
-      console.error(err.message || err);
-      await window.showErrorMessage(err.message || err);
+      await ExtensionUtilities.handleError(err);
     }
   }
 
@@ -479,7 +472,7 @@ export class OOXMLViewer {
           try {
             await this.tryFormatXml(filePath);
           } catch (err) {
-            console.error(err);
+            await ExtensionUtilities.handleError(err);
           }
         });
 
@@ -491,8 +484,7 @@ export class OOXMLViewer {
           await commands.executeCommand('workbench.action.closeActiveEditor');
         });
     } catch (err) {
-      console.error(err.message || err);
-      await window.showErrorMessage(err.message || err);
+      await ExtensionUtilities.handleError(err);
     }
   }
 
@@ -538,8 +530,7 @@ export class OOXMLViewer {
       const minPrevFileText = vkBeautify.xmlmin(prevFileText);
       return minFileText !== minPrevFileText;
     } catch (err) {
-      console.error(err.message || err);
-      await window.showErrorMessage(err.message || err);
+      await ExtensionUtilities.handleError(err);
     }
 
     return false;
