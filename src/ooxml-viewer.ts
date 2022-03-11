@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import { lookup } from 'mime-types';
-import { basename } from 'path';
+import { basename, dirname } from 'path';
 import vkBeautify from 'vkbeautify';
 import {
   commands,
@@ -9,6 +9,7 @@ import {
   FileSystemError,
   FileSystemWatcher,
   ProgressLocation,
+  RelativePattern,
   TextDocument,
   TreeView,
   Uri,
@@ -81,9 +82,20 @@ export class OOXMLViewer {
           await this.populateOOXMLViewer(this.zip.files, false);
 
           // set up watchers
-          const watcher: FileSystemWatcher = workspace.createFileSystemWatcher(file.fsPath);
-          watcher.onDidChange((uri: Uri) => {
-            this.reloadOoxmlFile(file.fsPath);
+          const watcher: FileSystemWatcher = workspace.createFileSystemWatcher(
+            new RelativePattern(dirname(file.fsPath), basename(file.fsPath)),
+          );
+
+          let trackingTimer: number;
+
+          watcher.onDidChange(async (uri: Uri) => {
+            const now = Date.now();
+
+            if (!trackingTimer || now - trackingTimer > 1000) {
+              trackingTimer = now;
+
+              await this.reloadOoxmlFile(file.fsPath);
+            }
           });
 
           const textDocumentWatcher = workspace.onDidSaveTextDocument(this.updateOOXMLFile.bind(this));
@@ -213,7 +225,10 @@ export class OOXMLViewer {
         matchWholeWord: false,
       });
     } catch (err) {
-      if (err instanceof FileSystemError && (err?.code === 'ENOENT' || err?.code === 'FileNotFound')) {
+      if (
+        Object.prototype.hasOwnProperty.call(err, 'code') &&
+        ((err as FileSystemError)?.code.toLowerCase() === 'enoent' || (err as FileSystemError)?.code.toLowerCase() === 'filenotfound')
+      ) {
         window.showWarningMessage(warningMsg);
       } else {
         await ExtensionUtilities.handleError(err);

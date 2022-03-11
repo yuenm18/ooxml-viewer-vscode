@@ -113,7 +113,6 @@ export class ExtensionUtilities {
       msg = err.message;
     }
 
-    console.error(msg);
     await window.showErrorMessage(msg);
   }
 }

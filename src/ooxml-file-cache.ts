@@ -325,7 +325,11 @@ export class OOXMLFileCache {
    */
   async readFile(cachedFilePath: string): Promise<Uint8Array> {
     try {
-      return await workspace.fs.readFile(Uri.file(cachedFilePath));
+      if (existsSync(cachedFilePath)) {
+        return await workspace.fs.readFile(Uri.file(cachedFilePath));
+      }
+
+      return new Uint8Array();
     } catch (err) {
       await ExtensionUtilities.handleError(err);
     }
