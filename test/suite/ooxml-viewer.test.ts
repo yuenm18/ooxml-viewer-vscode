@@ -185,14 +185,12 @@ suite('OOXMLViewer', async function () {
     const err = new Error('Pants on backwards');
     const encoderStub = stub(ooxmlViewer.textDecoder, 'decode').throws(err);
     const getCachedFileStub = stub(ooxmlViewer.cache, 'getCachedFile').returns(Promise.resolve(new Uint8Array()));
-    const consoleErrorStub = stub(console, 'error');
     const showErrorStub = stub(window, 'showErrorMessage');
 
-    stubs.push(encoderStub, consoleErrorStub, showErrorStub, getCachedFileStub);
+    stubs.push(encoderStub, showErrorStub, getCachedFileStub);
 
     await ooxmlViewer.getDiff(new FileNode());
 
-    expect(consoleErrorStub.args[0][0]).to.eq(err.message);
     expect(showErrorStub.args[0][0]).to.eq(err.message);
   });
 
@@ -280,12 +278,10 @@ suite('OOXMLViewer', async function () {
   test('searchOoxmlParts should console.error and window.showErrorMessage an error if an error is thrown', async function () {
     const err = new Error('out of tacos');
     const showInputStub = stub(window, 'showInputBox').returns(Promise.reject(err));
-    const consoleErrorStub = stub(console, 'error');
     const showErrorMessageStub = stub(window, 'showErrorMessage');
-    stubs.push(showInputStub, consoleErrorStub, showErrorMessageStub);
+    stubs.push(showInputStub, showErrorMessageStub);
 
     await ooxmlViewer.searchOoxmlParts();
-    expect(consoleErrorStub.args[0][0]).to.eq(err.message);
     expect(showErrorMessageStub.args[0][0]).to.eq(err.message);
   });
 
