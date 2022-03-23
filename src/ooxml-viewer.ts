@@ -86,15 +86,13 @@ export class OOXMLViewer {
             new RelativePattern(dirname(file.fsPath), basename(file.fsPath)),
           );
 
-          let trackingTimer: number;
+          let locked = false;
 
           watcher.onDidChange(async (uri: Uri) => {
-            const now = Date.now();
-
-            if (!trackingTimer || now - trackingTimer > 1000) {
-              trackingTimer = now;
-
+            if (!locked) {
+              locked = true;
               await this.reloadOoxmlFile(file.fsPath);
+              locked = false;
             }
           });
 
