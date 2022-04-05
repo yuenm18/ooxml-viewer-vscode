@@ -4,7 +4,7 @@ import { tmpdir } from 'os';
 import { join, sep } from 'path';
 import { match, SinonStub, spy, stub } from 'sinon';
 import { TextDecoder } from 'util';
-import { commands, Disposable, ExtensionContext, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window } from 'vscode';
+import { commands, Disposable, ExtensionContext, FileSystemError, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window } from 'vscode';
 import xmlFormatter from 'xml-formatter';
 import { CACHE_FOLDER_NAME, NORMAL_SUBFOLDER_NAME } from '../../src/ooxml-file-cache';
 import { FileNode, OOXMLTreeDataProvider } from '../../src/ooxml-tree-view-provider';
@@ -31,15 +31,18 @@ suite('OOXMLViewer', async function () {
     stubs.length = 0;
   });
 
-  test('searchOoxmlParts should return and not perform a search if no search term is entered', async function () {
+  test('searchOoxmlParts should return and not perform a search if no search term is entered', function (done) {
     const showInputStub = stub(window, 'showInputBox').returns(Promise.resolve(''));
     const tryFormatXmlStub = stub(ooxmlViewer, <never>'tryFormatXml');
     const executeCommandStub = stub(commands, 'executeCommand');
     stubs.push(showInputStub, tryFormatXmlStub, executeCommandStub);
 
-    await ooxmlViewer.searchOoxmlParts();
-    expect(tryFormatXmlStub.callCount).to.eq(0);
-    expect(executeCommandStub.callCount).to.eq(0);
+    ooxmlViewer.searchOoxmlParts()
+      .then(() => {
+        expect(tryFormatXmlStub.callCount).to.eq(0);
+        expect(executeCommandStub.callCount).to.eq(0);
+        done();
+      });
   });
 
   test('should have an instance of OOXMLTreeDataProvider', function () {
@@ -275,45 +278,34 @@ suite('OOXMLViewer', async function () {
     });
   });
 
-  test('searchOoxmlParts should console.error and window.showErrorMessage an error if an error is thrown', async function () {
+  test('searchOoxmlParts should call window.showErrorMessage with an error if an error is thrown', function (done) {
     const err = new Error('out of tacos');
-    const showInputStub = stub(window, 'showInputBox').returns(Promise.reject(err));
+    const showInputStub = stub(window, 'showInputBox').throws(err);
     const showErrorMessageStub = stub(window, 'showErrorMessage');
+
     stubs.push(showInputStub, showErrorMessageStub);
 
-    await ooxmlViewer.searchOoxmlParts();
-    expect(showErrorMessageStub.args[0][0]).to.eq(err.message);
+    ooxmlViewer.searchOoxmlParts()
+      .then(() => {
+        expect(showErrorMessageStub.args[0][0]).to.eq(err.message);
+        done();
+      })
+      .catch((error: unknown) => {
+        done(error);
+      });
   });
 
-  class VSError extends Error {
-    code: string;
-
-    constructor(data: { code: string }) {
-      super();
-      this.code = data.code;
-    }
-  }
-
-  test('searchOoxmlParts should window.showWarningMessage if no file is open in the viewer with ENOENT', async function () {
-    const err = new VSError({ code: 'ENOENT' });
+  test('searchOoxmlParts should window.showWarningMessage if no file is open in the viewer with FileNotFound', function (done) {
     const msg = 'A file must be open in the OOXML Viewer to search its parts.';
-    const showInputStub = stub(window, 'showInputBox').returns(Promise.reject(err));
+    const showInputStub = stub(window, 'showInputBox').throws(FileSystemError.FileNotFound);
     const showWarningMessageStub = stub(window, 'showWarningMessage');
     stubs.push(showInputStub, showWarningMessageStub);
 
-    await ooxmlViewer.searchOoxmlParts();
-    expect(showWarningMessageStub.args[0][0]).to.eq(msg);
-  });
-
-  test('searchOoxmlParts should window.showWarningMessage if no file is open in the viewer with FileNotFound', async function () {
-    const err = new VSError({ code: 'FileNotFound' });
-    const msg = 'A file must be open in the OOXML Viewer to search its parts.';
-    const showInputStub = stub(window, 'showInputBox').returns(Promise.reject(err));
-    const showWarningMessageStub = stub(window, 'showWarningMessage');
-    stubs.push(showInputStub, showWarningMessageStub);
-
-    await ooxmlViewer.searchOoxmlParts();
-    expect(showWarningMessageStub.args[0][0]).to.eq(msg);
+    ooxmlViewer.searchOoxmlParts()
+      .then(() => {
+        expect(showWarningMessageStub.args[0][0]).to.eq(msg);
+        done();
+      });
   });
 
   test('tryFormatDocument should format document if it belongs to the normal cache path', async () => {

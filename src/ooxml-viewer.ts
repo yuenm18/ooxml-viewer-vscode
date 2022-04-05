@@ -211,6 +211,7 @@ export class OOXMLViewer {
     try {
       await workspace.fs.stat(Uri.file(this.cache.normalSubfolderPath));
       const searchTerm = await window.showInputBox({ title: 'Search OOXML Parts', prompt: 'Enter a search term.' });
+
       if (!searchTerm) {
         return;
       }
@@ -223,10 +224,7 @@ export class OOXMLViewer {
         matchWholeWord: false,
       });
     } catch (err) {
-      if (
-        Object.prototype.hasOwnProperty.call(err, 'code') &&
-        ((err as FileSystemError)?.code.toLowerCase() === 'enoent' || (err as FileSystemError)?.code.toLowerCase() === 'filenotfound')
-      ) {
+      if ((err as FileSystemError)?.code?.toLowerCase() === 'filenotfound') {
         window.showWarningMessage(warningMsg);
       } else {
         await ExtensionUtilities.handleError(err);
