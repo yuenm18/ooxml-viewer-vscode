@@ -382,17 +382,21 @@ export class OOXMLViewer {
       const zipFile = await this.zip
         .file(filePath, this.textEncoder.encode(fileMinXml))
         .generateAsync({ type: 'uint8array', mimeType, compression: 'DEFLATE' });
-      await this.cache.writeFile(this.ooxmlFilePath, zipFile, 'EBUSY');
+      await this.cache.writeFile(this.ooxmlFilePath, zipFile, true);
 
       await this.cache.createCachedFile(filePath, fileContents, false);
       this.treeDataProvider.refresh();
     } catch (err) {
-      await window.showWarningMessage(
-        `File not saved.\n${basename(this.ooxmlFilePath)} is open in another program.\nClose that program before making any changes.`,
-        { modal: true },
-      );
+      if ((err as FileSystemError)?.code.toLowerCase() === 'unknown' && (err as FileSystemError)?.message.toLowerCase().includes('ebusy')){
+        await window.showWarningMessage(
+          `File not saved.\n${basename(this.ooxmlFilePath)} is open in another program.\nClose that program before making any changes.`,
+          { modal: true },
+        );
 
-      await ExtensionUtilities.makeTextEditorDirty(window.activeTextEditor);
+        await ExtensionUtilities.makeTextEditorDirty(window.activeTextEditor);
+      } else {
+        await ExtensionUtilities.handleError(err);
+      }
     }
   }
 
