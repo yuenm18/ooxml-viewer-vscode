@@ -1,4 +1,3 @@
-import { existsSync } from 'fs';
 import { dirname, join, sep } from 'path';
 import { ExtensionContext, FileSystemError, Uri, workspace } from 'vscode';
 import { ExtensionUtilities } from './extension-utilities';
@@ -48,30 +47,62 @@ export class OOXMLFileCache {
    *
    * @param {string} filePath The file path in the ooxml file.
    * @param {string} fileContents The contents of the file to cache.
-   * @param {boolean} createEmptyCompareFile Whether or not to create an empty compare file.
    * @returns {Promise<void>}
    */
-  async createCachedFile(filePath: string, fileContents: Uint8Array, createEmptyCompareFile: boolean): Promise<void> {
+  async createCachedFiles(filePath: string, fileContents: Uint8Array): Promise<void> {
     await Promise.all([
-      this.cacheFile(filePath, fileContents),
+      this.cacheNormalFile(filePath, fileContents),
       this.cachePrevFile(filePath, fileContents),
-      this.cacheCompareFile(filePath, createEmptyCompareFile ? new Uint8Array() : fileContents),
+      this.cacheCompareFile(filePath, fileContents),
     ]);
   }
 
   /**
-   * Updates the cache for a file and its prev and compare parts.
+   * Caches a file and its prev and saves an empty compare file.
+   * This is for when a new file is created so that the diff shows an empty
+   * original file.
+   * 
+   * @param {string} filePath The file path in the ooxml file.
+   * @param {string} fileContents The contents of the file to cache.
+   * @returns {Promise<void>}
+   */
+  async createCachedFilesWithEmptyCompare(filePath: string, fileContents: Uint8Array): Promise<void> {
+    await Promise.all([
+      this.cacheNormalFile(filePath, fileContents),
+      this.cachePrevFile(filePath, fileContents),
+      this.cacheCompareFile(filePath, new Uint8Array()),
+    ]);
+  }
+
+  /**
+   * Updates the cache for a file.
+   * The compare file is updated to match the previous normal file
+   * so that the diff works.
    *
    * @param {string} filePath The file path in the ooxml file.
    * @param {Uint8Array} updatedFileContents The contents of the file to cache.
-   * @param {boolean} updateCompareFile Whether or not the compare file should be updated with the previous version of the cache
    * @returns {Promise<void>}
    */
-  async updateCachedFile(filePath: string, updatedFileContents: Uint8Array, updateCompareFile: boolean): Promise<void> {
+  async updateCachedFiles(filePath: string, updatedFileContents: Uint8Array): Promise<void> {
+    const cachedNormalFile = await this.getCachedNormalFile(filePath);
     await Promise.all([
-      this.cacheFile(filePath, updatedFileContents),
+      this.cacheNormalFile(filePath, updatedFileContents),
       this.cachePrevFile(filePath, updatedFileContents),
-      updateCompareFile ? this.cacheCompareFile(filePath, await this.getCachedFile(filePath)) : Promise.resolve(),
+      this.cacheCompareFile(filePath, cachedNormalFile),
+    ]);
+  }
+
+  /**
+   * Updates the cache for a file and its prev but not the compare.
+   *
+   * @param {string} filePath The file path in the ooxml file.
+   * @param {Uint8Array} updatedFileContents The contents of the file to cache.
+   * @returns {Promise<void>}
+   */
+  async updateCachedFilesNoCompare(filePath: string, updatedFileContents: Uint8Array): Promise<void> {
+    await Promise.all([
+      this.cacheNormalFile(filePath, updatedFileContents),
+      this.cachePrevFile(filePath, updatedFileContents),
     ]);
   }
 
@@ -93,16 +124,16 @@ export class OOXMLFileCache {
    * @returns {Promise<void>}
    */
   async deleteCachedFiles(filePath: string): Promise<void> {
-    await Promise.all([this.deleteCachedFile(filePath), this.deleteCachedPrevFile(filePath), this.deleteCachedCompareFile(filePath)]);
+    await Promise.all([this.deleteNormalCachedFile(filePath), this.deleteCachedPrevFile(filePath), this.deleteCachedCompareFile(filePath)]);
   }
 
   /**
-   * Gets file path of the cached file given the file path in an ooxml file.
+   * Gets normal file path of the cached file given the file path in an ooxml file.
    *
    * @param {string} filePath The file path in the ooxml file.
    * @returns {string} The file path of the cached file.
    */
-  getFileCachePath(filePath: string): string {
+  getNormalFileCachePath(filePath: string): string {
     return join(this.normalSubfolderPath, filePath);
   }
 
@@ -155,13 +186,13 @@ export class OOXMLFileCache {
   }
 
   /**
-   * Gets a cached file.
+   * Gets a cached normal file.
    *
    * @param {string} filePath The file path in the ooxml file.
    * @returns {Promise<Uint8Array>} Promise resolving to the contents of the file.
    */
-  async getCachedFile(filePath: string): Promise<Uint8Array> {
-    const cachePath = this.getFileCachePath(filePath);
+  async getCachedNormalFile(filePath: string): Promise<Uint8Array> {
+    const cachePath = this.getNormalFileCachePath(filePath);
     return this.readFile(cachePath);
   }
 
@@ -188,14 +219,14 @@ export class OOXMLFileCache {
   }
 
   /**
-   * Caches a file.
+   * Caches a normal file.
    *
    * @param {string} filePath The file path in the ooxml file.
    * @param {string} fileContents The contents of the file.
    * @returns {Promise<void>}
    */
-  private async cacheFile(filePath: string, fileContents: Uint8Array): Promise<void> {
-    const cachePath = this.getFileCachePath(filePath);
+  private async cacheNormalFile(filePath: string, fileContents: Uint8Array): Promise<void> {
+    const cachePath = this.getNormalFileCachePath(filePath);
     return this.writeFile(cachePath, fileContents);
   }
 
@@ -229,8 +260,8 @@ export class OOXMLFileCache {
    * @param {string} filePath The file path in the ooxml file.
    * @returns {Promise<void>}
    */
-  private async deleteCachedFile(filePath: string): Promise<void> {
-    const cachePath = this.getFileCachePath(filePath);
+  private async deleteNormalCachedFile(filePath: string): Promise<void> {
+    const cachePath = this.getNormalFileCachePath(filePath);
     return this.deleteFile(cachePath);
   }
 
@@ -272,10 +303,8 @@ export class OOXMLFileCache {
    * @returns {Promise<void>}
    */
   async clear(): Promise<void> {
-    if (existsSync(this.cacheBasePath)) {
-      await this.deleteFile(this.cacheBasePath);
-      await this.initializeCache();
-    }
+    await this.deleteFile(this.cacheBasePath);
+    await this.initializeCache();
   }
 
   /**

@@ -4,7 +4,10 @@ import { tmpdir } from 'os';
 import { join, sep } from 'path';
 import { match, SinonStub, spy, stub } from 'sinon';
 import { TextDecoder } from 'util';
-import { commands, Disposable, ExtensionContext, FileSystemError, TextDocument, TextDocumentShowOptions, TextEditor, Uri, window } from 'vscode';
+import {
+  commands, Disposable, ExtensionContext, FileSystemError,
+  TextDocument, TextDocumentShowOptions, TextEditor, Uri, window
+} from 'vscode';
 import xmlFormatter from 'xml-formatter';
 import { CACHE_FOLDER_NAME, NORMAL_SUBFOLDER_NAME } from '../../src/ooxml-file-cache';
 import { FileNode, OOXMLTreeDataProvider } from '../../src/ooxml-tree-view-provider';
@@ -31,18 +34,17 @@ suite('OOXMLViewer', async function () {
     stubs.length = 0;
   });
 
-  test('searchOoxmlParts should return and not perform a search if no search term is entered', function (done) {
+  test('searchOoxmlParts should return and not perform a search if no search term is entered', async function (done) {
     const showInputStub = stub(window, 'showInputBox').returns(Promise.resolve(''));
-    const tryFormatXmlStub = stub(ooxmlViewer, <never>'tryFormatXml');
+    const formatXmlStub = stub(ooxmlViewer, <never>'formatXml');
     const executeCommandStub = stub(commands, 'executeCommand');
-    stubs.push(showInputStub, tryFormatXmlStub, executeCommandStub);
+    stubs.push(showInputStub, formatXmlStub, executeCommandStub);
 
-    ooxmlViewer.searchOoxmlParts()
-      .then(() => {
-        expect(tryFormatXmlStub.callCount).to.eq(0);
-        expect(executeCommandStub.callCount).to.eq(0);
-        done();
-      });
+    ooxmlViewer.searchOoxmlParts().then(() => {
+      expect(formatXmlStub.callCount).to.eq(0);
+      expect(executeCommandStub.callCount).to.eq(0);
+      done();
+    });
   });
 
   test('should have an instance of OOXMLTreeDataProvider', function () {
@@ -99,8 +101,6 @@ suite('OOXMLViewer', async function () {
 
     await ooxmlViewer.viewFile(node);
 
-    const filePath = ooxmlViewer.cache.getFileCachePath(node.fullPath);
-    expect(ooxmlViewer.openTextEditors[filePath]).to.eq(node);
     expect(commandsStub.calledWith('vscode.open')).to.be.true;
   });
 
@@ -187,10 +187,10 @@ suite('OOXMLViewer', async function () {
   test('getDiff should call display an error message when an error is thrown', async function () {
     const err = new Error('Pants on backwards');
     const encoderStub = stub(ooxmlViewer.textDecoder, 'decode').throws(err);
-    const getCachedFileStub = stub(ooxmlViewer.cache, 'getCachedFile').returns(Promise.resolve(new Uint8Array()));
+    const getCachedNormalFileStub = stub(ooxmlViewer.cache, 'getCachedNormalFile').returns(Promise.resolve(new Uint8Array()));
     const showErrorStub = stub(window, 'showErrorMessage');
 
-    stubs.push(encoderStub, showErrorStub, getCachedFileStub);
+    stubs.push(encoderStub, showErrorStub, getCachedNormalFileStub);
 
     await ooxmlViewer.getDiff(new FileNode());
 
@@ -228,11 +228,11 @@ suite('OOXMLViewer', async function () {
     const path = 'ppt/slides/slide1.xml';
     await ooxmlViewer.openOoxmlPackage(Uri.file(testFilePath));
     const populateOOXMLViewerStub = stub(ooxmlViewer, <never>'populateOOXMLViewer').callThrough();
-    const getFileCachePathStub = stub(ooxmlViewer.cache, 'getFileCachePath');
-    const updateCachedFileStub = stub(ooxmlViewer.cache, 'updateCachedFile');
+    const getNormalFileCachePathStub = stub(ooxmlViewer.cache, 'getNormalFileCachePath');
+    const updateCachedFilesStub = stub(ooxmlViewer.cache, 'updateCachedFiles');
     const deleteCachedFilesFileStub = stub(ooxmlViewer.cache, 'deleteCachedFiles');
     const readFileStub = stub(ooxmlViewer.cache, <never>'readFile').returns(Promise.resolve(new Uint8Array(8)));
-    stubs.push(populateOOXMLViewerStub, deleteCachedFilesFileStub, updateCachedFileStub, getFileCachePathStub, readFileStub);
+    stubs.push(populateOOXMLViewerStub, deleteCachedFilesFileStub, updateCachedFilesStub, getNormalFileCachePathStub, readFileStub);
     delete ooxmlViewer.zip.files[path];
     const node = findNode(ooxmlViewer.treeDataProvider.rootFileNode, path);
 
@@ -247,9 +247,9 @@ suite('OOXMLViewer', async function () {
     const path = 'ppt/slides/slide1.xml';
     await ooxmlViewer.openOoxmlPackage(Uri.file(testFilePath));
     const populateOOXMLViewerStub = stub(ooxmlViewer, <never>'populateOOXMLViewer').callThrough();
-    const updateCachedFileStub = stub(ooxmlViewer.cache, 'updateCachedFile');
+    const updateCachedFilesStub = stub(ooxmlViewer.cache, 'updateCachedFiles');
     const deleteCachedFilesFileStub = stub(ooxmlViewer.cache, 'deleteCachedFiles');
-    stubs.push(populateOOXMLViewerStub, deleteCachedFilesFileStub, updateCachedFileStub);
+    stubs.push(populateOOXMLViewerStub, deleteCachedFilesFileStub, updateCachedFilesStub);
 
     delete ooxmlViewer.zip.files[path];
 
@@ -310,21 +310,21 @@ suite('OOXMLViewer', async function () {
 
   test('tryFormatDocument should format document if it belongs to the normal cache path', async () => {
     const filePath = `${ooxmlViewer.cache.cacheBasePath}${sep}${NORMAL_SUBFOLDER_NAME}${sep}test`;
-    const tryFormatXmlStub = stub(ooxmlViewer, <never>'tryFormatXml');
-    stubs.push(tryFormatXmlStub);
+    const formatXmlStub = stub(ooxmlViewer, <never>'formatXml');
+    stubs.push(formatXmlStub);
 
     await ooxmlViewer.tryFormatDocument(filePath);
 
-    expect(tryFormatXmlStub.called).to.be.true;
+    expect(formatXmlStub.called).to.be.true;
   });
 
   test('tryFormatDocument should not format document if it does not belongs to the normal cache path', async () => {
     const filePath = `random${sep}test`;
-    const tryFormatXmlStub = stub(ooxmlViewer, <never>'tryFormatXml');
-    stubs.push(tryFormatXmlStub);
+    const formatXmlStub = stub(ooxmlViewer, <never>'formatXml');
+    stubs.push(formatXmlStub);
 
     await ooxmlViewer.tryFormatDocument(filePath);
 
-    expect(tryFormatXmlStub.called).to.be.false;
+    expect(formatXmlStub.called).to.be.false;
   });
 });

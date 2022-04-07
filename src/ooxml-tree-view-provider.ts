@@ -62,7 +62,7 @@ export class OOXMLTreeDataProvider implements TreeDataProvider<FileNode> {
  * File tree node
  */
 export class FileNode implements TreeItem {
-  private _status: 'created' | 'deleted' | 'modified' | 'unchanged' = 'unchanged'
+  private _status: 'created' | 'deleted' | 'modified' | 'unchanged' = 'unchanged';
 
   get description(): string {
     return this.fileName;

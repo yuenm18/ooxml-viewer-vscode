@@ -32,12 +32,12 @@ suite('OOXMLViewer File Cache', function () {
     stubs.length = 0;
   });
 
-  test('should create cachedFile, prevCachedFile, and compareCachedFile when createCachedFile is called', async function () {
+  test('should create cachedFile, prevCachedFile, and compareCachedFile when createCachedFiles is called', async function () {
     const writeFileStub = stub(ooxmlFileCache, 'writeFile').returns(Promise.resolve());
     stubs.push(writeFileStub);
     const fileContents = new TextEncoder().encode('test');
 
-    await ooxmlFileCache.createCachedFile(filePath, fileContents, false);
+    await ooxmlFileCache.createCachedFiles(filePath, fileContents);
 
     expect(writeFileStub.callCount).to.equal(3);
     expect((writeFileStub.args[0][0] as string).toLowerCase()).to.eq(fileCacheUri.fsPath.toLowerCase());
@@ -50,13 +50,13 @@ suite('OOXMLViewer File Cache', function () {
 
   test(
     'should create cachedFile and prevCachedFile with fileContents' +
-      ' and compareCachedFile with empty contents when createCachedFile is called with createEmptyCompareFile=true',
+      ' and compareCachedFile with empty contents when createCachedFilesWithEmptyCompare is called',
     async function () {
       const writeFileStub = stub(ooxmlFileCache, 'writeFile').returns(Promise.resolve());
       stubs.push(writeFileStub);
       const fileContents = new TextEncoder().encode('test');
 
-      await ooxmlFileCache.createCachedFile(filePath, fileContents, true);
+      await ooxmlFileCache.createCachedFilesWithEmptyCompare(filePath, fileContents);
 
       expect(writeFileStub.callCount).to.equal(3);
       expect((writeFileStub.args[0][0] as string).toLowerCase()).to.eq(fileCacheUri.fsPath.toLowerCase());
@@ -69,8 +69,7 @@ suite('OOXMLViewer File Cache', function () {
   );
 
   test(
-    'should update cachedFile, prevCachedFile with contents and compareCachedFile with cachedFile' +
-      ' when updateCachedFile is called with updateCompareFile=true',
+    'should update cachedFile, prevCachedFile with contents when updateCachedFilesNoCompare is called',
     async function () {
       const fileContents = new TextEncoder().encode('new content');
       const oldFileContents = new TextEncoder().encode('old content');
@@ -78,34 +77,34 @@ suite('OOXMLViewer File Cache', function () {
       const writeFileStub = stub(ooxmlFileCache, 'writeFile').returns(Promise.resolve());
       stubs.push(readFileStub, writeFileStub);
 
-      await ooxmlFileCache.updateCachedFile(filePath, fileContents, true);
+      await ooxmlFileCache.updateCachedFilesNoCompare(filePath, fileContents);
 
-      expect(writeFileStub.callCount).to.equal(3);
+      expect(writeFileStub.callCount).to.equal(2);
       expect((writeFileStub.args[0][0] as string).toLowerCase()).to.eq(fileCacheUri.fsPath.toLowerCase());
       expect(writeFileStub.args[0][1]).to.eq(fileContents);
       expect((writeFileStub.args[1][0] as string).toLowerCase()).to.eq(prevFileCacheUri.fsPath.toLowerCase());
       expect(writeFileStub.args[1][1]).to.eq(fileContents);
-      expect((writeFileStub.args[2][0] as string).toLowerCase()).to.eq(compareFileCacheUri.fsPath.toLowerCase());
-      expect(writeFileStub.args[2][1]).to.deep.eq(oldFileContents);
+      expect(writeFileStub.args[2]).to.be.undefined;
     },
   );
 
-  // eslint-disable-next-line max-len
-  test('should update cachedFile, prevCachedFile with contents when updateCachedFile is called with updateCompareFile=false', async function () {
+  test('should update cachedFile, prevCachedFile with contents and compareCachedFile with cachedFile' +
+    ' when updateCachedFiles is called', async function () {
     const fileContents = new TextEncoder().encode('new content');
     const oldFileContents = new TextEncoder().encode('old content');
     const readFileStub = stub(ooxmlFileCache, 'readFile').returns(Promise.resolve(oldFileContents));
     const writeFileStub = stub(ooxmlFileCache, 'writeFile').returns(Promise.resolve());
     stubs.push(readFileStub, writeFileStub);
 
-    await ooxmlFileCache.updateCachedFile(filePath, fileContents, false);
+    await ooxmlFileCache.updateCachedFiles(filePath, fileContents);
 
-    expect(writeFileStub.callCount).to.equal(2);
+    expect(writeFileStub.callCount).to.equal(3);
     expect((writeFileStub.args[0][0] as string).toLowerCase()).to.eq(fileCacheUri.fsPath.toLowerCase());
     expect(writeFileStub.args[0][1]).to.eq(fileContents);
     expect((writeFileStub.args[1][0] as string).toLowerCase()).to.eq(prevFileCacheUri.fsPath.toLowerCase());
     expect(writeFileStub.args[1][1]).to.eq(fileContents);
-    expect(writeFileStub.args[2]).to.be.undefined;
+    expect((writeFileStub.args[2][0] as string).toLowerCase()).to.eq(compareFileCacheUri.fsPath.toLowerCase());
+    expect(writeFileStub.args[2][1]).to.deep.eq(oldFileContents);
   });
 
   test('should update compareFile with contents when updateCompareFile is called', async function () {
@@ -116,11 +115,11 @@ suite('OOXMLViewer File Cache', function () {
     await ooxmlFileCache.updateCompareFile(filePath, fileContents);
 
     expect(writeFileStub.callCount).to.equal(1);
-    expect(basename(writeFileStub.args[0][0] as string)).to.deep.eq(basename(filePath));
+    expect(basename(writeFileStub.args[0][0] as string)).to.eq(basename(filePath));
     expect(writeFileStub.args[0][1]).to.deep.eq(fileContents);
   });
 
-  test('should deleted cachedFile, prevCachedFile and compareCachedFile when deleteCachedFile is called', async function () {
+  test('should deleted cachedFile, prevCachedFile and compareCachedFile when deleteNormalCachedFile is called', async function () {
     const deleteFileStub = stub(ooxmlFileCache, <never>'deleteFile').returns(Promise.resolve());
     stubs.push(deleteFileStub);
 
@@ -132,8 +131,8 @@ suite('OOXMLViewer File Cache', function () {
     expect((deleteFileStub.args[2][0] as string).toLowerCase()).to.eq(compareFileCacheUri.fsPath.toLowerCase());
   });
 
-  test('should return file cache path when getFileCachePath is called', function () {
-    const fileCachePath = ooxmlFileCache.getFileCachePath(filePath);
+  test('should return file cache path when getNormalFileCachePath is called', function () {
+    const fileCachePath = ooxmlFileCache.getNormalFileCachePath(filePath);
 
     expect(fileCachePath).to.equal(fileCachePath);
   });
@@ -190,12 +189,12 @@ suite('OOXMLViewer File Cache', function () {
     expect(result).to.be.false;
   });
 
-  test('should get cached file when getCachedFile is called', async function () {
+  test('should get cached file when getCachedNormalFile is called', async function () {
     const fileContents = new TextEncoder().encode('text');
     const readFileStub = stub(ooxmlFileCache, 'readFile').returns(Promise.resolve(fileContents));
     stubs.push(readFileStub);
 
-    const result = await ooxmlFileCache.getCachedFile(filePath);
+    const result = await ooxmlFileCache.getCachedNormalFile(filePath);
 
     expect(readFileStub.callCount).to.equal(1);
     expect((readFileStub.args[0][0] as string).toLowerCase()).to.eq(fileCacheUri.fsPath.toLowerCase());
