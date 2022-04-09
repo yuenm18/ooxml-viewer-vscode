@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [1.2.1] - 2022-04-09
+
+### Fixed
+
+- Change tracking not working sometimes with large files [#27](https://github.com/yuenm18/ooxml-viewer-vscode/issues/27)
+- Issue where "Compare with Previous" shows up on folders that could not be diffed [#31](https://github.com/yuenm18/ooxml-viewer-vscode/issues/31)
+- "Unable to open" error when opening ooxml files when parts are already open in editor [#32](https://github.com/yuenm18/ooxml-viewer-vscode/issues/32)
+
 ## [1.2.0] - 2021-08-03
 
 ### Added
@@ -67,7 +75,8 @@
 
 - Support for viewing the contents of OOXML documents
 
-[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.2.0...HEAD
+[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.0.2...v1.1.0
