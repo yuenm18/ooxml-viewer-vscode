@@ -21,7 +21,7 @@
       "script": "lint",
       "problemMatcher": [],
       "label": "npm: lint",
-      "detail": "eslint -c .eslintrc.js --ext .ts ./"
+      "detail": "prettier --check ."
     }
   ]
 }

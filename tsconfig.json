@@ -5,7 +5,7 @@
     "module": "commonjs",
     "target": "es6",
     "outDir": "out",
-    "lib": ["es6", "dom", "ES2019", "ES2020"],
+    "lib": ["ESNext", "DOM"],
     "sourceMap": true,
     "rootDir": ".",
     "strict": true /* enable all strict type-checking options */

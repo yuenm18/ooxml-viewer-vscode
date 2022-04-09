@@ -2,6 +2,7 @@
 
 [![Continuous Integration](https://github.com/yuenm18/ooxml-viewer-vscode/actions/workflows/ci.yaml/badge.svg)](https://github.com/yuenm18/ooxml-viewer-vscode/actions/workflows/ci.yaml)
 [![Visual Studio Marketplace](https://vsmarketplacebadge.apphb.com/version/yuenm18.ooxml-viewer.svg)](https://marketplace.visualstudio.com/items?itemName=yuenm18.ooxml-viewer)
+[![Open in Remote - Containers](https://img.shields.io/static/v1?label=Remote%20-%20Containers&message=Open&color=blue&logo=visualstudiocode)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/yuenm18/ooxml-viewer-vscode)
 
 \* Please note, files must be stored locally, i.e. not in OneNote, Dropbox, etc.
 
