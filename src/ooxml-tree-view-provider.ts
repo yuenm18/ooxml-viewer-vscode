@@ -83,6 +83,10 @@ export class FileNode implements TreeItem {
     }
   }
 
+  get contextValue(): string | undefined {
+    return this.children.length ? 'folder' : 'file';
+  }
+
   get iconPath(): ThemeIcon | Uri | { light: Uri; dark: Uri } {
     switch (this._status) {
       case 'created':

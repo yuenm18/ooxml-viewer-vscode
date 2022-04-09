@@ -75,6 +75,18 @@ suite('OOXMLViewer File Node', function () {
     expect(fileNode.iconPath).to.be.equal(ThemeIcon.Folder);
   });
 
+  test('should have context value of "file" if fileNode has no children', function () {
+    fileNode.children = [];
+
+    expect(fileNode.contextValue).to.be.equal('file');
+  });
+
+  test('should context value of "folder" if fileNode has children', function () {
+    fileNode.children = [new FileNode()];
+
+    expect(fileNode.contextValue).to.be.equal('folder');
+  });
+
   test('should have asterisk.green.svg if fileNode is created', function () {
     fileNode.setCreated();
 

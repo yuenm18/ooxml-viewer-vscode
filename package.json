@@ -100,7 +100,7 @@
         {
           "command": "ooxmlViewer.showDiff",
           "group": "navigation",
-          "when": "view == ooxmlViewer"
+          "when": "view == ooxmlViewer && viewItem == file"
         }
       ],
       "commandPalette": [
