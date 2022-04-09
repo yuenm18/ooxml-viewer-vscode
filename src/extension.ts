@@ -6,6 +6,7 @@ let ooxmlViewer: OOXMLViewer;
 
 export function activate(context: ExtensionContext): void {
   ooxmlViewer = new OOXMLViewer(context);
+  ooxmlViewer.closeEditorsOnStartup();
 
   context.subscriptions.push(
     window.registerTreeDataProvider('ooxmlViewer', ooxmlViewer.treeDataProvider),

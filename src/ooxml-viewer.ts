@@ -52,8 +52,6 @@ export class OOXMLViewer {
     context.subscriptions.push(this.treeView);
     this.zip = new JSZip();
     this.cache = new OOXMLFileCache(context);
-
-    this.closeEditorsOnStartup();
   }
 
   /**
@@ -247,11 +245,11 @@ export class OOXMLViewer {
   /**
    * @description Closes all active editor tabs that contain xml parts on VS Code opening
    * @method closeEditors
-   * @private
+   * @public
    * @async
    * @returns {Promise<void>}
    */
-  private async closeEditorsOnStartup(): Promise<void> {
+  public async closeEditorsOnStartup(): Promise<void> {
     return ExtensionUtilities.closeEditorsOnStartup(this.cache.cacheBasePath);
   }
 

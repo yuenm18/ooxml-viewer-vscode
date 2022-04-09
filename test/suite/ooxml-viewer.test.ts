@@ -41,7 +41,7 @@ suite('OOXMLViewer', async function () {
     stubs.length = 0;
   });
 
-  test('searchOoxmlParts should return and not perform a search if no search term is entered', async function (done) {
+  test('searchOoxmlParts should return and not perform a search if no search term is entered', function (done) {
     const showInputStub = stub(window, 'showInputBox').returns(Promise.resolve(''));
     const formatXmlStub = stub(ooxmlViewer, <never>'formatXml');
     const executeCommandStub = stub(commands, 'executeCommand');
