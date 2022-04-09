@@ -40,6 +40,7 @@ jobs:
     name: Release extension
     runs-on: ubuntu-20.04
     if: startsWith(github.ref, 'refs/tags/')
+    needs: [build-and-test]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
