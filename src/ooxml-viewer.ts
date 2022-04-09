@@ -232,28 +232,6 @@ export class OOXMLViewer {
   }
 
   /**
-   * @description Closes all active editor tabs that contain xml parts
-   * @method closeEditors
-   * @private
-   * @async
-   * @returns {Promise<void>}
-   */
-  private async closeEditors(): Promise<void> {
-    return ExtensionUtilities.closeEditors(workspace.textDocuments.filter(t => t.fileName.startsWith(this.cache.cacheBasePath)));
-  }
-
-  /**
-   * @description Closes all active editor tabs that contain xml parts on VS Code opening
-   * @method closeEditors
-   * @public
-   * @async
-   * @returns {Promise<void>}
-   */
-  public async closeEditorsOnStartup(): Promise<void> {
-    return ExtensionUtilities.closeEditorsOnStartup(this.cache.cacheBasePath);
-  }
-
-  /**
    * @description Sets this.zip to an empty zip file, deletes the cache folder, closes all watchers, and closes all editor tabs
    * @method resetOOXMLViewer
    * @private
@@ -267,7 +245,7 @@ export class OOXMLViewer {
       this.treeDataProvider.refresh();
       this.disposeWatchers();
 
-      await Promise.all([this.closeEditors(), this.cache.clear()]);
+      await this.cache.clear();
     } catch (err) {
       await ExtensionUtilities.handleError(err);
     }

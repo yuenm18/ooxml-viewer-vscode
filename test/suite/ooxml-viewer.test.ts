@@ -2,21 +2,11 @@ import { expect } from 'chai';
 import JSZip from 'jszip';
 import { tmpdir } from 'os';
 import { join, sep } from 'path';
-import { match, SinonStub, spy, stub } from 'sinon';
+import { SinonStub, spy, stub } from 'sinon';
 import { TextDecoder } from 'util';
-import {
-  commands,
-  Disposable,
-  ExtensionContext,
-  FileSystemError,
-  TextDocument,
-  TextDocumentShowOptions,
-  TextEditor,
-  Uri,
-  window,
-} from 'vscode';
+import { commands, Disposable, ExtensionContext, FileSystemError, Uri, window } from 'vscode';
 import xmlFormatter from 'xml-formatter';
-import { CACHE_FOLDER_NAME, NORMAL_SUBFOLDER_NAME } from '../../src/ooxml-file-cache';
+import { CACHE_FOLDER_NAME, NORMAL_SUBFOLDER_NAME, OOXMLFileCache } from '../../src/ooxml-file-cache';
 import { FileNode, OOXMLTreeDataProvider } from '../../src/ooxml-tree-view-provider';
 import { OOXMLViewer } from '../../src/ooxml-viewer';
 
@@ -129,28 +119,17 @@ suite('OOXMLViewer', async function () {
   });
 
   test('clear should reset the OOXML Viewer', async function () {
-    const textDoc = {} as TextDocument;
     const refreshStub = stub(ooxmlViewer.treeDataProvider, 'refresh').callsFake(() => undefined);
     const disposeWatchersStub = stub(OOXMLViewer.prototype, 'disposeWatchers').callsFake(() => undefined);
-    const openEditorsStub = stub(Array.prototype, 'filter').callsFake(arg => {
-      return [textDoc];
-    });
-    const showDocStub = stub(window, 'showTextDocument').callsFake((td: Uri, config?: TextDocumentShowOptions | undefined) => {
-      expect(td).to.eq(textDoc);
-      expect(config).to.deep.eq({ preview: true, preserveFocus: false });
-      return Promise.resolve({} as TextEditor);
-    });
-    const executeStub = stub(commands, 'executeCommand').callsFake(arg => {
-      return Promise.resolve();
-    });
-    stubs.push(refreshStub, disposeWatchersStub, openEditorsStub, showDocStub, executeStub);
+    const clearCacheStub = stub(OOXMLFileCache.prototype, 'clear').callsFake(() => Promise.resolve());
+
+    stubs.push(refreshStub, disposeWatchersStub, clearCacheStub);
 
     await ooxmlViewer.clear();
 
     expect(refreshStub.calledOnce).to.be.true;
     expect(disposeWatchersStub.calledOnce).to.be.true;
-    expect(showDocStub.calledWith(match(textDoc))).to.be.true;
-    expect(executeStub.args[0][0]).eq('workbench.action.closeActiveEditor');
+    expect(clearCacheStub.calledOnce).to.be.true;
   });
 
   test('getDiff should use vscode.diff to get the difference between two files', async function () {
@@ -298,7 +277,7 @@ suite('OOXMLViewer', async function () {
         expect(showErrorMessageStub.args[0][0]).to.eq(err.message);
         done();
       })
-      .catch((error: unknown) => {
+      .catch(error => {
         done(error);
       });
   });
