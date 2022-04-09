@@ -138,7 +138,7 @@ export class FileNode implements TreeItem {
   setDeleted(): void {
     this._status = 'deleted';
   }
-  
+
   /**
    * Sets the status of the file node to modified.
    */

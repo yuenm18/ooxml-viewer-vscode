@@ -1,4 +1,4 @@
-import { commands, env, Position, Range, TextDocument, TextEditor, TextEditorEdit, window } from 'vscode';
+import { commands, env, FileSystemError, Position, Range, TextDocument, TextEditor, TextEditorEdit, window } from 'vscode';
 
 export class ExtensionUtilities {
   /**
@@ -68,7 +68,7 @@ export class ExtensionUtilities {
         }
       }
     } catch (err) {
-      console.error(err);
+      this.handleError(err);
     }
   }
 
@@ -101,6 +101,23 @@ export class ExtensionUtilities {
       if (fileName.toLowerCase().startsWith(cacheBasePath.toLowerCase())) {
         await commands.executeCommand('workbench.action.closeActiveEditor');
       }
+    }
+  }
+
+  static async handleError(err: unknown): Promise<void> {
+    try {
+      let msg = 'unknown error';
+
+      if (typeof err === 'string') {
+        msg = err;
+      } else if (err instanceof Error) {
+        msg = err.message;
+      }
+
+      await window.showErrorMessage(msg);
+    } catch(error) {
+      const msg = (error as Error)?.message || (error as FileSystemError)?.code || 'unknown error';
+      throw new Error(msg);
     }
   }
 }

@@ -1,13 +1,15 @@
 import JSZip from 'jszip';
 import { lookup } from 'mime-types';
-import { basename } from 'path';
+import { basename, dirname } from 'path';
 import vkBeautify from 'vkbeautify';
 import {
   commands,
   Disposable,
   ExtensionContext,
+  FileSystemError,
   FileSystemWatcher,
   ProgressLocation,
+  RelativePattern,
   TextDocument,
   TreeView,
   Uri,
@@ -80,9 +82,18 @@ export class OOXMLViewer {
           await this.populateOOXMLViewer(this.zip.files, false);
 
           // set up watchers
-          const watcher: FileSystemWatcher = workspace.createFileSystemWatcher(file.fsPath);
-          watcher.onDidChange((uri: Uri) => {
-            this.reloadOoxmlFile(file.fsPath);
+          const watcher: FileSystemWatcher = workspace.createFileSystemWatcher(
+            new RelativePattern(dirname(file.fsPath), basename(file.fsPath)),
+          );
+
+          let locked = false;
+
+          watcher.onDidChange(async (uri: Uri) => {
+            if (!locked) {
+              locked = true;
+              await this.reloadOoxmlFile(file.fsPath);
+              locked = false;
+            }
           });
 
           const textDocumentWatcher = workspace.onDidSaveTextDocument(this.updateOOXMLFile.bind(this));
@@ -95,8 +106,7 @@ export class OOXMLViewer {
         },
       );
     } catch (err) {
-      console.error(err);
-      await window.showErrorMessage(`Could not load ${file.fsPath}`, err);
+      await ExtensionUtilities.handleError(err);
     }
   }
 
@@ -124,9 +134,8 @@ export class OOXMLViewer {
           await commands.executeCommand('vscode.open', Uri.file(filePath));
         },
       );
-    } catch (e) {
-      console.error(e);
-      await window.showErrorMessage(`Could not load ${fileNode.fullPath}`);
+    } catch (err) {
+      await ExtensionUtilities.handleError(err);
     }
   }
 
@@ -167,8 +176,7 @@ export class OOXMLViewer {
 
       await commands.executeCommand('vscode.diff', Uri.file(fileCompareCachePath), Uri.file(fileCachePath), title);
     } catch (err) {
-      console.error(err.message || err);
-      await window.showErrorMessage(err.message || err);
+      await ExtensionUtilities.handleError(err);
     }
   }
 
@@ -203,6 +211,7 @@ export class OOXMLViewer {
     try {
       await workspace.fs.stat(Uri.file(this.cache.normalSubfolderPath));
       const searchTerm = await window.showInputBox({ title: 'Search OOXML Parts', prompt: 'Enter a search term.' });
+
       if (!searchTerm) {
         return;
       }
@@ -215,12 +224,10 @@ export class OOXMLViewer {
         matchWholeWord: false,
       });
     } catch (err) {
-      if (err?.code === 'ENOENT' || err?.code === 'FileNotFound') {
+      if ((err as FileSystemError)?.code?.toLowerCase() === 'filenotfound') {
         window.showWarningMessage(warningMsg);
       } else {
-        const msg = err.message || err;
-        console.error(msg);
-        window.showErrorMessage(msg);
+        await ExtensionUtilities.handleError(err);
       }
     }
   }
@@ -276,8 +283,7 @@ export class OOXMLViewer {
 
       await Promise.all([this.closeEditors(), this.cache.clear()]);
     } catch (err) {
-      console.error(err);
-      await window.showErrorMessage('Could not remove ooxml file viewer cache');
+      await ExtensionUtilities.handleError(err);
     }
   }
 
@@ -376,17 +382,21 @@ export class OOXMLViewer {
       const zipFile = await this.zip
         .file(filePath, this.textEncoder.encode(fileMinXml))
         .generateAsync({ type: 'uint8array', mimeType, compression: 'DEFLATE' });
-      await this.cache.writeFile(this.ooxmlFilePath, zipFile, 'EBUSY');
+      await this.cache.writeFile(this.ooxmlFilePath, zipFile, true);
 
       await this.cache.createCachedFile(filePath, fileContents, false);
       this.treeDataProvider.refresh();
     } catch (err) {
-      await window.showWarningMessage(
-        `File not saved.\n${basename(this.ooxmlFilePath)} is open in another program.\nClose that program before making any changes.`,
-        { modal: true },
-      );
+      if ((err as FileSystemError)?.code.toLowerCase() === 'unknown' && (err as FileSystemError)?.message.toLowerCase().includes('ebusy')){
+        await window.showWarningMessage(
+          `File not saved.\n${basename(this.ooxmlFilePath)} is open in another program.\nClose that program before making any changes.`,
+          { modal: true },
+        );
 
-      await ExtensionUtilities.makeTextEditorDirty(window.activeTextEditor);
+        await ExtensionUtilities.makeTextEditorDirty(window.activeTextEditor);
+      } else {
+        await ExtensionUtilities.handleError(err);
+      }
     }
   }
 
@@ -415,8 +425,7 @@ export class OOXMLViewer {
 
           await this.populateOOXMLViewer(this.zip.files, true);
         } catch (err) {
-          console.error(err.message);
-          await window.showErrorMessage(err.message || err);
+          await ExtensionUtilities.handleError(err);
         }
       },
     );
@@ -456,8 +465,7 @@ export class OOXMLViewer {
 
       this.treeDataProvider.refresh();
     } catch (err) {
-      console.error(err.message || err);
-      await window.showErrorMessage(err.message || err);
+      await ExtensionUtilities.handleError(err);
     }
   }
 
@@ -479,7 +487,7 @@ export class OOXMLViewer {
           try {
             await this.tryFormatXml(filePath);
           } catch (err) {
-            console.error(err);
+            await ExtensionUtilities.handleError(err);
           }
         });
 
@@ -491,8 +499,7 @@ export class OOXMLViewer {
           await commands.executeCommand('workbench.action.closeActiveEditor');
         });
     } catch (err) {
-      console.error(err.message || err);
-      await window.showErrorMessage(err.message || err);
+      await ExtensionUtilities.handleError(err);
     }
   }
 
@@ -538,8 +545,7 @@ export class OOXMLViewer {
       const minPrevFileText = vkBeautify.xmlmin(prevFileText);
       return minFileText !== minPrevFileText;
     } catch (err) {
-      console.error(err.message || err);
-      await window.showErrorMessage(err.message || err);
+      await ExtensionUtilities.handleError(err);
     }
 
     return false;
