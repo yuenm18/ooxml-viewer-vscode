@@ -20,35 +20,35 @@ suite('OOXMLViewer Tree View Provider', function () {
     expect(treeViewProvider.rootFileNode).to.be.an.instanceof(FileNode);
   });
 
-  test('should return root file node\'s children if no node is passed in when getChildren is called', function () {
+  test("should return root file node's children if no node is passed in when getChildren is called", function () {
     expect(treeViewProvider.getChildren()).to.be.equal(treeViewProvider.rootFileNode.children);
   });
 
-  test('should return file node\'s children if node is passed in when getChildren is called', function () {
+  test("should return file node's children if node is passed in when getChildren is called", function () {
     const fileNode = new FileNode();
     fileNode.children = [new FileNode(), new FileNode()];
 
     expect(treeViewProvider.getChildren(fileNode)).to.be.equal(fileNode.children);
   });
-  
-  test('should return file node\'s parent when getParent is called', function () {
+
+  test("should return file node's parent when getParent is called", function () {
     const fileNode = new FileNode();
     fileNode.parent = new FileNode();
-    
+
     expect(treeViewProvider.getParent(fileNode)).to.be.equal(fileNode.parent);
   });
 
   test('should return file node when getTreeItem is called', function () {
     const fileNode = new FileNode();
-    
+
     expect(treeViewProvider.getTreeItem(fileNode)).to.be.equal(fileNode);
   });
 
   test('should call _onDidChangeTreeData.fire when refresh is called', function () {
     const fireSpy = spy();
-    treeViewProvider['_onDidChangeTreeData'] = ({
+    treeViewProvider['_onDidChangeTreeData'] = {
       fire: fireSpy,
-    } as unknown) as EventEmitter<FileNode | null | undefined>;
+    } as unknown as EventEmitter<FileNode | null | undefined>;
     treeViewProvider.refresh();
     expect(fireSpy.calledWith(undefined)).to.be.true;
   });

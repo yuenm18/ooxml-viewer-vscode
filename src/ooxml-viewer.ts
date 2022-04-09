@@ -14,7 +14,7 @@ import {
   TreeView,
   Uri,
   window,
-  workspace
+  workspace,
 } from 'vscode';
 import xmlFormatter from 'xml-formatter';
 import packageJson from '../package.json';
@@ -319,7 +319,6 @@ export class OOXMLViewer {
       // cache or update the cache of the node and mark the status of the node
       const data = (await this.zip.file(currentFileNode.fullPath)?.async('uint8array')) ?? new Uint8Array();
 
-      
       // If the file node already exists and it isn't already marked as deleted,
       // the next state of the node can either
       // - "modified" if the file has been changed from the outside (handled in this if block)

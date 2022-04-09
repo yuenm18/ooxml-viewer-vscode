@@ -5,8 +5,15 @@ import { join, sep } from 'path';
 import { match, SinonStub, spy, stub } from 'sinon';
 import { TextDecoder } from 'util';
 import {
-  commands, Disposable, ExtensionContext, FileSystemError,
-  TextDocument, TextDocumentShowOptions, TextEditor, Uri, window
+  commands,
+  Disposable,
+  ExtensionContext,
+  FileSystemError,
+  TextDocument,
+  TextDocumentShowOptions,
+  TextEditor,
+  Uri,
+  window,
 } from 'vscode';
 import xmlFormatter from 'xml-formatter';
 import { CACHE_FOLDER_NAME, NORMAL_SUBFOLDER_NAME } from '../../src/ooxml-file-cache';
@@ -267,7 +274,7 @@ suite('OOXMLViewer', async function () {
     stubs.push(showInputStub, executeCommandStub);
 
     await ooxmlViewer.searchOoxmlParts();
-    
+
     expect(executeCommandStub.args[0][0]).to.eq('workbench.action.findInFiles');
     expect(executeCommandStub.args[0][1]).to.deep.eq({
       query: searchTerm,
@@ -285,7 +292,8 @@ suite('OOXMLViewer', async function () {
 
     stubs.push(showInputStub, showErrorMessageStub);
 
-    ooxmlViewer.searchOoxmlParts()
+    ooxmlViewer
+      .searchOoxmlParts()
       .then(() => {
         expect(showErrorMessageStub.args[0][0]).to.eq(err.message);
         done();
@@ -301,11 +309,10 @@ suite('OOXMLViewer', async function () {
     const showWarningMessageStub = stub(window, 'showWarningMessage');
     stubs.push(showInputStub, showWarningMessageStub);
 
-    ooxmlViewer.searchOoxmlParts()
-      .then(() => {
-        expect(showWarningMessageStub.args[0][0]).to.eq(msg);
-        done();
-      });
+    ooxmlViewer.searchOoxmlParts().then(() => {
+      expect(showWarningMessageStub.args[0][0]).to.eq(msg);
+      done();
+    });
   });
 
   test('tryFormatDocument should format document if it belongs to the normal cache path', async () => {

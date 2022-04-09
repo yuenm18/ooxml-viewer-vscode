@@ -61,7 +61,7 @@ export class OOXMLFileCache {
    * Caches a file and its prev and saves an empty compare file.
    * This is for when a new file is created so that the diff shows an empty
    * original file.
-   * 
+   *
    * @param {string} filePath The file path in the ooxml file.
    * @param {string} fileContents The contents of the file to cache.
    * @returns {Promise<void>}
@@ -100,10 +100,7 @@ export class OOXMLFileCache {
    * @returns {Promise<void>}
    */
   async updateCachedFilesNoCompare(filePath: string, updatedFileContents: Uint8Array): Promise<void> {
-    await Promise.all([
-      this.cacheNormalFile(filePath, updatedFileContents),
-      this.cachePrevFile(filePath, updatedFileContents),
-    ]);
+    await Promise.all([this.cacheNormalFile(filePath, updatedFileContents), this.cachePrevFile(filePath, updatedFileContents)]);
   }
 
   /**
@@ -319,7 +316,7 @@ export class OOXMLFileCache {
       await workspace.fs.createDirectory(Uri.file(dirname(cachedFilePath)));
       await workspace.fs.writeFile(Uri.file(cachedFilePath), fileContents);
     } catch (err) {
-      const e = (err as FileSystemError);
+      const e = err as FileSystemError;
 
       if (throwError) {
         throw e;

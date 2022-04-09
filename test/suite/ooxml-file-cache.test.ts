@@ -68,8 +68,25 @@ suite('OOXMLViewer File Cache', function () {
     },
   );
 
+  test('should update cachedFile, prevCachedFile with contents when updateCachedFilesNoCompare is called', async function () {
+    const fileContents = new TextEncoder().encode('new content');
+    const oldFileContents = new TextEncoder().encode('old content');
+    const readFileStub = stub(ooxmlFileCache, 'readFile').returns(Promise.resolve(oldFileContents));
+    const writeFileStub = stub(ooxmlFileCache, 'writeFile').returns(Promise.resolve());
+    stubs.push(readFileStub, writeFileStub);
+
+    await ooxmlFileCache.updateCachedFilesNoCompare(filePath, fileContents);
+
+    expect(writeFileStub.callCount).to.equal(2);
+    expect((writeFileStub.args[0][0] as string).toLowerCase()).to.eq(fileCacheUri.fsPath.toLowerCase());
+    expect(writeFileStub.args[0][1]).to.eq(fileContents);
+    expect((writeFileStub.args[1][0] as string).toLowerCase()).to.eq(prevFileCacheUri.fsPath.toLowerCase());
+    expect(writeFileStub.args[1][1]).to.eq(fileContents);
+    expect(writeFileStub.args[2]).to.be.undefined;
+  });
+
   test(
-    'should update cachedFile, prevCachedFile with contents when updateCachedFilesNoCompare is called',
+    'should update cachedFile, prevCachedFile with contents and compareCachedFile with cachedFile' + ' when updateCachedFiles is called',
     async function () {
       const fileContents = new TextEncoder().encode('new content');
       const oldFileContents = new TextEncoder().encode('old content');
@@ -77,35 +94,17 @@ suite('OOXMLViewer File Cache', function () {
       const writeFileStub = stub(ooxmlFileCache, 'writeFile').returns(Promise.resolve());
       stubs.push(readFileStub, writeFileStub);
 
-      await ooxmlFileCache.updateCachedFilesNoCompare(filePath, fileContents);
+      await ooxmlFileCache.updateCachedFiles(filePath, fileContents);
 
-      expect(writeFileStub.callCount).to.equal(2);
+      expect(writeFileStub.callCount).to.equal(3);
       expect((writeFileStub.args[0][0] as string).toLowerCase()).to.eq(fileCacheUri.fsPath.toLowerCase());
       expect(writeFileStub.args[0][1]).to.eq(fileContents);
       expect((writeFileStub.args[1][0] as string).toLowerCase()).to.eq(prevFileCacheUri.fsPath.toLowerCase());
       expect(writeFileStub.args[1][1]).to.eq(fileContents);
-      expect(writeFileStub.args[2]).to.be.undefined;
+      expect((writeFileStub.args[2][0] as string).toLowerCase()).to.eq(compareFileCacheUri.fsPath.toLowerCase());
+      expect(writeFileStub.args[2][1]).to.deep.eq(oldFileContents);
     },
   );
-
-  test('should update cachedFile, prevCachedFile with contents and compareCachedFile with cachedFile' +
-    ' when updateCachedFiles is called', async function () {
-    const fileContents = new TextEncoder().encode('new content');
-    const oldFileContents = new TextEncoder().encode('old content');
-    const readFileStub = stub(ooxmlFileCache, 'readFile').returns(Promise.resolve(oldFileContents));
-    const writeFileStub = stub(ooxmlFileCache, 'writeFile').returns(Promise.resolve());
-    stubs.push(readFileStub, writeFileStub);
-
-    await ooxmlFileCache.updateCachedFiles(filePath, fileContents);
-
-    expect(writeFileStub.callCount).to.equal(3);
-    expect((writeFileStub.args[0][0] as string).toLowerCase()).to.eq(fileCacheUri.fsPath.toLowerCase());
-    expect(writeFileStub.args[0][1]).to.eq(fileContents);
-    expect((writeFileStub.args[1][0] as string).toLowerCase()).to.eq(prevFileCacheUri.fsPath.toLowerCase());
-    expect(writeFileStub.args[1][1]).to.eq(fileContents);
-    expect((writeFileStub.args[2][0] as string).toLowerCase()).to.eq(compareFileCacheUri.fsPath.toLowerCase());
-    expect(writeFileStub.args[2][1]).to.deep.eq(oldFileContents);
-  });
 
   test('should update compareFile with contents when updateCompareFile is called', async function () {
     const fileContents = new TextEncoder().encode('test');

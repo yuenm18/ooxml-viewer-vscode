@@ -115,7 +115,7 @@ export class ExtensionUtilities {
       }
 
       await window.showErrorMessage(msg);
-    } catch(error) {
+    } catch (error) {
       const msg = (error as Error)?.message || (error as FileSystemError)?.code || 'unknown error';
       throw new Error(msg);
     }

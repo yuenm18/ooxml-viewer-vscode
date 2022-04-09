@@ -85,10 +85,14 @@ export class FileNode implements TreeItem {
 
   get iconPath(): ThemeIcon | Uri | { light: Uri; dark: Uri } {
     switch (this._status) {
-      case 'created': return Uri.file(join(__filename, '..', '..', 'resources', 'icons', 'asterisk.green.svg'));
-      case 'deleted': return Uri.file(join(__filename, '..', '..', 'resources', 'icons', 'asterisk.red.svg'));
-      case 'modified': return Uri.file(join(__filename, '..', '..', 'resources', 'icons', 'asterisk.yellow.svg'));
-      default: return this.children.length ? ThemeIcon.Folder : ThemeIcon.File;
+      case 'created':
+        return Uri.file(join(__filename, '..', '..', 'resources', 'icons', 'asterisk.green.svg'));
+      case 'deleted':
+        return Uri.file(join(__filename, '..', '..', 'resources', 'icons', 'asterisk.red.svg'));
+      case 'modified':
+        return Uri.file(join(__filename, '..', '..', 'resources', 'icons', 'asterisk.yellow.svg'));
+      default:
+        return this.children.length ? ThemeIcon.Folder : ThemeIcon.File;
     }
   }
 
@@ -118,7 +122,7 @@ export class FileNode implements TreeItem {
 
   /**
    * Gets whether or not the file node has a status of deleted.
-   * 
+   *
    * @returns True if status is deleted, false otherwise.
    */
   isDeleted(): boolean {
