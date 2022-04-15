@@ -6,7 +6,7 @@ import { SinonStub, spy, stub } from 'sinon';
 import { TextDecoder } from 'util';
 import { commands, Disposable, ExtensionContext, FileSystemError, Uri, window } from 'vscode';
 import xmlFormatter from 'xml-formatter';
-import { CACHE_FOLDER_NAME, NORMAL_SUBFOLDER_NAME, OOXMLFileCache } from '../../src/ooxml-file-cache';
+import { NORMAL_SUBFOLDER_NAME, OOXMLFileCache } from '../../src/ooxml-file-cache';
 import { FileNode, OOXMLTreeDataProvider } from '../../src/ooxml-tree-view-provider';
 import { OOXMLViewer } from '../../src/ooxml-viewer';
 
@@ -49,7 +49,7 @@ suite('OOXMLViewer', async function () {
   });
 
   test('should populate the sidebar tree with the contents of an ooxml file', async function () {
-    const writeFileMock = stub(ooxmlViewer.cache, 'writeFile').returns(Promise.resolve());
+    const writeFileMock = stub(ooxmlViewer.cache, 'createCachedFiles').returns(Promise.resolve());
     const refreshStub = stub(ooxmlViewer.treeDataProvider, 'refresh').returns(undefined);
     const jsZipStub = stub(ooxmlViewer.zip, 'file').callsFake(() => {
       return {
@@ -74,7 +74,7 @@ suite('OOXMLViewer', async function () {
 
     expect(ooxmlViewer.treeDataProvider.rootFileNode.children.length).to.eq(4);
     expect(refreshStub.callCount).to.eq(3);
-    expect(writeFileMock.callCount).to.eq(120);
+    expect(writeFileMock.callCount).to.eq(40);
   });
 
   test('viewFile should open a text editor when called with the path to an xml file', async function () {
@@ -84,16 +84,25 @@ suite('OOXMLViewer', async function () {
       '<?xml version="1.0" encoding="UTF-8"?><note><to>Tove</to><from>Jani</from>' +
       "<heading>Reminder</heading><body>Don't forget me this weekend!</body></note>";
     const coded = enc.encode(xml);
-    const readFileStub = stub(ooxmlViewer.cache, 'readFile').callsFake((path: string) => {
+    const readCachedFileStub = stub(ooxmlViewer.cache, 'getCachedNormalFile').callsFake((path: string) => {
       return Promise.resolve(coded);
     });
-    const writeFileStub = stub(ooxmlViewer.cache, 'writeFile').callsFake((path: string, u8a: Uint8Array) => {
+    const readCompareFileStub = stub(ooxmlViewer.cache, 'getCachedCompareFile').callsFake((path: string) => {
+      return Promise.resolve(coded);
+    });
+    const updateCachedFilesStub = stub(ooxmlViewer.cache, 'updateCachedFilesNoCompare').callsFake((path: string, u8a: Uint8Array) => {
       const sent: Buffer = Buffer.from(enc.encode(xmlFormatter(xml, { indentation: '  ', collapseContent: true })));
       const received: Buffer = Buffer.from(u8a);
       expect(sent.equals(received)).to.be.true;
       return Promise.resolve();
     });
-    stubs.push(commandsStub, readFileStub, writeFileStub);
+    const updateCompareFileStub = stub(ooxmlViewer.cache, 'updateCompareFile').callsFake((path: string, u8a: Uint8Array) => {
+      const sent: Buffer = Buffer.from(enc.encode(xmlFormatter(xml, { indentation: '  ', collapseContent: true })));
+      const received: Buffer = Buffer.from(u8a);
+      expect(sent.equals(received)).to.be.true;
+      return Promise.resolve();
+    });
+    stubs.push(commandsStub, readCachedFileStub, readCompareFileStub, updateCachedFilesStub, updateCompareFileStub);
     const node = new FileNode();
 
     await ooxmlViewer.viewFile(node);
@@ -105,12 +114,17 @@ suite('OOXMLViewer', async function () {
     const commandsStub = stub(commands, 'executeCommand');
     const enc = new TextEncoder();
     const codeCat = enc.encode('tacocat');
-    const writeFileStub = stub(ooxmlViewer.cache, 'writeFile').callsFake((path: string, u8a: Uint8Array) => {
+    const updateCachedFilesStub = stub(ooxmlViewer.cache, 'updateCachedFilesNoCompare').callsFake((path: string, u8a: Uint8Array) => {
       expect(u8a).to.eq(codeCat);
       return Promise.resolve();
     });
-    const readFileStub = stub(ooxmlViewer.cache, 'readFile').returns(Promise.resolve(new Uint8Array()));
-    stubs.push(commandsStub, writeFileStub, readFileStub);
+    const updateCompareFileStub = stub(ooxmlViewer.cache, 'updateCompareFile').callsFake((path: string, u8a: Uint8Array) => {
+      expect(u8a).to.eq(codeCat);
+      return Promise.resolve();
+    });
+    const readCachedFileStub = stub(ooxmlViewer.cache, 'getCachedNormalFile').returns(Promise.resolve(new Uint8Array()));
+    const readCompareFileStub = stub(ooxmlViewer.cache, 'getCachedCompareFile').returns(Promise.resolve(new Uint8Array()));
+    stubs.push(commandsStub, updateCachedFilesStub, updateCompareFileStub, readCachedFileStub, readCompareFileStub);
     const node = new FileNode();
 
     await ooxmlViewer.viewFile(node);
@@ -121,7 +135,7 @@ suite('OOXMLViewer', async function () {
   test('clear should reset the OOXML Viewer', async function () {
     const refreshStub = stub(ooxmlViewer.treeDataProvider, 'refresh').callsFake(() => undefined);
     const disposeWatchersStub = stub(OOXMLViewer.prototype, 'disposeWatchers').callsFake(() => undefined);
-    const clearCacheStub = stub(OOXMLFileCache.prototype, 'clear').callsFake(() => Promise.resolve());
+    const clearCacheStub = stub(OOXMLFileCache.prototype, 'reset').callsFake(() => Promise.resolve());
 
     stubs.push(refreshStub, disposeWatchersStub, clearCacheStub);
 
@@ -146,15 +160,14 @@ suite('OOXMLViewer', async function () {
       expect(rightUri.path).not.to.include('compare');
       return Promise.resolve();
     });
-    const readFileStub = stub(ooxmlViewer.cache, 'readFile').returns(
-      Promise.resolve({
-        toString() {
-          return xml;
-        },
-      } as Uint8Array),
-    );
-    const writeFileStub = stub(ooxmlViewer.cache, 'writeFile').callsFake((arg1, arg2) => {
-      expect(arg1).to.include(CACHE_FOLDER_NAME);
+    const readCachedFileStub = stub(ooxmlViewer.cache, 'getCachedNormalFile').returns(Promise.resolve(new TextEncoder().encode(xml)));
+    const readCompareFileStub = stub(ooxmlViewer.cache, 'getCachedCompareFile').returns(Promise.resolve(new TextEncoder().encode(xml)));
+    const updateCachedFilesStub = stub(ooxmlViewer.cache, 'updateCachedFilesNoCompare').callsFake((arg1, arg2) => {
+      const dec = new TextDecoder();
+      expect(dec.decode(arg2)).to.eq(xmlFormatter(xml, { indentation: '  ', collapseContent: true }));
+      return Promise.resolve();
+    });
+    const updateCompareFileStub = stub(ooxmlViewer.cache, 'updateCompareFile').callsFake((arg1, arg2) => {
       const dec = new TextDecoder();
       expect(dec.decode(arg2)).to.eq(xmlFormatter(xml, { indentation: '  ', collapseContent: true }));
       return Promise.resolve();
@@ -162,7 +175,7 @@ suite('OOXMLViewer', async function () {
     const textDecoderStub = stub(ooxmlViewer.textDecoder, 'decode').callsFake(arg => {
       return xml;
     });
-    stubs.push(vscodeDiffStub, readFileStub, writeFileStub, textDecoderStub);
+    stubs.push(vscodeDiffStub, readCachedFileStub, readCompareFileStub, updateCachedFilesStub, updateCompareFileStub, textDecoderStub);
     const node = new FileNode();
     node.fullPath = 'tacocat/racecar.xml';
     node.fileName = 'racecar.xml';

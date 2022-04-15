@@ -75,7 +75,7 @@ export class OOXMLViewer {
           await this.resetOOXMLViewer();
 
           // load ooxml file and populate the viewer
-          const data = await this.cache.readFile(file.fsPath);
+          const data = await workspace.fs.readFile(file);
           await this.zip.loadAsync(data);
           await this.populateOOXMLViewer(this.zip.files, false);
 
@@ -89,7 +89,7 @@ export class OOXMLViewer {
           fileSystemWatcher.onDidChange(async (_: Uri) => {
             if (!locked) {
               locked = true;
-              await this.reloadOoxmlFile(file.fsPath);
+              await this.reloadOoxmlFile(file);
               locked = false;
             }
           });
@@ -245,7 +245,7 @@ export class OOXMLViewer {
       this.treeDataProvider.refresh();
       this.disposeWatchers();
 
-      await this.cache.clear();
+      await this.cache.reset();
     } catch (err) {
       await ExtensionUtilities.handleError(err);
     }
@@ -362,7 +362,7 @@ export class OOXMLViewer {
       const zipFile = await this.zip
         .file(filePath, this.textEncoder.encode(fileMinXml))
         .generateAsync({ type: 'uint8array', mimeType, compression: 'DEFLATE' });
-      await this.cache.writeFile(this.ooxmlFilePath, zipFile, true);
+      await workspace.fs.writeFile(Uri.file(this.ooxmlFilePath), zipFile);
       await this.cache.createCachedFiles(filePath, fileContents);
 
       this.treeDataProvider.refresh();
@@ -388,7 +388,7 @@ export class OOXMLViewer {
    * @param  {string} filePath Path to the OOXML file to load
    * @returns {Promise<void>}
    */
-  private async reloadOoxmlFile(filePath: string): Promise<void> {
+  private async reloadOoxmlFile(filePath: Uri): Promise<void> {
     await window.withProgress(
       {
         location: ProgressLocation.Notification,
@@ -399,7 +399,7 @@ export class OOXMLViewer {
           progress.report({ message: 'Updating OOXML Parts' });
 
           // unzip ooxml file again
-          const data = await this.cache.readFile(filePath);
+          const data = await workspace.fs.readFile(filePath);
           this.zip = new JSZip();
           await this.zip.loadAsync(data);
 

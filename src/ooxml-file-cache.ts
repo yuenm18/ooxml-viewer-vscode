@@ -1,5 +1,5 @@
 import { dirname, join, sep } from 'path';
-import { ExtensionContext, FileSystemError, Uri, workspace } from 'vscode';
+import { ExtensionContext, Uri, workspace } from 'vscode';
 import { ExtensionUtilities } from './extension-utilities';
 
 export const CACHE_FOLDER_NAME = 'cache';
@@ -38,9 +38,7 @@ export class OOXMLFileCache {
    * @constructor
    * @param {ExtensionContext} context The extension context.
    */
-  constructor(private context: ExtensionContext) {
-    this.initializeCache();
-  }
+  constructor(private context: ExtensionContext) {}
 
   /**
    * Caches a file and its prev and compare parts.
@@ -295,12 +293,12 @@ export class OOXMLFileCache {
   }
 
   /**
-   * Clears the cache.
+   * Resets the cache.
    *
    * @returns {Promise<void>}
    */
-  async clear(): Promise<void> {
-    await this.deleteFile(this.cacheBasePath);
+  async reset(): Promise<void> {
+    await this.deleteFile(this.cacheBasePath, true);
     await this.initializeCache();
   }
 
@@ -311,18 +309,12 @@ export class OOXMLFileCache {
    * @param {boolean} fileContents The file contents.
    * @returns {Promise<void>}
    */
-  async writeFile(cachedFilePath: string, fileContents: Uint8Array, throwError?: boolean): Promise<void> {
+  private async writeFile(cachedFilePath: string, fileContents: Uint8Array): Promise<void> {
     try {
       await workspace.fs.createDirectory(Uri.file(dirname(cachedFilePath)));
       await workspace.fs.writeFile(Uri.file(cachedFilePath), fileContents);
     } catch (err) {
-      const e = err as FileSystemError;
-
-      if (throwError) {
-        throw e;
-      } else {
-        await ExtensionUtilities.handleError(err);
-      }
+      await ExtensionUtilities.handleError(err);
     }
   }
 
@@ -330,13 +322,16 @@ export class OOXMLFileCache {
    * Deletes a file in the cache.
    *
    * @param {string} cachedFilePath The path to the cached file.
+   * @param {string} silentlyFail If true, swallow the exception and handle the error.
    * @returns {Promise<void>}
    */
-  private async deleteFile(cachedFilePath: string): Promise<void> {
+  private async deleteFile(cachedFilePath: string, silentlyFail: boolean = false): Promise<void> {
     try {
       await workspace.fs.delete(Uri.file(cachedFilePath), { recursive: true, useTrash: false });
     } catch (err) {
-      await ExtensionUtilities.handleError(err);
+      if (!silentlyFail) {
+        await ExtensionUtilities.handleError(err);
+      }
     }
   }
 
@@ -346,7 +341,7 @@ export class OOXMLFileCache {
    * @param {string} cachedFilePath The path to the cached file.
    * @returns {Promise<Uint8Array>} A promise resolving to the file contents.
    */
-  async readFile(cachedFilePath: string): Promise<Uint8Array> {
+  private async readFile(cachedFilePath: string): Promise<Uint8Array> {
     try {
       return await workspace.fs.readFile(Uri.file(cachedFilePath));
     } catch (err) {
