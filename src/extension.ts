@@ -4,9 +4,9 @@ import { OOXMLViewer } from './ooxml-viewer';
 
 let ooxmlViewer: OOXMLViewer;
 
-export function activate(context: ExtensionContext): void {
+export async function activate(context: ExtensionContext): Promise<void> {
   ooxmlViewer = new OOXMLViewer(context);
-  ooxmlViewer.clear();
+  await ooxmlViewer.clear();
 
   context.subscriptions.push(
     window.registerTreeDataProvider('ooxmlViewer', ooxmlViewer.treeDataProvider),
