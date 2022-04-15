@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.2.2] - 2022-04-14
+
+### Fixed
+
+- Fix error that showed up when opening ooxml file in a new workspace for the first time [#33](https://github.com/yuenm18/ooxml-viewer-vscode/issues/33)
+
 ## [1.2.1] - 2022-04-09
 
 ### Fixed
@@ -75,7 +81,8 @@
 
 - Support for viewing the contents of OOXML documents
 
-[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.2.1...HEAD
+[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.2.2...HEAD
+[1.2.2]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.1.0...v1.1.1
