@@ -162,7 +162,6 @@
   "dependencies": {
     "jszip": "^3.9.1",
     "mime-types": "^2.1.35",
-    "vkbeautify": "^0.99.3",
-    "xml-formatter": "^2.6.1"
+    "vkbeautify": "^0.99.3"
   }
 }

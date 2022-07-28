@@ -14,9 +14,8 @@ import {
   TreeView,
   Uri,
   window,
-  workspace,
+  workspace
 } from 'vscode';
-import xmlFormatter from 'xml-formatter';
 import packageJson from '../package.json';
 import { ExtensionUtilities } from './extension-utilities';
 import { OOXMLFileCache } from './ooxml-file-cache';
@@ -493,12 +492,10 @@ export class OOXMLViewer {
    */
   private async formatXml(filePath: string): Promise<void> {
     // Need to format the normal/prev and the compare separately for the diff to work
-    const xmlFormatConfig = { indentation: '  ', collapseContent: true };
     const formatNormalXml = async () => {
       const fileContent = this.textDecoder.decode(await this.cache.getCachedNormalFile(filePath));
       if (fileContent.startsWith('<?xml')) {
-        // for some reason xmlFormatter doesn't always format everything without minifying it first
-        const formattedXml = xmlFormatter(vkBeautify.xmlmin(fileContent), xmlFormatConfig);
+        const formattedXml = vkBeautify.xml(fileContent, 2);
         await this.cache.updateCachedFilesNoCompare(filePath, this.textEncoder.encode(formattedXml));
       }
     };
@@ -506,8 +503,7 @@ export class OOXMLViewer {
     const formatCompareXml = async () => {
       const compareFileContent = this.textDecoder.decode(await this.cache.getCachedCompareFile(filePath));
       if (compareFileContent.startsWith('<?xml')) {
-        // for some reason xmlFormatter doesn't always format everything without minifying it first
-        const formattedXml = xmlFormatter(vkBeautify.xmlmin(compareFileContent), xmlFormatConfig);
+        const formattedXml = vkBeautify.xml(compareFileContent, 2);
         await this.cache.updateCompareFile(filePath, this.textEncoder.encode(formattedXml));
       }
     };

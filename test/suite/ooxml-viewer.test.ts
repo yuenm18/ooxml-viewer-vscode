@@ -4,8 +4,8 @@ import { tmpdir } from 'os';
 import { join, sep } from 'path';
 import { SinonStub, spy, stub } from 'sinon';
 import { TextDecoder } from 'util';
+import vkBeautify from 'vkbeautify';
 import { commands, Disposable, ExtensionContext, FileSystemError, Uri, window } from 'vscode';
-import xmlFormatter from 'xml-formatter';
 import { NORMAL_SUBFOLDER_NAME, OOXMLFileCache } from '../../src/ooxml-file-cache';
 import { FileNode, OOXMLTreeDataProvider } from '../../src/ooxml-tree-view-provider';
 import { OOXMLViewer } from '../../src/ooxml-viewer';
@@ -91,13 +91,13 @@ suite('OOXMLViewer', async function () {
       return Promise.resolve(coded);
     });
     const updateCachedFilesStub = stub(ooxmlViewer.cache, 'updateCachedFilesNoCompare').callsFake((path: string, u8a: Uint8Array) => {
-      const sent: Buffer = Buffer.from(enc.encode(xmlFormatter(xml, { indentation: '  ', collapseContent: true })));
+      const sent: Buffer = Buffer.from(enc.encode(vkBeautify.xml(xml, 2)));
       const received: Buffer = Buffer.from(u8a);
       expect(sent.equals(received)).to.be.true;
       return Promise.resolve();
     });
     const updateCompareFileStub = stub(ooxmlViewer.cache, 'updateCompareFile').callsFake((path: string, u8a: Uint8Array) => {
-      const sent: Buffer = Buffer.from(enc.encode(xmlFormatter(xml, { indentation: '  ', collapseContent: true })));
+      const sent: Buffer = Buffer.from(enc.encode(vkBeautify.xml(xml, 2)));
       const received: Buffer = Buffer.from(u8a);
       expect(sent.equals(received)).to.be.true;
       return Promise.resolve();
@@ -164,12 +164,12 @@ suite('OOXMLViewer', async function () {
     const readCompareFileStub = stub(ooxmlViewer.cache, 'getCachedCompareFile').returns(Promise.resolve(new TextEncoder().encode(xml)));
     const updateCachedFilesStub = stub(ooxmlViewer.cache, 'updateCachedFilesNoCompare').callsFake((arg1, arg2) => {
       const dec = new TextDecoder();
-      expect(dec.decode(arg2)).to.eq(xmlFormatter(xml, { indentation: '  ', collapseContent: true }));
+      expect(dec.decode(arg2)).to.eq(vkBeautify.xml(xml, 2));
       return Promise.resolve();
     });
     const updateCompareFileStub = stub(ooxmlViewer.cache, 'updateCompareFile').callsFake((arg1, arg2) => {
       const dec = new TextDecoder();
-      expect(dec.decode(arg2)).to.eq(xmlFormatter(xml, { indentation: '  ', collapseContent: true }));
+      expect(dec.decode(arg2)).to.eq(vkBeautify.xml(xml, 2));
       return Promise.resolve();
     });
     const textDecoderStub = stub(ooxmlViewer.textDecoder, 'decode').callsFake(arg => {
