@@ -14,7 +14,7 @@ import {
   TreeView,
   Uri,
   window,
-  workspace
+  workspace,
 } from 'vscode';
 import packageJson from '../package.json';
 import { ExtensionUtilities } from './extension-utilities';
