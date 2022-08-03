@@ -1,7 +1,6 @@
 import JSZip from 'jszip';
 import { lookup } from 'mime-types';
 import { basename, dirname } from 'path';
-import vkBeautify from 'vkbeautify';
 import {
   commands,
   Disposable,
@@ -357,7 +356,7 @@ export class OOXMLViewer {
         return;
       }
 
-      const fileMinXml = vkBeautify.xmlmin(this.textDecoder.decode(fileContents), true);
+      const fileMinXml = ExtensionUtilities.minifyXml(this.textDecoder.decode(fileContents), true);
       const mimeType = lookup(basename(this.ooxmlFilePath)) || undefined;
       const zipFile = await this.zip
         .file(filePath, this.textEncoder.encode(fileMinXml))
@@ -498,7 +497,7 @@ export class OOXMLViewer {
       const fileContent = this.textDecoder.decode(await this.cache.getCachedNormalFile(filePath));
       if (fileContent.startsWith('<?xml')) {
         // for some reason xmlFormatter doesn't always format everything without minifying it first
-        const formattedXml = xmlFormatter(vkBeautify.xmlmin(fileContent), xmlFormatConfig);
+        const formattedXml = xmlFormatter(ExtensionUtilities.minifyXml(fileContent), xmlFormatConfig);
         await this.cache.updateCachedFilesNoCompare(filePath, this.textEncoder.encode(formattedXml));
       }
     };
@@ -507,7 +506,7 @@ export class OOXMLViewer {
       const compareFileContent = this.textDecoder.decode(await this.cache.getCachedCompareFile(filePath));
       if (compareFileContent.startsWith('<?xml')) {
         // for some reason xmlFormatter doesn't always format everything without minifying it first
-        const formattedXml = xmlFormatter(vkBeautify.xmlmin(compareFileContent), xmlFormatConfig);
+        const formattedXml = xmlFormatter(ExtensionUtilities.minifyXml(compareFileContent), xmlFormatConfig);
         await this.cache.updateCompareFile(filePath, this.textEncoder.encode(formattedXml));
       }
     };
@@ -550,8 +549,8 @@ export class OOXMLViewer {
    * @returns {Promise<boolean>} A Promise resolving to whether or not the xml contents are the same.
    */
   private isXmlEqual(xmlContent1: Uint8Array, xmlContent2: Uint8Array): boolean {
-    const fileMinXml = vkBeautify.xmlmin(this.textDecoder.decode(xmlContent1), true);
-    const prevFileMinXml = vkBeautify.xmlmin(this.textDecoder.decode(xmlContent2), true);
+    const fileMinXml = ExtensionUtilities.minifyXml(this.textDecoder.decode(xmlContent1), true);
+    const prevFileMinXml = ExtensionUtilities.minifyXml(this.textDecoder.decode(xmlContent2), true);
 
     if (fileMinXml === prevFileMinXml) {
       return true;
