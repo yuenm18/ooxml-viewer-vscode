@@ -52,9 +52,9 @@ To search all parts, click "SEARCH PARTS" in the tree view title bar, enter your
 
 ### Search parts of any file that uses the Open Packaging Conventions
 
-By default, the OOXML Viewer can view and edit the contents of files with these extensions: ".docx", ".xlsx", ".pptx", ".odt", ".ods", ".odp", ".docm", ".dotm", ".xlsm", ".pptm", ".dotx", ".xltx", ".xltm", ".potx", ".sldx", ".ppsx". But the OOXML Viewer extension can be used with any file type that uses the [Open Packaging Conventions](https://docs.microsoft.com/en-us/previous-versions/windows/desktop/opc/open-packaging-conventions-overview).
+By default, the OOXML Viewer can view and edit the contents of files with these extensions: ".docx", ".xlsx", ".pptx", ".odt", ".ods", ".odp", ".docm", ".dotm", ".xlsm", ".pptm", ".dotx", ".xltx", ".xltm", ".potx", ".sldx", ".ppsx". But the OOXML Viewer extension can be used with any file type that uses the [Open Packaging Conventions](https://docs.microsoft.com/en-us/previous-versions/windows/desktop/opc/open-packaging-conventions-overview) or any zip based file type.
 
-To add additional file types, open the `settings.json` and add or update the `files.associations` and associate them with "ooxml". For example, to add "\*.vsix" files, settings.json should include
+To add additional file types, open the `settings.json` and add or update the `files.associations` and add an associate with "ooxml". For example, to add "\*.vsix" files, settings.json should include
 
 ```json
 "files.associations": {
