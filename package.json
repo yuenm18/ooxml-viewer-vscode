@@ -126,6 +126,16 @@
           "visibility": "visible"
         }
       ]
+    },
+    "configuration": {
+      "title": "OOXML Viewer",
+      "properties": {
+        "ooxmlViewer.preserveComments": {
+          "type": "boolean",
+          "description": "If true comments are preserved in xml parts, if false comments are removed on save. Defaults to true.",
+          "default": true
+        }
+      }
     }
   },
   "scripts": {

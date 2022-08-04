@@ -64,6 +64,12 @@ To add additional file types, open the `settings.json` and add or update the `fi
 
 After adding the file extension, restart VS Code and right click on the file to open and select "Open OOXML File" to view and edit it's contents.
 
+## Extension Settings
+
+This extension contributes the following variables to the [settings](https://code.visualstudio.com/docs/customization/userandworkspace):
+
+- `ooxmlViewer.preserveComments`: Boolean, determines if comments will be preserved in XML or removed on save. Defaults to true.
+
 ## Release Notes
 
 Please see the [Changelog](CHANGELOG.md)
