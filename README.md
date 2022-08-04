@@ -12,6 +12,7 @@
 - [Edit the contents of an OOXML documents in VS Code](#edit-the-contents-of-an-ooxml-documents-in-vs-code)
 - [Get diff when OOXML documents are edited from outside, e.g. in Microsoft Word, Libre Office Writer, Microsoft Excel, Libre Office Calc, etc.](#user-content-get-diff-when-ooxml-documents-are-edited-from-outside-eg-in-microsoft-word-libre-office-writer-microsoft-excel-libre-office-calc-etc)
 - [Search all parts](#search-all-parts)
+- [Search parts of any file that uses the Open Packaging Conventions](#search-parts-of-any-file-that-uses-the-open-packaging-conventions)
 
 ### Display the contents of OOXML documents in VS Code
 
@@ -48,6 +49,20 @@ To view a diff with the previous version of an OOXML part, right click on the pa
 To search all parts, click "SEARCH PARTS" in the tree view title bar, enter your search term, and press enter/return. The initial search is not case sensitive or whole words only, but once the OOXML Viewer opens the search pane, all VS Code search options are available.
 
 ![Searching all OOXML Parts](https://raw.githubusercontent.com/yuenm18/ooxml-viewer-vscode/master/resources/images/find-in-parts.gif)
+
+### Search parts of any file that uses the Open Packaging Conventions
+
+By default, the OOXML Viewer can view and edit the contents of files with these extensions: ".docx", ".xlsx", ".pptx", ".odt", ".ods", ".odp", ".docm", ".dotm", ".xlsm", ".pptm", ".dotx", ".xltx", ".xltm", ".potx", ".sldx", ".ppsx". But the OOXML Viewer extension can be used with any file type that uses the [Open Packaging Conventions](https://docs.microsoft.com/en-us/previous-versions/windows/desktop/opc/open-packaging-conventions-overview) or any zip based file type.
+
+To add additional file types, open the `settings.json` and add or update the `files.associations` and add an associate with "ooxml". For example, to add "\*.vsix" files, settings.json should include
+
+```json
+"files.associations": {
+  "*.vsix": "ooxml"
+}
+```
+
+After adding the file extension, restart VS Code and right click on the file to open and select "Open OOXML File" to view and edit it's contents.
 
 ## Release Notes
 

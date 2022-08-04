@@ -50,6 +50,12 @@ export class ExtensionUtilities {
     });
   }
 
+  /**
+   * @async
+   * @description Handle an error
+   * @param {unknown} err The error
+   * @returns {Promise<void>}
+   */
   static async handleError(err: unknown): Promise<void> {
     try {
       let msg = 'unknown error';
@@ -65,5 +71,19 @@ export class ExtensionUtilities {
       const msg = (error as Error)?.message || (error as FileSystemError)?.code || 'unknown error';
       throw new Error(msg);
     }
+  }
+
+  /**
+   * @description Minify an xml string
+   * @param {string} text the unminified xml string
+   * @param {boolean} preserveComments
+   * @returns {string} minified xml string
+   */
+  static minifyXml(text: string, preserveComments?: boolean): string {
+    const xml = preserveComments
+      ? text
+      : text.replace(/\<![ \r\n\t]*(--([^\-]|[\r\n]|-[^\-])*--[ \r\n\t]*)\>/g, '').replace(/[ \r\n\t]{1,}xmlns/g, ' xmlns');
+
+    return xml.replace(/>\s{0,}</g, '><');
   }
 }
