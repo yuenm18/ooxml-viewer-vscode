@@ -76,7 +76,6 @@ export class ExtensionUtilities {
   /**
    * @description Minify an xml string
    * @param {string} text the unminified xml string
-   * @param {boolean} preserveComments
    * @returns {string} minified xml string
    */
   static minifyXml(text: string): string {
