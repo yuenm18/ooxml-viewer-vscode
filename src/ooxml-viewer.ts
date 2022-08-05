@@ -356,7 +356,7 @@ export class OOXMLViewer {
         return;
       }
 
-      const fileMinXml = ExtensionUtilities.minifyXml(this.textDecoder.decode(fileContents), true);
+      const fileMinXml = ExtensionUtilities.minifyXml(this.textDecoder.decode(fileContents));
       const mimeType = lookup(basename(this.ooxmlFilePath)) || undefined;
       const zipFile = await this.zip
         .file(filePath, this.textEncoder.encode(fileMinXml))
@@ -549,8 +549,8 @@ export class OOXMLViewer {
    * @returns {Promise<boolean>} A Promise resolving to whether or not the xml contents are the same.
    */
   private isXmlEqual(xmlContent1: Uint8Array, xmlContent2: Uint8Array): boolean {
-    const fileMinXml = ExtensionUtilities.minifyXml(this.textDecoder.decode(xmlContent1), true);
-    const prevFileMinXml = ExtensionUtilities.minifyXml(this.textDecoder.decode(xmlContent2), true);
+    const fileMinXml = ExtensionUtilities.minifyXml(this.textDecoder.decode(xmlContent1));
+    const prevFileMinXml = ExtensionUtilities.minifyXml(this.textDecoder.decode(xmlContent2));
 
     if (fileMinXml === prevFileMinXml) {
       return true;

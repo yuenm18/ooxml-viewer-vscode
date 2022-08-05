@@ -1,4 +1,4 @@
-import { FileSystemError, Position, Range, TextEditor, TextEditorEdit, window } from 'vscode';
+import { FileSystemError, Position, Range, TextEditor, TextEditorEdit, window, workspace } from 'vscode';
 
 export class ExtensionUtilities {
   /**
@@ -76,10 +76,11 @@ export class ExtensionUtilities {
   /**
    * @description Minify an xml string
    * @param {string} text the unminified xml string
-   * @param {boolean} preserveComments
    * @returns {string} minified xml string
    */
-  static minifyXml(text: string, preserveComments?: boolean): string {
+  static minifyXml(text: string): string {
+    const preserveComments = workspace.getConfiguration('ooxmlViewer').get('preserveComments');
+
     const xml = preserveComments
       ? text
       : text.replace(/\<![ \r\n\t]*(--([^\-]|[\r\n]|-[^\-])*--[ \r\n\t]*)\>/g, '').replace(/[ \r\n\t]{1,}xmlns/g, ' xmlns');
