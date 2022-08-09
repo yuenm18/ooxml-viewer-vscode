@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.3.0] - 2022-08-08
+
+## Added
+
+- Add setting to preserve comments in xml parts [#37](https://github.com/yuenm18/ooxml-viewer-vscode/issues/37)
+
 ## [1.2.2] - 2022-04-14
 
 ### Fixed
@@ -81,7 +87,8 @@
 
 - Support for viewing the contents of OOXML documents
 
-[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.2.2...HEAD
+[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.1.1...v1.2.0

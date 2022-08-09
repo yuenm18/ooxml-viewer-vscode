@@ -2,7 +2,7 @@
   "name": "ooxml-viewer",
   "displayName": "OOXML Viewer",
   "description": "Displays the contents of OOXML files",
-  "version": "1.2.2",
+  "version": "1.3.0",
   "license": "MIT",
   "publisher": "yuenm18",
   "homepage": "https://github.com/yuenm18/ooxml-viewer-vscode/blob/master/README.md",
@@ -163,7 +163,7 @@
     "sinon": "^13.0.1",
     "ts-loader": "^9.2.8",
     "typescript": "^4.6.3",
-    "vsce": "^2.7.0",
+    "vsce": "^2.10.0",
     "vscode-test": "^1.6.1",
     "webpack": "^5.71.0",
     "webpack-cli": "^4.9.2"
