@@ -2,17 +2,23 @@
 
 ## [Unreleased]
 
+## [1.3.1] - 2023-01-16
+
+## Fixed
+
+- Broken badge in README and update dependencies
+
 ## [1.3.0] - 2022-08-08
 
 ## Added
 
-- Add setting to preserve comments in xml parts [#37](https://github.com/yuenm18/ooxml-viewer-vscode/issues/37)
+- Setting to preserve comments in xml parts [#37](https://github.com/yuenm18/ooxml-viewer-vscode/issues/37)
 
 ## [1.2.2] - 2022-04-14
 
 ### Fixed
 
-- Fix error that showed up when opening ooxml file in a new workspace for the first time [#33](https://github.com/yuenm18/ooxml-viewer-vscode/issues/33)
+- Error showing up when opening ooxml file in a new workspace for the first time [#33](https://github.com/yuenm18/ooxml-viewer-vscode/issues/33)
 
 ## [1.2.1] - 2022-04-09
 
@@ -67,7 +73,7 @@
 
 ### Fixed
 
-- Fix issue where xml file is not completely formatted before opening
+- Xml file is not completely formatted before opening
 
 ## [1.0.0] - 2021-01-07
 
@@ -87,7 +93,8 @@
 
 - Support for viewing the contents of OOXML documents
 
-[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.3.0...HEAD
+[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.2.0...v1.2.1
