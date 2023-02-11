@@ -25,7 +25,7 @@ export class OOXMLFileCache {
    * @returns {string} The base path of the cache.
    */
   get cacheBasePath(): string {
-    return join(this.context.storageUri?.fsPath || '', CACHE_FOLDER_NAME);
+    return join(this.context.storageUri?.fsPath || '', this.filePath, CACHE_FOLDER_NAME);
   }
 
   get normalSubfolderPath(): string {
@@ -38,7 +38,7 @@ export class OOXMLFileCache {
    * @constructor
    * @param {ExtensionContext} context The extension context.
    */
-  constructor(private context: ExtensionContext) {}
+  constructor(private filePath: string, private context: ExtensionContext) {}
 
   /**
    * Caches a file and its prev and compare parts.

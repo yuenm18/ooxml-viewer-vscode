@@ -75,6 +75,12 @@ suite('OOXMLViewer File Node', function () {
     expect(fileNode.iconPath).to.be.equal(ThemeIcon.Folder);
   });
 
+  test('should have context value of "package" if fileNode is an ooxml package', function () {
+    fileNode.isOoxmlPackage = true;
+
+    expect(fileNode.contextValue).to.be.equal('file');
+  });
+
   test('should have context value of "file" if fileNode has no children', function () {
     fileNode.children = [];
 

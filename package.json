@@ -51,6 +51,11 @@
         "command": "ooxmlViewer.searchParts",
         "title": "Search Parts",
         "when": "view == ooxmlViewer"
+      },
+      {
+        "command": "ooxmlViewer.removeOoxmlPackage",
+        "title": "Remove OOXML Package",
+        "when": "view == ooxmlViewer"
       }
     ],
     "languages": [
@@ -89,11 +94,6 @@
           "command": "ooxmlViewer.clear",
           "group": "navigation",
           "when": "view == ooxmlViewer"
-        },
-        {
-          "command": "ooxmlViewer.searchParts",
-          "group": "navigation",
-          "when": "view == ooxmlViewer"
         }
       ],
       "view/item/context": [
@@ -101,6 +101,16 @@
           "command": "ooxmlViewer.showDiff",
           "group": "navigation",
           "when": "view == ooxmlViewer && viewItem == file"
+        },
+        {
+          "command": "ooxmlViewer.searchParts",
+          "group": "navigation",
+          "when": "view == ooxmlViewer && viewItem == package"
+        },
+        {
+          "command": "ooxmlViewer.removeOoxmlPackage",
+          "group": "navigation",
+          "when": "view == ooxmlViewer && viewItem == package"
         }
       ],
       "commandPalette": [
@@ -114,6 +124,14 @@
         },
         {
           "command": "ooxmlViewer.showDiff",
+          "when": "false"
+        },
+        {
+          "command": "ooxmlViewer.searchParts",
+          "when": "false"
+        },
+        {
+          "command": "ooxmlViewer.removeOoxmlPackage",
           "when": "false"
         }
       ]

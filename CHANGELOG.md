@@ -2,15 +2,19 @@
 
 ## [Unreleased]
 
+### Added
+
+- Support multiple ooxml packages in the tree view [#13](https://github.com/yuenm18/ooxml-viewer-vscode/issues/13) [#40](https://github.com/yuenm18/ooxml-viewer-vscode/issues/40)
+
 ## [1.3.1] - 2023-01-16
 
-## Fixed
+### Fixed
 
 - Broken badge in README and update dependencies
 
 ## [1.3.0] - 2022-08-08
 
-## Added
+### Added
 
 - Setting to preserve comments in xml parts [#37](https://github.com/yuenm18/ooxml-viewer-vscode/issues/37)
 

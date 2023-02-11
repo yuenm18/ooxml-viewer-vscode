@@ -1,5 +1,6 @@
 import { join } from 'path';
 import { Command, Event, EventEmitter, ProviderResult, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri } from 'vscode';
+import { OOXMLPackage } from './ooxml-package';
 
 /**
  * OOXML tree data provider
@@ -62,6 +63,24 @@ export class OOXMLTreeDataProvider implements TreeDataProvider<FileNode> {
  * File tree node
  */
 export class FileNode implements TreeItem {
+  /**
+   * @description Creates a file node.
+   * @method create
+   * @public
+   * @static
+   * @param  {string} fileName The name of the FileNode.
+   * @param  {FileNode} parentFileNode The parent FileNode.
+   * @returns {FileNode}
+   */
+  public static create(fileName: string, parentFileNode: FileNode, ooxmlPackage: OOXMLPackage): FileNode {
+    const fileNode = new FileNode();
+    fileNode.fileName = fileName;
+    fileNode.parent = parentFileNode;
+    fileNode.ooxmlPackage = ooxmlPackage;
+    parentFileNode.children.push(fileNode);
+    return fileNode;
+  }
+
   private _status: 'created' | 'deleted' | 'modified' | 'unchanged' = 'unchanged';
 
   get description(): string {
@@ -84,7 +103,7 @@ export class FileNode implements TreeItem {
   }
 
   get contextValue(): string | undefined {
-    return this.children.length ? 'folder' : 'file';
+    return this.isOoxmlPackage ? 'package' : this.children.length ? 'folder' : 'file';
   }
 
   get iconPath(): ThemeIcon | Uri | { light: Uri; dark: Uri } {
@@ -123,6 +142,16 @@ export class FileNode implements TreeItem {
    * Parent file node
    */
   parent: FileNode | undefined;
+
+  /**
+   * The ooxml package the file node is part of
+   */
+  ooxmlPackage: OOXMLPackage | undefined;
+
+  /**
+   * Whether or not the file node is a ooxml package (root level)
+   */
+  isOoxmlPackage = false;
 
   /**
    * Gets whether or not the file node has a status of deleted.

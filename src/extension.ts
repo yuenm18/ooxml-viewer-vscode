@@ -6,18 +6,19 @@ let ooxmlViewer: OOXMLViewer;
 
 export async function activate(context: ExtensionContext): Promise<void> {
   ooxmlViewer = new OOXMLViewer(context);
-  await ooxmlViewer.clear();
+  await ooxmlViewer.reset();
 
   context.subscriptions.push(
     window.registerTreeDataProvider('ooxmlViewer', ooxmlViewer.treeDataProvider),
     commands.registerCommand('ooxmlViewer.openOoxmlPackage', async (file: Uri) => ooxmlViewer.openOoxmlPackage(file)),
-    commands.registerCommand('ooxmlViewer.viewFile', async (fileNode: FileNode) => ooxmlViewer.viewFile(fileNode)),
-    commands.registerCommand('ooxmlViewer.clear', () => ooxmlViewer.clear()),
-    commands.registerCommand('ooxmlViewer.showDiff', async (file: FileNode) => ooxmlViewer.getDiff(file)),
-    commands.registerCommand('ooxmlViewer.searchParts', async () => ooxmlViewer.searchOoxmlParts()),
+    commands.registerCommand('ooxmlViewer.removeOoxmlPackage', async (fileNode: FileNode) => fileNode.ooxmlPackage?.reset()),
+    commands.registerCommand('ooxmlViewer.viewFile', async (fileNode: FileNode) => fileNode.ooxmlPackage?.viewFile(fileNode.fullPath)),
+    commands.registerCommand('ooxmlViewer.clear', () => ooxmlViewer.reset()),
+    commands.registerCommand('ooxmlViewer.showDiff', async (fileNode: FileNode) => fileNode.ooxmlPackage?.getDiff(fileNode.fullPath)),
+    commands.registerCommand('ooxmlViewer.searchParts', async (fileNode: FileNode) => fileNode.ooxmlPackage?.searchOoxmlParts()),
   );
 }
 
 export async function deactivate(): Promise<void> {
-  ooxmlViewer?.disposeWatchers();
+  await ooxmlViewer?.reset();
 }

@@ -24,7 +24,7 @@ suite('OOXMLViewer File Cache', function () {
       },
     } as ExtensionContext;
 
-    ooxmlFileCache = new OOXMLFileCache(context);
+    ooxmlFileCache = new OOXMLFileCache('file-name', context);
 
     await ooxmlFileCache.reset();
   });
