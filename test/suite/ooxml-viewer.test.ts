@@ -1,11 +1,12 @@
 import { expect } from 'chai';
-import JSZip from 'jszip';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { SinonStub, stub } from 'sinon';
-import { ExtensionContext, Uri } from 'vscode';
-import { OOXMLFileCache } from '../../src/ooxml-file-cache';
+import { createStubInstance, SinonStub, stub } from 'sinon';
+import { ExtensionContext } from 'vscode';
+import { OOXMLPackageFacade } from '../../src/ooxml-package/ooxml-package-facade';
 import { OOXMLViewer } from '../../src/ooxml-viewer';
+import { OOXMLTreeDataProvider } from '../../src/tree-view/ooxml-tree-view-provider';
+import { FileSystemUtilities } from '../../src/utilities/file-system-utilities';
 
 suite('OOXMLViewer', async function () {
   this.timeout(10000);
@@ -13,14 +14,15 @@ suite('OOXMLViewer', async function () {
   const stubs: SinonStub[] = [];
   const testFilePath = join(__dirname, '..', '..', '..', 'test', 'test-data', 'Test.pptx');
 
-  suiteSetup(function () {
+  setup(function () {
     const context = {
       storageUri: {
         fsPath: join(tmpdir(), 'ooxml-viewer'),
       },
       subscriptions: [],
     } as unknown as ExtensionContext;
-    ooxmlViewer = new OOXMLViewer(context);
+    const treeViewDataProvider = createStubInstance(OOXMLTreeDataProvider);
+    ooxmlViewer = new OOXMLViewer(treeViewDataProvider, context);
   });
 
   teardown(function () {
@@ -28,46 +30,78 @@ suite('OOXMLViewer', async function () {
     stubs.length = 0;
   });
 
-  test('reset should reset the OOXML Viewer', async function () {
-    const refreshStub = stub(ooxmlViewer.treeDataProvider, 'refresh').callsFake(() => undefined);
-    const disposeWatchersStub = stub(OOXMLViewer.prototype, 'reset').callsFake(() => Promise.resolve());
-    const clearCacheStub = stub(OOXMLFileCache.prototype, 'reset').callsFake(() => Promise.resolve());
+  test('openOOXMLPackage should create ooxml package', async function () {
+    const ooxmlPackage = createStubInstance(OOXMLPackageFacade);
+    ooxmlPackage.ooxmlFilePath = testFilePath;
+    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(Promise.resolve(ooxmlPackage));
+    stubs.push(createPackageStub);
 
-    stubs.push(refreshStub, disposeWatchersStub, clearCacheStub);
+    await ooxmlViewer.openOOXMLPackage(testFilePath);
+
+    expect(createPackageStub.callCount).to.be.eq(1);
+  });
+
+  test('openOOXMLPackage should remove and recreate ooxml package if it is called twice on the same file', async function () {
+    const ooxmlPackage = createStubInstance(OOXMLPackageFacade);
+    ooxmlPackage.ooxmlFilePath = testFilePath;
+    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(Promise.resolve(ooxmlPackage));
+    stubs.push(createPackageStub);
+
+    await ooxmlViewer.openOOXMLPackage(testFilePath);
+    await ooxmlViewer.openOOXMLPackage(testFilePath);
+
+    expect(createPackageStub.callCount).to.be.eq(2);
+    expect(ooxmlPackage.dispose.callCount).to.be.eq(1);
+  });
+
+  test('removeOOXMLPackage should dispose ooxml package', async function () {
+    const ooxmlPackage = createStubInstance(OOXMLPackageFacade);
+    ooxmlPackage.ooxmlFilePath = testFilePath;
+    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(Promise.resolve(ooxmlPackage));
+    stubs.push(createPackageStub);
+    await ooxmlViewer.openOOXMLPackage(testFilePath);
+
+    await ooxmlViewer.removeOOXMLPackage(testFilePath);
+
+    expect(ooxmlPackage.dispose.callCount).to.be.eq(1);
+  });
+
+  test('removeOOXMLPackage should handle being called twice', async function () {
+    const ooxmlPackage = createStubInstance(OOXMLPackageFacade);
+    ooxmlPackage.ooxmlFilePath = testFilePath;
+    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(Promise.resolve(ooxmlPackage));
+    stubs.push(createPackageStub);
+    await ooxmlViewer.openOOXMLPackage(testFilePath);
+    await ooxmlViewer.removeOOXMLPackage(testFilePath);
+
+    await ooxmlViewer.removeOOXMLPackage(testFilePath);
+
+    expect(ooxmlPackage.dispose.callCount).to.be.eq(1);
+  });
+
+  test('reset should reset all packages and clear cache', async function () {
+    const ooxmlPackage = createStubInstance(OOXMLPackageFacade);
+    const deleteFileStub = stub(FileSystemUtilities, 'deleteFile').returns(Promise.resolve());
+    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(Promise.resolve(ooxmlPackage));
+    stubs.push(deleteFileStub, createPackageStub);
+    await ooxmlViewer.openOOXMLPackage(testFilePath);
 
     await ooxmlViewer.reset();
 
-    expect(refreshStub.calledOnce).to.be.true;
-    expect(disposeWatchersStub.calledOnce).to.be.true;
-    expect(clearCacheStub.calledOnce).to.be.true;
+    expect(ooxmlPackage.dispose.callCount).to.be.eq(1);
+    expect(deleteFileStub.callCount).to.be.eq(1);
   });
 
-  test('openOoxmlPackage opens package ', async function () {
-    const writeFileMock = stub(ooxmlPackage.cache, 'createCachedFiles').returns(Promise.resolve());
-    const refreshStub = stub(this.treeDataProvider, 'refresh').returns(undefined);
-    const jsZipStub = stub(ooxmlViewer.zip, 'file').callsFake(() => {
-      return {
-        async(arg: string) {
-          expect(arg).to.eq('text');
-          return Promise.resolve(
-            '<?xml version="1.0" encoding="UTF-8"?>\n<note><date>2015-09-01</date><hour>08:30</hour>' +
-              "<to>Tove</to><from>Jani</from><body>Don't forget me this weekend!</body></note>",
-          );
-        },
-      } as unknown as JSZip;
-    });
-    stubs.push(
-      stub(ooxmlViewer, <never>'hasFileBeenChangedFromOutside').returns(Promise.resolve(false)),
-      jsZipStub,
-      refreshStub,
-      writeFileMock,
-    );
+  test('reset should not error if deleteFile throws', async function () {
+    const ooxmlPackage = createStubInstance(OOXMLPackageFacade);
+    const deleteFileStub = stub(FileSystemUtilities, 'deleteFile').throws(new Error());
+    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(Promise.resolve(ooxmlPackage));
+    stubs.push(deleteFileStub, createPackageStub);
+    await ooxmlViewer.openOOXMLPackage(testFilePath);
 
-    expect(this.treeDataProvider.rootFileNode.children[0].children.length).to.eq(0);
-    await ooxmlViewer.openOoxmlPackage(Uri.file(testFilePath));
+    await ooxmlViewer.reset();
 
-    expect(this.treeDataProvider.rootFileNode.children[0].children.length).to.eq(4);
-    expect(refreshStub.callCount).to.eq(3);
-    expect(writeFileMock.callCount).to.eq(40);
+    expect(ooxmlPackage.dispose.callCount).to.be.eq(1);
+    expect(deleteFileStub.callCount).to.be.eq(1);
   });
 });

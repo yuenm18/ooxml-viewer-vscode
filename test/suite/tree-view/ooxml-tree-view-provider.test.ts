@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { SinonStub, spy } from 'sinon';
 import { EventEmitter, ThemeIcon, TreeItemCollapsibleState, Uri } from 'vscode';
-import { FileNode, OOXMLTreeDataProvider } from '../../src/ooxml-tree-view-provider';
+import { FileNode, OOXMLTreeDataProvider } from '../../../src/tree-view/ooxml-tree-view-provider';
 
 suite('OOXMLViewer Tree View Provider', function () {
   const stubs: SinonStub[] = [];
@@ -76,9 +76,9 @@ suite('OOXMLViewer File Node', function () {
   });
 
   test('should have context value of "package" if fileNode is an ooxml package', function () {
-    fileNode.isOoxmlPackage = true;
+    fileNode.isOOXMLPackage = true;
 
-    expect(fileNode.contextValue).to.be.equal('file');
+    expect(fileNode.contextValue).to.be.equal('package');
   });
 
   test('should have context value of "file" if fileNode has no children', function () {
