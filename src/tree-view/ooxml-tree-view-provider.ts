@@ -106,6 +106,10 @@ export class FileNode implements TreeItem {
   }
 
   get iconPath(): ThemeIcon | Uri | { light: Uri; dark: Uri } {
+    if (this.isOOXMLPackage) {
+      return new ThemeIcon('package');
+    }
+
     switch (this._status) {
       case 'created':
         return Uri.file(join(__filename, '..', '..', 'resources', 'icons', 'asterisk.green.svg'));
