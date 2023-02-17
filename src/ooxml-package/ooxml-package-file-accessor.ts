@@ -7,7 +7,7 @@ import { FileSystemUtilities } from '../utilities/file-system-utilities';
  * Exposes read and write operations for the ooxml file.
  */
 export class OOXMLPackageFileAccessor {
-  private zip: JSZip;
+  private zip: JSZip | undefined;
   private get mimeType() {
     return lookup(basename(this.ooxmlPackagePath)) || undefined;
   }
@@ -18,15 +18,14 @@ export class OOXMLPackageFileAccessor {
    * @constructor
    * @param {string} ooxmlPackagePath The path to the ooxml package.
    */
-  constructor(private ooxmlPackagePath: string) {
-    this.zip = new JSZip();
-  }
+  constructor(private ooxmlPackagePath: string) {}
 
   /**
    * Loads the ooxml package from the file system.
    */
   async load(): Promise<void> {
     const data = FileSystemUtilities.readFile(this.ooxmlPackagePath);
+    this.zip = new JSZip();
     await this.zip.loadAsync(data);
   }
 
@@ -38,6 +37,10 @@ export class OOXMLPackageFileAccessor {
    * @returns {Promise<boolean>} True or false depending on whether the package updated successfully.
    */
   async updatePackage(filePath: string, data: Uint8Array): Promise<boolean> {
+    if (!this.zip) {
+      return false;
+    }
+
     const file = await this.zip.file(filePath, data).generateAsync({ type: 'uint8array', mimeType: this.mimeType, compression: 'DEFLATE' });
     return await FileSystemUtilities.writeFile(this.ooxmlPackagePath, file);
   }
@@ -48,12 +51,18 @@ export class OOXMLPackageFileAccessor {
    * @returns {PackageFile[]} The contents of the ooxml package.
    */
   getPackageContents(): Promise<PackageFile[]> {
+    if (!this.zip) {
+      return Promise.resolve([]);
+    }
+
     return Promise.all(
-      Object.keys(this.zip.files).map(async filePath => ({
-        filePath: filePath,
-        isDirectory: this.zip.files[filePath].dir,
-        data: (await this.zip.file(filePath)?.async('uint8array')) ?? new Uint8Array(),
-      })),
+      Object.keys(this.zip.files)
+        .sort()
+        .map(async filePath => ({
+          filePath: filePath,
+          isDirectory: this.zip?.files[filePath].dir ?? false,
+          data: (await this.zip?.file(filePath)?.async('uint8array')) ?? new Uint8Array(),
+        })),
     );
   }
 }

@@ -43,8 +43,8 @@ export class OOXMLPackageFileWatcher {
       }
     });
 
-    const openTextDocumentWatcher = workspace.onDidOpenTextDocument(document => ooxmlPackage.tryFormatDocument(document.fileName));
-    const saveTextDocumentWatcher = workspace.onDidSaveTextDocument(document => ooxmlPackage.updateOOXMLFile(document.fileName));
+    const openTextDocumentWatcher = workspace.onDidOpenTextDocument(async document => ooxmlPackage.tryFormatDocument(document.fileName));
+    const saveTextDocumentWatcher = workspace.onDidSaveTextDocument(async document => ooxmlPackage.updateOOXMLFile(document.fileName));
 
     this.watchers.push(openTextDocumentWatcher, fileSystemWatcher, saveTextDocumentWatcher);
   }

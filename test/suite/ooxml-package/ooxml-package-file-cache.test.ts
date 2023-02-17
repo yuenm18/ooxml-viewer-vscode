@@ -12,16 +12,17 @@ suite('OOXMLPackageFileCache', function () {
   let ooxmlFileCache: OOXMLPackageFileCache;
 
   const filePath = 'doc/document.xml';
-  const cacheBasePath = join(tmpdir(), 'ooxml-viewer');
-  const fileCachePath = join(cacheBasePath, 'cache', 'file-name', 'normal', 'doc/document.xml');
-  const prevFileCachePath = join(cacheBasePath, 'cache', 'file-name', 'prev', 'doc/document.xml');
-  const compareFileCachePath = join(cacheBasePath, 'cache', 'file-name', 'compare', 'doc/document.xml');
+  const cacheStoragePath = join(tmpdir(), 'ooxml-viewer');
+  const cacheBasePath = join(cacheStoragePath, 'cache', '3d1cd110b4520dcdf5889ed7339950a536f686f6fa749bc3d5072a79d9156b4e');
+  const fileCachePath = join(cacheBasePath, 'normal', 'doc/document.xml');
+  const prevFileCachePath = join(cacheBasePath, 'prev', 'doc/document.xml');
+  const compareFileCachePath = join(cacheBasePath, 'compare', 'doc/document.xml');
   const fileCacheUri = Uri.file(fileCachePath);
   const prevFileCacheUri = Uri.file(prevFileCachePath);
   const compareFileCacheUri = Uri.file(compareFileCachePath);
 
   setup(async function () {
-    ooxmlFileCache = new OOXMLPackageFileCache('file-name', join(tmpdir(), 'ooxml-viewer'));
+    ooxmlFileCache = new OOXMLPackageFileCache(filePath, join(tmpdir(), 'ooxml-viewer'));
 
     await ooxmlFileCache.initialize();
   });
@@ -225,11 +226,11 @@ suite('OOXMLPackageFileCache', function () {
   });
 
   test('should reset the cache when reset is called when delete cacheBasePath does not exist', async function () {
-    workspace.fs.delete(Uri.file(cacheBasePath), { useTrash: false, recursive: true });
+    workspace.fs.delete(Uri.file(cacheStoragePath), { useTrash: false, recursive: true });
     const showErrorStub = stub(ExtensionUtilities, 'showError').returns(Promise.resolve(undefined));
     stubs.push(showErrorStub);
 
     expect(showErrorStub.callCount).to.equal(0);
-    expect(async () => await workspace.fs.stat(Uri.file(cacheBasePath))).to.not.throw;
+    expect(async () => await workspace.fs.stat(Uri.file(cacheStoragePath))).to.not.throw;
   });
 });

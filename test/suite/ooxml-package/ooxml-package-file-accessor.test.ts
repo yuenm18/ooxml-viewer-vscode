@@ -5,10 +5,20 @@ import { OOXMLPackageFileAccessor } from '../../../src/ooxml-package/ooxml-packa
 suite('OOXMLPackageFileAccessor Integration', function () {
   const testFilePath = join(__dirname, '..', '..', '..', '..', 'test', 'test-data', 'Test.pptx');
 
-  test('should throw if package is accessed before loaded', async function () {
+  test('should return empty array if package is accessed before loaded', async function () {
     const fileAccessor = new OOXMLPackageFileAccessor(testFilePath);
 
-    await expect(async () => await fileAccessor.getPackageContents()).to.throw;
+    const contents = await fileAccessor.getPackageContents();
+
+    expect(contents.length).to.be.eq(0);
+  });
+
+  test('should return false if package is updated before loaded', async function () {
+    const fileAccessor = new OOXMLPackageFileAccessor(testFilePath);
+
+    const response = await fileAccessor.updatePackage('file.xml', new Uint8Array());
+
+    expect(response).to.be.eq(false);
   });
 
   test('should throw if loaded with invalid url', async function () {

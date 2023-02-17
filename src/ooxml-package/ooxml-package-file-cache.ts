@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { dirname, join, sep } from 'path';
 import { ExtensionUtilities } from '../utilities/extension-utilities';
 import { FileSystemUtilities } from '../utilities/file-system-utilities';
@@ -19,13 +20,14 @@ const COMPARE_SUBFOLDER_NAME = 'compare';
  *  - used as a comparison point for diffs
  */
 export class OOXMLPackageFileCache {
+  private uniqueFileHash: string;
   /**
    * The base path where are files are stored in the cache.
    *
    * @returns {string} The base path of the cache.
    */
   private get cacheBasePath(): string {
-    return join(this.storagePath, CACHE_FOLDER_NAME, this.filePath);
+    return join(this.storagePath, CACHE_FOLDER_NAME, this.uniqueFileHash);
   }
 
   get normalSubfolderPath(): string {
@@ -39,7 +41,9 @@ export class OOXMLPackageFileCache {
    * @param {string} filePath The relative path to the ooxml file.
    * @param {string} storagePath The path to workspace storage directory.
    */
-  constructor(private filePath: string, private storagePath: string) {}
+  constructor(filePath: string, private storagePath: string) {
+    this.uniqueFileHash = crypto.createHash('sha256').update(filePath).digest('hex');
+  }
 
   /**
    * Caches a file and its prev and compare parts.

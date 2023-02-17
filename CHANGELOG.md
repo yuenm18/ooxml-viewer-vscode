@@ -4,7 +4,7 @@
 
 ### Added
 
-- Support multiple ooxml packages in the tree view [#13](https://github.com/yuenm18/ooxml-viewer-vscode/issues/13) [#40](https://github.com/yuenm18/ooxml-viewer-vscode/issues/40)
+- Support multiple ooxml packages in the tree view [#34](https://github.com/yuenm18/ooxml-viewer-vscode/issues/34) [#40](https://github.com/yuenm18/ooxml-viewer-vscode/issues/40)
 
 ## [1.3.1] - 2023-01-16
 

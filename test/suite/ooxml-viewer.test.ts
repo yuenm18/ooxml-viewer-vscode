@@ -5,7 +5,7 @@ import { createStubInstance, SinonStub, stub } from 'sinon';
 import { ExtensionContext } from 'vscode';
 import { OOXMLPackageFacade } from '../../src/ooxml-package/ooxml-package-facade';
 import { OOXMLViewer } from '../../src/ooxml-viewer';
-import { OOXMLTreeDataProvider } from '../../src/tree-view/ooxml-tree-view-provider';
+import { FileNode, OOXMLTreeDataProvider } from '../../src/tree-view/ooxml-tree-view-provider';
 import { FileSystemUtilities } from '../../src/utilities/file-system-utilities';
 
 suite('OOXMLViewer', async function () {
@@ -22,6 +22,7 @@ suite('OOXMLViewer', async function () {
       subscriptions: [],
     } as unknown as ExtensionContext;
     const treeViewDataProvider = createStubInstance(OOXMLTreeDataProvider);
+    treeViewDataProvider.rootFileNode = new FileNode();
     ooxmlViewer = new OOXMLViewer(treeViewDataProvider, context);
   });
 

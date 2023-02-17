@@ -87,6 +87,8 @@ export class OOXMLViewer {
   async reset(): Promise<void> {
     await Promise.all(this.ooxmlPackages.map(ooxmlPackage => ooxmlPackage.dispose()));
     this.ooxmlPackages = [];
+    this.treeDataProvider.rootFileNode.children.length = 0;
+    this.treeDataProvider.refresh();
     await this.tryClearCache();
   }
 

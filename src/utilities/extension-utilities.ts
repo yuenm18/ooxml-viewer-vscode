@@ -123,8 +123,10 @@ export class ExtensionUtilities {
    * @param {string} fileName The file name of the text document.
    */
   static async closeTextDocument(fileName: string): Promise<void> {
-    await window.showTextDocument(Uri.file(fileName), { preview: true, preserveFocus: false });
-    await commands.executeCommand('workbench.action.closeActiveEditor');
+    try {
+      await window.showTextDocument(Uri.file(fileName), { preview: true, preserveFocus: false });
+      await commands.executeCommand('workbench.action.closeActiveEditor');
+    } catch {}
   }
 
   /**
