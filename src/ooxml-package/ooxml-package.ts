@@ -53,7 +53,7 @@ export class OOXMLPackage {
 
         const fileCachePath = this.cache.getNormalFileCachePath(filePath);
         await ExtensionUtilities.openFile(fileCachePath);
-      }, 'Formatting XML');
+      }, 'Opening XML');
     } catch (err) {
       await ExtensionUtilities.showError(err);
     }
