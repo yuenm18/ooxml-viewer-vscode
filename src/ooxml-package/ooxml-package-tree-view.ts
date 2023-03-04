@@ -1,4 +1,3 @@
-import { basename } from 'path';
 import { FileNode, OOXMLTreeDataProvider } from '../tree-view/ooxml-tree-view-provider';
 
 /**
@@ -46,7 +45,7 @@ export class OOXMLPackageTreeView {
   }
 
   private createRootNode(): FileNode {
-    const rootFileNode = FileNode.create(basename(this.ooxmlPackagePath), this.treeDataProvider.rootFileNode, this.ooxmlPackagePath);
+    const rootFileNode = FileNode.create(this.ooxmlPackagePath, this.treeDataProvider.rootFileNode, this.ooxmlPackagePath);
     rootFileNode.isOOXMLPackage = true;
     this.treeDataProvider.refresh();
 

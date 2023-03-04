@@ -1,7 +1,7 @@
 import { basename } from 'path';
 import packageJson from '../../package.json';
 import { OOXMLExtensionSettings } from '../ooxml-extension-settings';
-import { FileNode } from '../tree-view/ooxml-tree-view-provider';
+import { FileNode, FileNodeType } from '../tree-view/ooxml-tree-view-provider';
 import { ExtensionUtilities } from '../utilities/extension-utilities';
 import { FileSystemUtilities } from '../utilities/file-system-utilities';
 import { XmlFormatter } from '../utilities/xml-formatter';
@@ -190,20 +190,18 @@ export class OOXMLPackage {
       let fileNodeAlreadyExists = true;
       let currentFileNode = this.treeView.getRootFileNode();
       const names: string[] = file.filePath.split('/');
-      for (const fileOrFolderName of names) {
-        const existingFileNode = currentFileNode.children.find(c => c.description === fileOrFolderName);
+      for (let i = 0; i < names.length; i++) {
+        const fileOrFolderPath = names.slice(0, i + 1).join('/');
+        const existingFileNode = currentFileNode.children.find(c => c.nodePath === fileOrFolderPath);
         if (existingFileNode) {
           currentFileNode = existingFileNode;
         } else {
           fileNodeAlreadyExists = false;
           // create a new FileNode with the currentFileNode as parent and add it to the currentFileNode children
-          const newFileNode = FileNode.create(fileOrFolderName, currentFileNode, this.ooxmlFilePath);
+          const newFileNode = FileNode.create(fileOrFolderPath, currentFileNode, this.ooxmlFilePath);
           currentFileNode = newFileNode;
         }
       }
-
-      // set the current node fullPath (either new or existing) to the file's path
-      currentFileNode.fullPath = file.filePath;
 
       // cache or update the cache of the node and mark the status of the node
 
@@ -218,8 +216,8 @@ export class OOXMLPackage {
       // - "created" if the file is recreated (handled in the else block)
 
       if (fileNodeAlreadyExists && !currentFileNode.isDeleted()) {
-        const filesAreDifferent = await this.hasFileBeenChangedFromOutside(currentFileNode.fullPath, file.data);
-        await this.cache.updateCachedFiles(currentFileNode.fullPath, file.data);
+        const filesAreDifferent = await this.hasFileBeenChangedFromOutside(currentFileNode.nodePath, file.data);
+        await this.cache.updateCachedFiles(currentFileNode.nodePath, file.data);
 
         if (filesAreDifferent) {
           currentFileNode.setModified();
@@ -228,10 +226,10 @@ export class OOXMLPackage {
         }
       } else {
         if (!this.isFirstOpen) {
-          await this.cache.createCachedFilesWithEmptyCompare(currentFileNode.fullPath, file.data);
+          await this.cache.createCachedFilesWithEmptyCompare(currentFileNode.nodePath, file.data);
           currentFileNode.setCreated();
         } else {
-          await this.cache.createCachedFiles(currentFileNode.fullPath, file.data);
+          await this.cache.createCachedFiles(currentFileNode.nodePath, file.data);
         }
       }
     }
@@ -260,14 +258,14 @@ export class OOXMLPackage {
 
     let fileNode;
     while ((fileNode = fileNodeQueue.pop())) {
-      if (fileNode.fullPath && !filesInOOXMLFile.has(fileNode.fullPath)) {
+      if (fileNode.contextValue === FileNodeType.File && !filesInOOXMLFile.has(fileNode.nodePath)) {
         if (!fileNode.isDeleted()) {
           fileNode.setDeleted();
-          await this.cache.updateCachedFiles(fileNode.fullPath, new Uint8Array());
+          await this.cache.updateCachedFiles(fileNode.nodePath, new Uint8Array());
         } else {
           // remove files marked as deleted from tree view and cache after the ooxml file
           // the second time the ooxml file is saved
-          await this.cache.deleteCachedFiles(fileNode.fullPath);
+          await this.cache.deleteCachedFiles(fileNode.nodePath);
           fileNode.parent?.children.splice(fileNode.parent.children.indexOf(fileNode), 1);
         }
       }

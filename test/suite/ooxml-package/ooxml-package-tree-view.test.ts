@@ -20,7 +20,7 @@ suite('OOXMLPackageTreeView', function () {
     const rootNode = treeView.getRootFileNode();
 
     expect(rootNode.isOOXMLPackage).to.be.true;
-    expect(rootNode.fileName).to.be.eq('package.docx');
+    expect(rootNode.nodePath).to.be.eq('path/to/package.docx');
     expect(rootNode.parent).to.be.eq(treeViewRoot);
   });
 

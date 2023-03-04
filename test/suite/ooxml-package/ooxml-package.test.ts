@@ -243,14 +243,12 @@ suite('OOXMLPackage', async function () {
       await ooxmlPackage.openOOXMLPackage();
 
       expect(fileNode.children.length).to.eq(1);
-      expect(fileNode.children[0].fileName).to.eq('doc');
-      expect(fileNode.children[0].fullPath).to.eq('');
+      expect(fileNode.children[0].nodePath).to.eq('doc');
       expect(fileNode.children[0].iconPath).to.eq(ThemeIcon.Folder);
       expect(fileNode.children[0].contextValue).to.eq('folder');
       expect(fileNode.children[0].collapsibleState).to.eq(TreeItemCollapsibleState.Expanded);
       expect(fileNode.children[0].children.length).to.eq(1);
-      expect(fileNode.children[0].children[0].fileName).to.eq('document.xml');
-      expect(fileNode.children[0].children[0].fullPath).to.eq('doc/document.xml');
+      expect(fileNode.children[0].children[0].nodePath).to.eq('doc/document.xml');
       expect(fileNode.children[0].children[0].iconPath).to.eq(ThemeIcon.File);
       expect(fileNode.children[0].children[0].contextValue).to.eq('file');
       expect(fileNode.children[0].children[0].collapsibleState).to.eq(TreeItemCollapsibleState.None);

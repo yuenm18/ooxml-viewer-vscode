@@ -24,11 +24,11 @@ export async function activate(context: ExtensionContext): Promise<void> {
       ooxmlViewer.removeOOXMLPackage(fileNode.ooxmlPackagePath),
     ),
     commands.registerCommand('ooxmlViewer.viewFile', async (fileNode: FileNode) =>
-      ooxmlViewer.viewFile(fileNode.ooxmlPackagePath, fileNode.fullPath),
+      ooxmlViewer.viewFile(fileNode.ooxmlPackagePath, fileNode.nodePath),
     ),
     commands.registerCommand('ooxmlViewer.clear', () => ooxmlViewer.reset()),
     commands.registerCommand('ooxmlViewer.showDiff', async (fileNode: FileNode) =>
-      ooxmlViewer.getDiff(fileNode.ooxmlPackagePath, fileNode.fullPath),
+      ooxmlViewer.getDiff(fileNode.ooxmlPackagePath, fileNode.nodePath),
     ),
     commands.registerCommand('ooxmlViewer.searchParts', async (fileNode: FileNode) =>
       ooxmlViewer.searchOOXMLParts(fileNode.ooxmlPackagePath),

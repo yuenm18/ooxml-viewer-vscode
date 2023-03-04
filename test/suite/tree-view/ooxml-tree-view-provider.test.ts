@@ -59,8 +59,7 @@ suite('OOXMLViewer File Node', function () {
 
   setup(function () {
     fileNode = new FileNode();
-    fileNode.fullPath = 'tmp/file.docx';
-    fileNode.fileName = 'file.docx';
+    fileNode.nodePath = 'tmp/file.docx';
   });
 
   test('should have file icon if fileNode has no children', function () {
@@ -148,7 +147,7 @@ suite('OOXMLViewer File Node', function () {
   });
 
   test('should return viewFile command if fileNode has no children', function () {
-    fileNode.fullPath = '/file.docx';
+    fileNode.nodePath = '/file.docx';
     fileNode.children = [];
 
     expect(fileNode.command?.command).to.be.equal('ooxmlViewer.viewFile');
@@ -156,10 +155,6 @@ suite('OOXMLViewer File Node', function () {
   });
 
   test('should have a tooltip as the full path', function () {
-    expect(fileNode.tooltip).to.be.equal(fileNode.fullPath);
-  });
-
-  test('should have the file name as a description', function () {
-    expect(fileNode.description).to.be.equal(fileNode.fileName);
+    expect(fileNode.tooltip).to.be.equal(fileNode.nodePath);
   });
 });

@@ -63,17 +63,15 @@ export class OOXMLTreeDataProvider implements TreeDataProvider<FileNode> {
  */
 export class FileNode implements TreeItem {
   /**
-   * @description Creates a file node.
-   * @method create
-   * @public
-   * @static
-   * @param  {string} fileName The name of the FileNode.
+   * Creates a file node.
+   *
+   * @param  {string} nodePath The path of the FileNode.
    * @param  {FileNode} parentFileNode The parent FileNode.
    * @returns {FileNode}
    */
-  public static create(fileName: string, parentFileNode: FileNode, ooxmlPackagePath: string): FileNode {
+  public static create(nodePath: string, parentFileNode: FileNode, ooxmlPackagePath: string): FileNode {
     const fileNode = new FileNode();
-    fileNode.fileName = fileName;
+    fileNode.nodePath = nodePath;
     fileNode.parent = parentFileNode;
     fileNode.ooxmlPackagePath = ooxmlPackagePath;
     parentFileNode.children.push(fileNode);
@@ -82,16 +80,12 @@ export class FileNode implements TreeItem {
 
   private _status: 'created' | 'deleted' | 'modified' | 'unchanged' = 'unchanged';
 
-  get description(): string {
-    return this.fileName;
-  }
-
   get collapsibleState(): TreeItemCollapsibleState | undefined {
-    return this.children.length ? TreeItemCollapsibleState.Expanded : TreeItemCollapsibleState.None;
+    return this.contextValue === FileNodeType.File ? TreeItemCollapsibleState.None : TreeItemCollapsibleState.Expanded;
   }
 
   get command(): Command | undefined {
-    if (this.fullPath && !this.children.length) {
+    if (this.nodePath && this.contextValue === FileNodeType.File) {
       return {
         command: 'ooxmlViewer.viewFile',
         title: 'View file',
@@ -101,8 +95,16 @@ export class FileNode implements TreeItem {
     }
   }
 
-  get contextValue(): string | undefined {
-    return this.isOOXMLPackage ? 'package' : this.children.length ? 'folder' : 'file';
+  get contextValue(): FileNodeType | undefined {
+    return this.isOOXMLPackage ? FileNodeType.Package : this.children.length ? FileNodeType.Folder : FileNodeType.File;
+  }
+
+  get resourceUri(): Uri {
+    return Uri.file(this.nodePath);
+  }
+
+  get tooltip(): string {
+    return this.nodePath;
   }
 
   get iconPath(): ThemeIcon | Uri | { light: Uri; dark: Uri } {
@@ -118,12 +120,8 @@ export class FileNode implements TreeItem {
       case 'modified':
         return Uri.file(join(__filename, '..', '..', 'resources', 'icons', 'asterisk.yellow.svg'));
       default:
-        return this.children.length ? ThemeIcon.Folder : ThemeIcon.File;
+        return this.contextValue === FileNodeType.File ? ThemeIcon.File : ThemeIcon.Folder;
     }
-  }
-
-  get tooltip(): string {
-    return this.fullPath;
   }
 
   /**
@@ -132,14 +130,9 @@ export class FileNode implements TreeItem {
   children: FileNode[] = [];
 
   /**
-   * Full path of the file (not set if the node is a folder or package)
+   * Full path of the file or folder
    */
-  fullPath = '';
-
-  /**
-   * Name of the file
-   */
-  fileName = '';
+  nodePath = '';
 
   /**
    * Parent file node
@@ -192,4 +185,10 @@ export class FileNode implements TreeItem {
   setUnchanged(): void {
     this._status = 'unchanged';
   }
+}
+
+export enum FileNodeType {
+  Package = 'package',
+  Folder = 'folder',
+  File = 'file',
 }
