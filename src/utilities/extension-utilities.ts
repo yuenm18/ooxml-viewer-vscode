@@ -1,5 +1,6 @@
 import { commands, Position, ProgressLocation, Range, TextEditorEdit, Uri, window, workspace } from 'vscode';
 import packageJson from '../../package.json';
+import { OOXMLCommand } from './ooxml-commands';
 
 const extensionName = packageJson.displayName;
 
@@ -74,8 +75,8 @@ export class ExtensionUtilities {
    *
    * @param {string} message The warning message.
    */
-  static async showWarning(message: string): Promise<void> {
-    await window.showWarningMessage(message, { modal: true });
+  static async showWarning(message: string, modal: boolean = false): Promise<void> {
+    await window.showWarningMessage(message, { modal: modal });
   }
 
   /**
@@ -154,7 +155,23 @@ export class ExtensionUtilities {
     });
   }
 
+  /**
+   * Diffs two files.
+   *
+   * @param filePath1 The first file path to diff.
+   * @param filePath2 The second file path to diff.
+   * @param title The title of the diff.
+   */
   static async openDiff(filePath1: string, filePath2: string, title: string): Promise<void> {
     await commands.executeCommand('vscode.diff', Uri.file(filePath1), Uri.file(filePath2), title);
+  }
+
+  /**
+   * Dispatches an ooxml command.
+   *
+   * @param ooxmlCommand The ooxmlCommand to dispatch.
+   */
+  static async dispatch(ooxmlCommand: OOXMLCommand): Promise<void> {
+    await commands.executeCommand(ooxmlCommand.command, ooxmlCommand.fileNode);
   }
 }

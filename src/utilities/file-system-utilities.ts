@@ -72,4 +72,18 @@ export class FileSystemUtilities {
   static async createDirectory(directoryPath: string): Promise<void> {
     await workspace.fs.createDirectory(Uri.file(directoryPath));
   }
+
+  /**
+   * Gets the size of a file in bytes. Returns -1 if unable to get file stats.
+   *
+   * @param {string} filePath The path to the file to get size.
+   */
+  static async getFileSize(filePath: string): Promise<number> {
+    try {
+      const fileStats = await workspace.fs.stat(Uri.file(filePath));
+      return fileStats.size;
+    } catch {
+      return -1;
+    }
+  }
 }

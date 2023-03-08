@@ -18,14 +18,12 @@ export class OOXMLPackageFacade {
    * @param storagePath The path to the extension's storage path.
    * @returns {Promise<OOXMLPackageFacade>} The OOXML package facade.
    */
-  static async create(filePath: string, treeDataProvider: OOXMLTreeDataProvider, storagePath: string): Promise<OOXMLPackageFacade> {
+  static create(filePath: string, treeDataProvider: OOXMLTreeDataProvider, storagePath: string): OOXMLPackageFacade {
     const ooxmlFileCache = new OOXMLPackageFileCache(filePath, storagePath);
     const packageRootNode = new OOXMLPackageTreeView(treeDataProvider, filePath);
     const ooxmlFileAccessor = new OOXMLPackageFileAccessor(filePath);
     const ooxmlPackage = new OOXMLPackage(filePath, ooxmlFileAccessor, packageRootNode, ooxmlFileCache, getExtensionSettings());
     const fileWatchers = new OOXMLPackageFileWatcher(filePath, ooxmlPackage);
-
-    await ooxmlPackage.openOOXMLPackage();
 
     return new OOXMLPackageFacade(filePath, ooxmlPackage, packageRootNode, fileWatchers, ooxmlFileCache);
   }
@@ -37,6 +35,13 @@ export class OOXMLPackageFacade {
     private fileWatchers: OOXMLPackageFileWatcher,
     private fileCache: OOXMLPackageFileCache,
   ) {}
+
+  /**
+   * Opens the ooxml package.
+   */
+  async openOOXMLPackage(): Promise<void> {
+    await this.ooxmlPackage.openOOXMLPackage();
+  }
 
   /**
    * Displays and formats the selected file.

@@ -3,6 +3,7 @@ import { OOXMLViewer } from './ooxml-viewer';
 import { FileNode, OOXMLTreeDataProvider } from './tree-view/ooxml-tree-view-provider';
 
 import packageJson from '../package.json';
+import { getExtensionSettings } from './ooxml-extension-settings';
 const extensionName = packageJson.displayName;
 
 let ooxmlViewer: OOXMLViewer;
@@ -12,27 +13,25 @@ export async function activate(context: ExtensionContext): Promise<void> {
   const treeView = window.createTreeView('ooxmlViewer', { treeDataProvider: treeDataProvider });
   treeView.title = extensionName;
 
-  ooxmlViewer = new OOXMLViewer(treeDataProvider, context);
+  ooxmlViewer = new OOXMLViewer(treeDataProvider, getExtensionSettings(), context);
   await ooxmlViewer.reset();
 
   context.subscriptions.push(
     treeView,
 
     window.registerTreeDataProvider('ooxmlViewer', treeDataProvider),
-    commands.registerCommand('ooxmlViewer.openOoxmlPackage', async (file: Uri) => ooxmlViewer.openOOXMLPackage(file.fsPath)),
-    commands.registerCommand('ooxmlViewer.removeOoxmlPackage', async (fileNode: FileNode) =>
+    commands.registerCommand('ooxmlViewer.openOoxmlPackage', (file: Uri) => ooxmlViewer.openOOXMLPackage(file.fsPath)),
+    commands.registerCommand('ooxmlViewer.removeOoxmlPackage', (fileNode: FileNode) =>
       ooxmlViewer.removeOOXMLPackage(fileNode.ooxmlPackagePath),
     ),
-    commands.registerCommand('ooxmlViewer.viewFile', async (fileNode: FileNode) =>
+    commands.registerCommand('ooxmlViewer.viewFile', (fileNode: FileNode) =>
       ooxmlViewer.viewFile(fileNode.ooxmlPackagePath, fileNode.nodePath),
     ),
     commands.registerCommand('ooxmlViewer.clear', () => ooxmlViewer.reset()),
-    commands.registerCommand('ooxmlViewer.showDiff', async (fileNode: FileNode) =>
+    commands.registerCommand('ooxmlViewer.showDiff', (fileNode: FileNode) =>
       ooxmlViewer.getDiff(fileNode.ooxmlPackagePath, fileNode.nodePath),
     ),
-    commands.registerCommand('ooxmlViewer.searchParts', async (fileNode: FileNode) =>
-      ooxmlViewer.searchOOXMLParts(fileNode.ooxmlPackagePath),
-    ),
+    commands.registerCommand('ooxmlViewer.searchParts', (fileNode: FileNode) => ooxmlViewer.searchOOXMLParts(fileNode.ooxmlPackagePath)),
   );
 }
 

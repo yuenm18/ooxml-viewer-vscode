@@ -69,6 +69,9 @@ After adding the file extension, restart VS Code and right click on the file to 
 This extension contributes the following variables to the [settings](https://code.visualstudio.com/docs/customization/userandworkspace):
 
 - `ooxmlViewer.preserveComments`: Boolean, determines if comments will be preserved in XML or removed on save. Defaults to true.
+- `ooxmlViewer.maximumOoxmlFileSizeBytes`: Number, the maximum size of an ooxml package that the ooxml viewer will be allowed to open. Defaults to 50,000,000.
+- `ooxmlViewer.maximumNumberOfOoxmlParts`: Number, the maximum number of parts the ooxml viewer will be allowed to open. Defaults to 1,000.
+- `ooxmlViewer.maximumXmlPartsFileSizeBytes`: Number, the maximum size of an xml file in bytes that the ooxml viewer will try to format. Defaults to 1,000,000.
 
 ## Release Notes
 

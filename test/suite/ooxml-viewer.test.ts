@@ -3,9 +3,11 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { createStubInstance, SinonStub, stub } from 'sinon';
 import { ExtensionContext } from 'vscode';
+import { OOXMLExtensionSettings } from '../../src/ooxml-extension-settings';
 import { OOXMLPackageFacade } from '../../src/ooxml-package/ooxml-package-facade';
 import { OOXMLViewer } from '../../src/ooxml-viewer';
 import { FileNode, OOXMLTreeDataProvider } from '../../src/tree-view/ooxml-tree-view-provider';
+import { ExtensionUtilities } from '../../src/utilities/extension-utilities';
 import { FileSystemUtilities } from '../../src/utilities/file-system-utilities';
 
 suite('OOXMLViewer', async function () {
@@ -13,6 +15,9 @@ suite('OOXMLViewer', async function () {
   let ooxmlViewer: OOXMLViewer;
   const stubs: SinonStub[] = [];
   const testFilePath = join(__dirname, '..', '..', '..', 'test', 'test-data', 'Test.pptx');
+  const settings = <OOXMLExtensionSettings>{
+    maximumOOXMLFileSizeBytes: 50000000,
+  };
 
   setup(function () {
     const context = {
@@ -23,7 +28,7 @@ suite('OOXMLViewer', async function () {
     } as unknown as ExtensionContext;
     const treeViewDataProvider = createStubInstance(OOXMLTreeDataProvider);
     treeViewDataProvider.rootFileNode = new FileNode();
-    ooxmlViewer = new OOXMLViewer(treeViewDataProvider, context);
+    ooxmlViewer = new OOXMLViewer(treeViewDataProvider, settings, context);
   });
 
   teardown(function () {
@@ -34,7 +39,7 @@ suite('OOXMLViewer', async function () {
   test('openOOXMLPackage should create ooxml package', async function () {
     const ooxmlPackage = createStubInstance(OOXMLPackageFacade);
     ooxmlPackage.ooxmlFilePath = testFilePath;
-    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(Promise.resolve(ooxmlPackage));
+    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(ooxmlPackage);
     stubs.push(createPackageStub);
 
     await ooxmlViewer.openOOXMLPackage(testFilePath);
@@ -45,7 +50,7 @@ suite('OOXMLViewer', async function () {
   test('openOOXMLPackage should remove and recreate ooxml package if it is called twice on the same file', async function () {
     const ooxmlPackage = createStubInstance(OOXMLPackageFacade);
     ooxmlPackage.ooxmlFilePath = testFilePath;
-    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(Promise.resolve(ooxmlPackage));
+    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(ooxmlPackage);
     stubs.push(createPackageStub);
 
     await ooxmlViewer.openOOXMLPackage(testFilePath);
@@ -55,10 +60,24 @@ suite('OOXMLViewer', async function () {
     expect(ooxmlPackage.dispose.callCount).to.be.eq(1);
   });
 
+  test('openOOXMLPackage should create ooxml package', async function () {
+    const ooxmlPackage = createStubInstance(OOXMLPackageFacade);
+    ooxmlPackage.ooxmlFilePath = testFilePath;
+    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(ooxmlPackage);
+    const getFileSizeStub = stub(FileSystemUtilities, 'getFileSize').returns(Promise.resolve(100000000));
+    const showWarningStub = stub(ExtensionUtilities, 'showWarning').returns(Promise.resolve());
+    stubs.push(createPackageStub, getFileSizeStub, showWarningStub);
+
+    await ooxmlViewer.openOOXMLPackage(testFilePath);
+
+    expect(createPackageStub.callCount).to.be.eq(0);
+    expect(showWarningStub.callCount).to.be.eq(1);
+  });
+
   test('removeOOXMLPackage should dispose ooxml package', async function () {
     const ooxmlPackage = createStubInstance(OOXMLPackageFacade);
     ooxmlPackage.ooxmlFilePath = testFilePath;
-    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(Promise.resolve(ooxmlPackage));
+    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(ooxmlPackage);
     stubs.push(createPackageStub);
     await ooxmlViewer.openOOXMLPackage(testFilePath);
 
@@ -70,7 +89,7 @@ suite('OOXMLViewer', async function () {
   test('removeOOXMLPackage should handle being called twice', async function () {
     const ooxmlPackage = createStubInstance(OOXMLPackageFacade);
     ooxmlPackage.ooxmlFilePath = testFilePath;
-    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(Promise.resolve(ooxmlPackage));
+    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(ooxmlPackage);
     stubs.push(createPackageStub);
     await ooxmlViewer.openOOXMLPackage(testFilePath);
     await ooxmlViewer.removeOOXMLPackage(testFilePath);
@@ -83,7 +102,7 @@ suite('OOXMLViewer', async function () {
   test('reset should reset all packages and clear cache', async function () {
     const ooxmlPackage = createStubInstance(OOXMLPackageFacade);
     const deleteFileStub = stub(FileSystemUtilities, 'deleteFile').returns(Promise.resolve());
-    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(Promise.resolve(ooxmlPackage));
+    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(ooxmlPackage);
     stubs.push(deleteFileStub, createPackageStub);
     await ooxmlViewer.openOOXMLPackage(testFilePath);
 
@@ -96,7 +115,7 @@ suite('OOXMLViewer', async function () {
   test('reset should not error if deleteFile throws', async function () {
     const ooxmlPackage = createStubInstance(OOXMLPackageFacade);
     const deleteFileStub = stub(FileSystemUtilities, 'deleteFile').throws(new Error());
-    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(Promise.resolve(ooxmlPackage));
+    const createPackageStub = stub(OOXMLPackageFacade, 'create').returns(ooxmlPackage);
     stubs.push(deleteFileStub, createPackageStub);
     await ooxmlViewer.openOOXMLPackage(testFilePath);
 

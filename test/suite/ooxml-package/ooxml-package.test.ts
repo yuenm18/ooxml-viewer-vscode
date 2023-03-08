@@ -4,7 +4,7 @@ import { createStubInstance, SinonStub, SinonStubbedInstance, stub } from 'sinon
 import { ThemeIcon, TreeItemCollapsibleState, Uri } from 'vscode';
 import { OOXMLExtensionSettings } from '../../../src/ooxml-extension-settings';
 import { OOXMLPackage } from '../../../src/ooxml-package/ooxml-package';
-import { OOXMLPackageFileAccessor } from '../../../src/ooxml-package/ooxml-package-file-accessor';
+import { OOXMLPackageFileAccessor, PackageFile } from '../../../src/ooxml-package/ooxml-package-file-accessor';
 import { OOXMLPackageFileCache } from '../../../src/ooxml-package/ooxml-package-file-cache';
 import { OOXMLPackageTreeView } from '../../../src/ooxml-package/ooxml-package-tree-view';
 import { FileNode } from '../../../src/tree-view/ooxml-tree-view-provider';
@@ -30,7 +30,10 @@ suite('OOXMLPackage', async function () {
     ooxmlFileAccessor = createStubInstance(OOXMLPackageFileAccessor);
     ooxmlPackageTreeView = createStubInstance(OOXMLPackageTreeView);
     cache = createStubInstance(OOXMLPackageFileCache);
-    extensionSettings = <OOXMLExtensionSettings>{};
+    extensionSettings = <OOXMLExtensionSettings>{
+      maximumNumberOfOOXMLParts: 1000,
+      maximumXmlPartsFileSizeBytes: 1000000,
+    };
 
     ooxmlPackage = new OOXMLPackage(ooxmlFilePath, ooxmlFileAccessor, ooxmlPackageTreeView, cache, extensionSettings);
   });
@@ -45,6 +48,7 @@ suite('OOXMLPackage', async function () {
       const commandsStub = stub(ExtensionUtilities, 'openFile');
       stubs.push(commandsStub);
       cache.getNormalFileCachePath.withArgs('file-path').returns('cached-file-path');
+      cache.getCachedNormalFile.withArgs('file-path').returns(Promise.resolve(new Uint8Array()));
 
       await ooxmlPackage.viewFile('file-path');
 
@@ -64,6 +68,20 @@ suite('OOXMLPackage', async function () {
       expect(cache.updateCachedFilesNoCompare.callCount).to.be.equal(1);
       expect(cache.updateCachedFilesNoCompare.args[0][0]).to.be.equal('file-path');
       expect(decoder.decode(cache.updateCachedFilesNoCompare.args[0][1])).to.be.equals('<?xml?>\r\n<!-- comment -->\r\n<Types></Types>');
+    });
+
+    test('should not format the cached file on open if minified file is too large', async function () {
+      const commandsStub = stub(ExtensionUtilities, 'openFile');
+      const minifyStub = stub(XmlFormatter, 'minify').returns(
+        new TextEncoder().encode(' '.repeat(extensionSettings.maximumXmlPartsFileSizeBytes + 1)),
+      );
+      stubs.push(commandsStub, minifyStub);
+      const encoder = new TextEncoder();
+      cache.getCachedNormalFile.withArgs('file-path').returns(Promise.resolve(encoder.encode('<?xml ?><!-- comment --><Types></Types>')));
+
+      await ooxmlPackage.viewFile('file-path');
+
+      expect(cache.updateCachedFilesNoCompare.callCount).to.be.equal(0);
     });
 
     test('should display error if an error is thrown', async function () {
@@ -205,21 +223,6 @@ suite('OOXMLPackage', async function () {
           done(error);
         });
     });
-
-    test('should show warning message if normal path does not exist', function (done) {
-      const msg = 'A file must be open in the OOXML Viewer to search its parts.';
-      const normalSubfolderPathStub = stub(cache, 'normalSubfolderPath').get(() => 'normal/path');
-      const fileExistsStub = stub(FileSystemUtilities, 'fileExists').returns(Promise.resolve(false));
-      const showInputStub = stub(ExtensionUtilities, 'showInput').throws(Promise.resolve('term'));
-      const findInFilesStub = stub(ExtensionUtilities, 'findInFiles').returns(Promise.resolve());
-      const showWarningStub = stub(ExtensionUtilities, 'showWarning').returns(Promise.resolve());
-      stubs.push(normalSubfolderPathStub, showInputStub, fileExistsStub, findInFilesStub, showWarningStub);
-
-      ooxmlPackage.searchOOXMLParts().then(() => {
-        expect(showWarningStub.args[0][0]).to.eq(msg);
-        done();
-      });
-    });
   });
 
   suite('openOOXMLPackage', () => {
@@ -252,6 +255,21 @@ suite('OOXMLPackage', async function () {
       expect(fileNode.children[0].children[0].iconPath).to.eq(ThemeIcon.File);
       expect(fileNode.children[0].children[0].contextValue).to.eq('file');
       expect(fileNode.children[0].children[0].collapsibleState).to.eq(TreeItemCollapsibleState.None);
+    });
+
+    test('should close if has too many parts', async function () {
+      const dispatchStub = stub(ExtensionUtilities, 'dispatch');
+      stubs.push(dispatchStub);
+      const packageContents: PackageFile[] = [];
+      packageContents.length = extensionSettings.maximumNumberOfOOXMLParts + 1;
+      const fileNode = new FileNode();
+      ooxmlFileAccessor.getPackageContents.returns(Promise.resolve(packageContents));
+      ooxmlPackageTreeView.getRootFileNode.returns(fileNode);
+
+      await ooxmlPackage.openOOXMLPackage();
+
+      expect(dispatchStub.callCount).to.be.equal(1);
+      expect(dispatchStub.args[0][0].command).to.be.equal('ooxmlViewer.removeOoxmlPackage');
     });
 
     test('should have a file icon on first open', async function () {

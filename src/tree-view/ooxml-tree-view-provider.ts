@@ -185,6 +185,19 @@ export class FileNode implements TreeItem {
   setUnchanged(): void {
     this._status = 'unchanged';
   }
+
+  /**
+   * Serializes the file node without the parent and child references to avoid circular references.
+   *
+   * @returns The json representation of the node.
+   */
+  toJSON(): TreeItem {
+    return {
+      ...this,
+      parent: undefined,
+      children: [],
+    };
+  }
 }
 
 export enum FileNodeType {

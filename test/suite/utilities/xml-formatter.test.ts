@@ -2,6 +2,35 @@ import { expect } from 'chai';
 import { XmlFormatter } from '../../../src/utilities/xml-formatter';
 
 suite('OOXMLViewer Xml Formatter', function () {
+  var isXmlTests = [
+    {
+      description: 'contents are xml',
+      content: `<?xml ?><Types></Types>`,
+      success: true,
+    },
+    {
+      description: "string that doesn't start with <?xml",
+      content: `notxml`,
+      success: false,
+    },
+    {
+      description: 'contents are binary',
+      content: `\x00\x01\x02\x03\x04`,
+      success: false,
+    },
+  ];
+
+  isXmlTests.forEach(function (args) {
+    test(`isXml where ${args.description} returns ${args.success}`, function () {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(args.content);
+
+      const equal = XmlFormatter.isXml(data);
+
+      expect(equal).to.equal(args.success);
+    });
+  });
+
   var areEqualTests = [
     {
       description: 'contents are the same',

@@ -1,15 +1,12 @@
 import { basename } from 'path';
-import packageJson from '../../package.json';
 import { OOXMLExtensionSettings } from '../ooxml-extension-settings';
 import { FileNode, FileNodeType } from '../tree-view/ooxml-tree-view-provider';
 import { ExtensionUtilities } from '../utilities/extension-utilities';
-import { FileSystemUtilities } from '../utilities/file-system-utilities';
+import { RemoveOOXMLCommand } from '../utilities/ooxml-commands';
 import { XmlFormatter } from '../utilities/xml-formatter';
 import { OOXMLPackageFileAccessor } from './ooxml-package-file-accessor';
 import { OOXMLPackageFileCache } from './ooxml-package-file-cache';
 import { OOXMLPackageTreeView } from './ooxml-package-tree-view';
-
-const extensionName = packageJson.displayName;
 
 /**
  * The OOXML Package
@@ -53,7 +50,7 @@ export class OOXMLPackage {
 
         const fileCachePath = this.cache.getNormalFileCachePath(filePath);
         await ExtensionUtilities.openFile(fileCachePath);
-      }, 'Opening XML');
+      }, `Opening ${filePath}`);
     } catch (err) {
       await ExtensionUtilities.showError(err);
     }
@@ -90,7 +87,7 @@ export class OOXMLPackage {
       if (this.cache.cachePathIsNormal(filePath)) {
         await ExtensionUtilities.withProgress(async () => {
           await this.formatXml(this.cache.getFilePathFromCacheFilePath(filePath));
-        }, 'Formatting XML');
+        }, `Formatting '${basename(filePath)}'`);
       }
     } catch (err) {
       await ExtensionUtilities.showError(err);
@@ -102,12 +99,7 @@ export class OOXMLPackage {
    */
   async searchOOXMLParts(): Promise<void> {
     try {
-      if (!(await FileSystemUtilities.fileExists(this.cache.normalSubfolderPath))) {
-        await ExtensionUtilities.showWarning(`A file must be open in the ${extensionName} to search its parts.`);
-        return;
-      }
-
-      const searchTerm = await ExtensionUtilities.showInput('Search OOXML Parts', 'Enter a search term.');
+      const searchTerm = await ExtensionUtilities.showInput(`Search '${this.packageName}' OOXML Parts`, 'Enter a search term.');
       if (!searchTerm) {
         return;
       }
@@ -128,7 +120,7 @@ export class OOXMLPackage {
         await this.cache.initialize();
         await this.ooxmlFileAccessor.load();
         await this.populateOOXMLViewer();
-      }, `Unpacking OOXML Parts`);
+      }, `Unpacking '${this.packageName}'`);
     } catch (err) {
       await ExtensionUtilities.showError(err);
     }
@@ -159,7 +151,8 @@ export class OOXMLPackage {
       const success = await this.ooxmlFileAccessor.updatePackage(filePath, fileMinXml);
       if (!success) {
         await ExtensionUtilities.showWarning(
-          `File not saved.\n${this.packageName} is open in another program.\nClose that program before making any changes.`,
+          `File not saved.\n'${this.packageName}' is open in another program.\nClose that program before making any changes.`,
+          true,
         );
 
         await ExtensionUtilities.makeActiveTextEditorDirty();
@@ -179,6 +172,16 @@ export class OOXMLPackage {
    */
   private async populateOOXMLViewer(): Promise<void> {
     const fileContents = await this.ooxmlFileAccessor.getPackageContents();
+
+    const ooxmlContentsLength = fileContents.length;
+    if (ooxmlContentsLength > this.extensionSettings.maximumNumberOfOOXMLParts) {
+      ExtensionUtilities.showWarning(
+        `'${this.packageName}' number of parts of '${ooxmlContentsLength}' exceeds the maximum of '${this.extensionSettings.maximumNumberOfOOXMLParts}'`,
+      );
+      await ExtensionUtilities.dispatch(new RemoveOOXMLCommand(this.treeView.getRootFileNode()));
+      return;
+    }
+
     for (const file of fileContents) {
       // ignore folder files
       if (file.isDirectory) {
@@ -305,6 +308,18 @@ export class OOXMLPackage {
    * @param {string} filePath The path of the file in the ooxml package.
    */
   private async formatXml(filePath: string): Promise<void> {
+    const data = await this.cache.getCachedNormalFile(filePath);
+    const fileSize = XmlFormatter.minify(data, true).byteLength;
+    if (fileSize > this.extensionSettings.maximumXmlPartsFileSizeBytes) {
+      if (XmlFormatter.isXml(data)) {
+        ExtensionUtilities.showWarning(
+          `'${basename(filePath)}' size of '${fileSize}' exceeds maximum of '${this.extensionSettings.maximumXmlPartsFileSizeBytes}' bytes`,
+        );
+      }
+
+      return;
+    }
+
     // Need to format the normal/prev and the compare separately for the diff to work
     const formatNormalXml = async () => {
       const fileContent = await this.cache.getCachedNormalFile(filePath);

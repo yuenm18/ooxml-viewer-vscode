@@ -8,7 +8,8 @@ const xmlFormatConfig = { indentation: '  ', collapseContent: true };
  * The xml formatter.
  */
 export class XmlFormatter {
-  private static isXml(text: string) {
+  static isXml(data: Uint8Array) {
+    const text = textDecoder.decode(data);
     return text.startsWith('<?xml');
   }
 
@@ -19,8 +20,7 @@ export class XmlFormatter {
    * @returns {Uint8Array} The formatted xml.
    */
   static format(data: Uint8Array): Uint8Array {
-    const text = textDecoder.decode(data);
-    if (!XmlFormatter.isXml(text)) {
+    if (!XmlFormatter.isXml(data)) {
       return data;
     }
 
@@ -37,11 +37,11 @@ export class XmlFormatter {
    * @returns {Uint8Array} The minified xml.
    */
   static minify(data: Uint8Array, preserveComments: boolean): Uint8Array {
-    const text = textDecoder.decode(data);
-    if (!XmlFormatter.isXml(text)) {
+    if (!XmlFormatter.isXml(data)) {
       return data;
     }
 
+    const text = textDecoder.decode(data);
     const xml = preserveComments
       ? text
       : text.replace(/\<![ \r\n\t]*(--([^\-]|[\r\n]|-[^\-])*--[ \r\n\t]*)\>/g, '').replace(/[ \r\n\t]{1,}xmlns/g, ' xmlns');

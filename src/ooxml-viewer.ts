@@ -1,6 +1,9 @@
+import { basename } from 'path';
 import { ExtensionContext } from 'vscode';
+import { OOXMLExtensionSettings } from './ooxml-extension-settings';
 import { OOXMLPackageFacade } from './ooxml-package/ooxml-package-facade';
 import { OOXMLTreeDataProvider } from './tree-view/ooxml-tree-view-provider';
+import { ExtensionUtilities } from './utilities/extension-utilities';
 import { FileSystemUtilities } from './utilities/file-system-utilities';
 
 /**
@@ -18,9 +21,14 @@ export class OOXMLViewer {
    *
    * @constructor
    * @param  {OOXMLTreeDataProvider} treeDataProvider The tree data provider.
+   * @param  {OOXMLExtensionSettings} settings The extension settings.
    * @param  {ExtensionContext} context The extension context.
    */
-  constructor(private treeDataProvider: OOXMLTreeDataProvider, private context: ExtensionContext) {
+  constructor(
+    private treeDataProvider: OOXMLTreeDataProvider,
+    private settings: OOXMLExtensionSettings,
+    private context: ExtensionContext,
+  ) {
     this.ooxmlPackages = [];
   }
 
@@ -32,8 +40,17 @@ export class OOXMLViewer {
   async openOOXMLPackage(filePath: string): Promise<void> {
     await this.removeOOXMLPackage(filePath);
 
-    const ooxmlPackage = await OOXMLPackageFacade.create(filePath, this.treeDataProvider, this.contextStorageUri);
+    const fileSize = await FileSystemUtilities.getFileSize(filePath);
+    if (fileSize > this.settings.maximumOOXMLFileSizeBytes) {
+      ExtensionUtilities.showWarning(
+        `'${basename(filePath)}' size of '${fileSize}' exceeds the max file size of '${this.settings.maximumOOXMLFileSizeBytes}' bytes`,
+      );
+      return;
+    }
+
+    const ooxmlPackage = OOXMLPackageFacade.create(filePath, this.treeDataProvider, this.contextStorageUri);
     this.ooxmlPackages.push(ooxmlPackage);
+    await ooxmlPackage.openOOXMLPackage();
   }
 
   /**
