@@ -2,6 +2,7 @@ import { basename } from 'path';
 import { OOXMLExtensionSettings } from '../ooxml-extension-settings';
 import { FileNode, FileNodeType } from '../tree-view/ooxml-tree-view-provider';
 import { ExtensionUtilities } from '../utilities/extension-utilities';
+import logger from '../utilities/logger';
 import { RemoveOOXMLCommand } from '../utilities/ooxml-commands';
 import { XmlFormatter } from '../utilities/xml-formatter';
 import { OOXMLPackageFileAccessor } from './ooxml-package-file-accessor';
@@ -88,6 +89,8 @@ export class OOXMLPackage {
         await ExtensionUtilities.withProgress(async () => {
           await this.formatXml(this.cache.getFilePathFromCacheFilePath(filePath));
         }, `Formatting '${basename(filePath)}'`);
+      } else {
+        logger.debug(`Unable to format file '${filePath}' since file is not in cache path`);
       }
     } catch (err) {
       await ExtensionUtilities.showError(err);
@@ -101,9 +104,11 @@ export class OOXMLPackage {
     try {
       const searchTerm = await ExtensionUtilities.showInput(`Search '${this.packageName}' OOXML Parts`, 'Enter a search term.');
       if (!searchTerm) {
+        logger.warn('No search term provided');
         return;
       }
 
+      logger.info(`Using search term '${searchTerm}'`);
       await ExtensionUtilities.findInFiles(searchTerm, this.cache.normalSubfolderPath);
     } catch (err) {
       await ExtensionUtilities.showError(err);
@@ -135,14 +140,17 @@ export class OOXMLPackage {
   async updateOOXMLFile(cacheFilePath: string): Promise<void> {
     try {
       if (!this.cache.cachePathIsNormal(cacheFilePath)) {
+        logger.debug(`Not updating OOXML file '${cacheFilePath}' since it is not in the normal cache path`);
         return;
       }
 
       const filePath = this.cache.getFilePathFromCacheFilePath(cacheFilePath);
+      logger.debug(`Updating OOXML file '${filePath}'`);
 
       const fileContents = await this.cache.getCachedNormalFile(filePath);
       const prevFileContents = await this.cache.getCachedPrevFile(filePath);
       if (XmlFormatter.areEqual(fileContents, prevFileContents)) {
+        logger.debug('Normal and prev file contents match. OOXML package will not be updated');
         return;
       }
 
@@ -171,6 +179,7 @@ export class OOXMLPackage {
    * Creates or updates tree view file nodes and creates cache files for comparison.
    */
   private async populateOOXMLViewer(): Promise<void> {
+    logger.debug('Populating OOXML Viewer');
     const fileContents = await this.ooxmlFileAccessor.getPackageContents();
 
     const ooxmlContentsLength = fileContents.length;
@@ -286,6 +295,7 @@ export class OOXMLPackage {
    * @param {string[]} filePaths The file paths in the ooxml file.
    */
   private async reformatOpenTabs(filePaths: string[]): Promise<void> {
+    logger.debug('Reformatting open tabs');
     const filePathsInOOXMLPackage = new Set(filePaths);
     const openTextDocumentsInCache = ExtensionUtilities.getOpenTextDocumentFilePaths()
       .filter(fileName => this.cache.pathBelongsToCache(fileName))
@@ -308,6 +318,7 @@ export class OOXMLPackage {
    * @param {string} filePath The path of the file in the ooxml package.
    */
   private async formatXml(filePath: string): Promise<void> {
+    logger.debug(`Formatting '${filePath}'`);
     const data = await this.cache.getCachedNormalFile(filePath);
     const fileSize = XmlFormatter.minify(data, true).byteLength;
     if (fileSize > this.extensionSettings.maximumXmlPartsFileSizeBytes) {

@@ -1,5 +1,6 @@
 import { commands, Position, ProgressLocation, Range, TextEditorEdit, Uri, window, workspace } from 'vscode';
 import packageJson from '../../package.json';
+import logger from './logger';
 import { OOXMLCommand } from './ooxml-commands';
 
 const extensionName = packageJson.displayName;
@@ -67,6 +68,7 @@ export class ExtensionUtilities {
       msg = err.message;
     }
 
+    logger.error(msg);
     await window.showErrorMessage(msg);
   }
 
@@ -76,6 +78,7 @@ export class ExtensionUtilities {
    * @param {string} message The warning message.
    */
   static async showWarning(message: string, modal: boolean = false): Promise<void> {
+    logger.warn(message);
     await window.showWarningMessage(message, { modal: modal });
   }
 
@@ -125,6 +128,7 @@ export class ExtensionUtilities {
    */
   static async closeTextDocument(fileName: string): Promise<void> {
     try {
+      logger.trace(`Closing text document '${fileName}'`);
       await window.showTextDocument(Uri.file(fileName), { preview: true, preserveFocus: false });
       await commands.executeCommand('workbench.action.closeActiveEditor');
     } catch {}
@@ -136,7 +140,9 @@ export class ExtensionUtilities {
    * @param {string} filePath The file path.
    */
   static async openFile(filePath: string): Promise<void> {
-    await commands.executeCommand('vscode.open', Uri.file(filePath));
+    const command = 'vscode.open';
+    logger.trace(`Executing '${command}' on '${filePath}'`);
+    await commands.executeCommand(command, Uri.file(filePath));
   }
 
   /**
@@ -146,7 +152,9 @@ export class ExtensionUtilities {
    * @param {string} filesToInclude The path to the files to include in the search.
    */
   static async findInFiles(query: string, filesToInclude: string): Promise<void> {
-    await commands.executeCommand('workbench.action.findInFiles', {
+    const command = 'workbench.action.findInFiles';
+    logger.trace(`Executing '${command}' on '${query}'`);
+    await commands.executeCommand(command, {
       query: query,
       filesToInclude: filesToInclude,
       triggerSearch: true,
@@ -163,6 +171,8 @@ export class ExtensionUtilities {
    * @param title The title of the diff.
    */
   static async openDiff(filePath1: string, filePath2: string, title: string): Promise<void> {
+    const command = 'vscode.diff';
+    logger.trace(`Executing '${command}' on '${filePath1}' and '${filePath2}'`);
     await commands.executeCommand('vscode.diff', Uri.file(filePath1), Uri.file(filePath2), title);
   }
 
@@ -172,6 +182,7 @@ export class ExtensionUtilities {
    * @param ooxmlCommand The ooxmlCommand to dispatch.
    */
   static async dispatch(ooxmlCommand: OOXMLCommand): Promise<void> {
+    logger.debug(`Dispatching '${ooxmlCommand.command}' on '${ooxmlCommand.fileNode}'`);
     await commands.executeCommand(ooxmlCommand.command, ooxmlCommand.fileNode);
   }
 }

@@ -1,4 +1,5 @@
 import { FileSystemError, Uri, workspace } from 'vscode';
+import logger from './logger';
 
 /**
  * Wraps file system access.
@@ -18,6 +19,7 @@ export class FileSystemUtilities {
         return false;
       }
 
+      logger.error(`Error check if file '${filePath}' exists`);
       throw err;
     }
 
@@ -31,6 +33,7 @@ export class FileSystemUtilities {
    * @returns {Promise<Uint8Array>} A promise resolving to the contents of the file.
    */
   static async readFile(filePath: string): Promise<Uint8Array> {
+    logger.trace(`Reading file '${filePath}'`);
     return await workspace.fs.readFile(Uri.file(filePath));
   }
 
@@ -43,12 +46,14 @@ export class FileSystemUtilities {
    */
   static async writeFile(filePath: string, data: Uint8Array): Promise<boolean> {
     try {
+      logger.trace(`Writing file '${filePath}'`);
       await workspace.fs.writeFile(Uri.file(filePath), data);
     } catch (err) {
       if ((err as FileSystemError)?.code.toLowerCase() === 'unknown' && (err as FileSystemError)?.message.toLowerCase().includes('ebusy')) {
         return false;
       }
 
+      logger.error(`Error writing file '${filePath}'`);
       throw err;
     }
 
@@ -61,6 +66,7 @@ export class FileSystemUtilities {
    * @param {string} filePath The path of the file to delete.
    */
   static async deleteFile(filePath: string): Promise<void> {
+    logger.trace(`Deleting file '${filePath}'`);
     await workspace.fs.delete(Uri.file(filePath), { recursive: true, useTrash: false });
   }
 
@@ -70,6 +76,7 @@ export class FileSystemUtilities {
    * @param {string} directoryPath The path to the directory to create.
    */
   static async createDirectory(directoryPath: string): Promise<void> {
+    logger.trace(`Creating directory '${directoryPath}'`);
     await workspace.fs.createDirectory(Uri.file(directoryPath));
   }
 
@@ -83,6 +90,7 @@ export class FileSystemUtilities {
       const fileStats = await workspace.fs.stat(Uri.file(filePath));
       return fileStats.size;
     } catch {
+      logger.error(`Unable to get size of '${filePath}'`);
       return -1;
     }
   }

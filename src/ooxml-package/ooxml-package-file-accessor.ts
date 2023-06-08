@@ -2,6 +2,7 @@ import JSZip from 'jszip';
 import { lookup } from 'mime-types';
 import { basename } from 'path';
 import { FileSystemUtilities } from '../utilities/file-system-utilities';
+import logger from '../utilities/logger';
 
 /**
  * Exposes read and write operations for the ooxml file.
@@ -24,6 +25,7 @@ export class OOXMLPackageFileAccessor {
    * Loads the ooxml package from the file system.
    */
   async load(): Promise<void> {
+    logger.debug(`Loading ooxml package '${this.ooxmlPackagePath}'`);
     const data = FileSystemUtilities.readFile(this.ooxmlPackagePath);
     this.zip = new JSZip();
     await this.zip.loadAsync(data);
@@ -37,7 +39,9 @@ export class OOXMLPackageFileAccessor {
    * @returns {Promise<boolean>} True or false depending on whether the package updated successfully.
    */
   async updatePackage(filePath: string, data: Uint8Array): Promise<boolean> {
+    logger.debug(`Updating '${filePath}' in OOXML package`);
     if (!this.zip) {
+      logger.warn('Unable to update package since zip does not exist');
       return false;
     }
 
@@ -51,7 +55,9 @@ export class OOXMLPackageFileAccessor {
    * @returns {PackageFile[]} The contents of the ooxml package.
    */
   getPackageContents(): Promise<PackageFile[]> {
+    logger.debug('Getting OOXML package contents');
     if (!this.zip) {
+      logger.warn('Unable to view package contents since zip does not exist');
       return Promise.resolve([]);
     }
 

@@ -4,6 +4,8 @@ import { FileNode, OOXMLTreeDataProvider } from './tree-view/ooxml-tree-view-pro
 
 import packageJson from '../package.json';
 import { getExtensionSettings } from './ooxml-extension-settings';
+import logger from './utilities/logger';
+
 const extensionName = packageJson.displayName;
 
 let ooxmlViewer: OOXMLViewer;
@@ -13,7 +15,10 @@ export async function activate(context: ExtensionContext): Promise<void> {
   const treeView = window.createTreeView('ooxmlViewer', { treeDataProvider: treeDataProvider });
   treeView.title = extensionName;
 
-  ooxmlViewer = new OOXMLViewer(treeDataProvider, getExtensionSettings(), context);
+  const settings = getExtensionSettings();
+  logger.info(`Starting '${extensionName}': ${JSON.stringify(settings, null, 4)}`);
+
+  ooxmlViewer = new OOXMLViewer(treeDataProvider, settings, context);
   await ooxmlViewer.reset();
 
   context.subscriptions.push(
@@ -36,5 +41,6 @@ export async function activate(context: ExtensionContext): Promise<void> {
 }
 
 export async function deactivate(): Promise<void> {
+  logger.info(`Deactivating '${extensionName}'`);
   await ooxmlViewer?.reset();
 }

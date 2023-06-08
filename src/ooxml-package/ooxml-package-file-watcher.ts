@@ -1,5 +1,6 @@
 import { basename, dirname } from 'path';
 import { Disposable, FileSystemWatcher, RelativePattern, workspace } from 'vscode';
+import logger from '../utilities/logger';
 import { OOXMLPackage } from './ooxml-package';
 
 /**
@@ -36,10 +37,17 @@ export class OOXMLPackageFileWatcher {
     // Prevent multiple comparison operations on large files
     let locked = false;
     fileSystemWatcher.onDidChange(async _ => {
+      logger.trace(`File system did change triggered`);
       if (!locked) {
+        logger.trace('Locking file system watcher');
         locked = true;
+
         await ooxmlPackage.openOOXMLPackage();
+
         locked = false;
+        logger.trace('Unlocking file system watcher');
+      } else {
+        logger.debug('File system watcher locked');
       }
     });
 

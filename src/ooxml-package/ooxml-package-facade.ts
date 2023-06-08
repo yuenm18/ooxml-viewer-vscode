@@ -1,5 +1,6 @@
 import { getExtensionSettings } from '../ooxml-extension-settings';
 import { OOXMLTreeDataProvider } from '../tree-view/ooxml-tree-view-provider';
+import logger from '../utilities/logger';
 import { OOXMLPackage } from './ooxml-package';
 import { OOXMLPackageFileAccessor } from './ooxml-package-file-accessor';
 import { OOXMLPackageFileCache } from './ooxml-package-file-cache';
@@ -72,6 +73,7 @@ export class OOXMLPackageFacade {
    * Disposes the ooxml package.
    */
   async dispose(): Promise<void> {
+    logger.debug(`Disposing '${this.ooxmlFilePath}'`);
     this.fileWatchers.dispose();
     this.packageRootNode.reset();
     await this.fileCache.reset();
