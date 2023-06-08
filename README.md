@@ -1,7 +1,7 @@
 # OOXML Viewer VSCode Extension
 
 [![Continuous Integration](https://github.com/yuenm18/ooxml-viewer-vscode/actions/workflows/ci.yaml/badge.svg)](https://github.com/yuenm18/ooxml-viewer-vscode/actions/workflows/ci.yaml)
-[![Visual Studio Marketplace](https://vsmarketplacebadges.dev/version/yuenm18.ooxml-viewer.svg)](https://marketplace.visualstudio.com/items?itemName=yuenm18.ooxml-viewer)
+[![Visual Studio Marketplace](https://img.shields.io/visual-studio-marketplace/v/yuenm18.ooxml-viewer)](https://marketplace.visualstudio.com/items?itemName=yuenm18.ooxml-viewer)
 [![Open in Remote - Containers](https://img.shields.io/static/v1?label=Remote%20-%20Containers&message=Open&color=blue&logo=visualstudiocode)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/yuenm18/ooxml-viewer-vscode)
 
 \* Please note, files must be stored locally, i.e. not in OneNote, Dropbox, etc.
@@ -46,7 +46,7 @@ To view a diff with the previous version of an OOXML part, right click on the pa
 
 ### Search all parts
 
-To search all parts, click "SEARCH PARTS" in the tree view title bar, enter your search term, and press enter/return. The initial search is not case sensitive or whole words only, but once the OOXML Viewer opens the search pane, all VS Code search options are available.
+To search all parts, right click on the OOXML package in the tree view, select "Search Parts", enter your search term, and press enter/return. The initial search is not case sensitive or whole words only, but once the OOXML Viewer opens the search pane, all VS Code search options are available.
 
 ![Searching all OOXML Parts](https://raw.githubusercontent.com/yuenm18/ooxml-viewer-vscode/master/resources/images/find-in-parts.gif)
 
