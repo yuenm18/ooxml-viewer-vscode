@@ -2,10 +2,12 @@
 
 ## [Unreleased]
 
+## [2.0.0] - 2023-06-07
+
 ### Added
 
-- Support multiple ooxml packages in the tree view [#34](https://github.com/yuenm18/ooxml-viewer-vscode/issues/34) [#40](https://github.com/yuenm18/ooxml-viewer-vscode/issues/40)
-- Add logging [#43](https://github.com/yuenm18/ooxml-viewer-vscode/issues/43)
+- Support for multiple ooxml packages in the tree view [#34](https://github.com/yuenm18/ooxml-viewer-vscode/issues/34) [#40](https://github.com/yuenm18/ooxml-viewer-vscode/issues/40)
+- Logging in output window [#43](https://github.com/yuenm18/ooxml-viewer-vscode/issues/43)
 
 ## [1.3.1] - 2023-01-16
 
@@ -98,7 +100,8 @@
 
 - Support for viewing the contents of OOXML documents
 
-[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.3.1...HEAD
+[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.3.1...v2.0.0
 [1.3.1]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.2.1...v1.2.2
