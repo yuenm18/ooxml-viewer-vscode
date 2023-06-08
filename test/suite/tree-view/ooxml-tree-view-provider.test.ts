@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { SinonStub, spy } from 'sinon';
 import { EventEmitter, ThemeIcon, TreeItemCollapsibleState, Uri } from 'vscode';
-import { FileNode, OOXMLTreeDataProvider } from '../../src/ooxml-tree-view-provider';
+import { FileNode, OOXMLTreeDataProvider } from '../../../src/tree-view/ooxml-tree-view-provider';
 
 suite('OOXMLViewer Tree View Provider', function () {
   const stubs: SinonStub[] = [];
@@ -59,8 +59,7 @@ suite('OOXMLViewer File Node', function () {
 
   setup(function () {
     fileNode = new FileNode();
-    fileNode.fullPath = 'tmp/file.docx';
-    fileNode.fileName = 'file.docx';
+    fileNode.nodePath = 'tmp/file.docx';
   });
 
   test('should have file icon if fileNode has no children', function () {
@@ -73,6 +72,17 @@ suite('OOXMLViewer File Node', function () {
     fileNode.children = [new FileNode()];
 
     expect(fileNode.iconPath).to.be.equal(ThemeIcon.Folder);
+  });
+  test('should have package  icon if fileNode is an ooxml package', function () {
+    fileNode.isOOXMLPackage = true;
+
+    expect((fileNode.iconPath as ThemeIcon).id).to.be.equal('package');
+  });
+
+  test('should have context value of "package" if fileNode is an ooxml package', function () {
+    fileNode.isOOXMLPackage = true;
+
+    expect(fileNode.contextValue).to.be.equal('package');
   });
 
   test('should have context value of "file" if fileNode has no children', function () {
@@ -137,7 +147,7 @@ suite('OOXMLViewer File Node', function () {
   });
 
   test('should return viewFile command if fileNode has no children', function () {
-    fileNode.fullPath = '/file.docx';
+    fileNode.nodePath = '/file.docx';
     fileNode.children = [];
 
     expect(fileNode.command?.command).to.be.equal('ooxmlViewer.viewFile');
@@ -145,10 +155,6 @@ suite('OOXMLViewer File Node', function () {
   });
 
   test('should have a tooltip as the full path', function () {
-    expect(fileNode.tooltip).to.be.equal(fileNode.fullPath);
-  });
-
-  test('should have the file name as a description', function () {
-    expect(fileNode.description).to.be.equal(fileNode.fileName);
+    expect(fileNode.tooltip).to.be.equal(fileNode.nodePath);
   });
 });

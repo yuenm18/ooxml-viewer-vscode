@@ -1,11 +1,12 @@
+import crypto from 'crypto';
 import { dirname, join, sep } from 'path';
-import { ExtensionContext, Uri, workspace } from 'vscode';
-import { ExtensionUtilities } from './extension-utilities';
+import { ExtensionUtilities } from '../utilities/extension-utilities';
+import { FileSystemUtilities } from '../utilities/file-system-utilities';
 
-export const CACHE_FOLDER_NAME = 'cache';
-export const NORMAL_SUBFOLDER_NAME = 'normal';
-export const PREV_SUBFOLDER_NAME = 'prev';
-export const COMPARE_SUBFOLDER_NAME = 'compare';
+const CACHE_FOLDER_NAME = 'cache';
+const NORMAL_SUBFOLDER_NAME = 'normal';
+const PREV_SUBFOLDER_NAME = 'prev';
+const COMPARE_SUBFOLDER_NAME = 'compare';
 
 /**
  * The file system cache for ooxml files.
@@ -18,14 +19,15 @@ export const COMPARE_SUBFOLDER_NAME = 'compare';
  * Compare cache files
  *  - used as a comparison point for diffs
  */
-export class OOXMLFileCache {
+export class OOXMLPackageFileCache {
+  private uniqueFileHash: string;
   /**
    * The base path where are files are stored in the cache.
    *
    * @returns {string} The base path of the cache.
    */
-  get cacheBasePath(): string {
-    return join(this.context.storageUri?.fsPath || '', CACHE_FOLDER_NAME);
+  private get cacheBasePath(): string {
+    return join(this.storagePath, CACHE_FOLDER_NAME, this.uniqueFileHash);
   }
 
   get normalSubfolderPath(): string {
@@ -36,9 +38,12 @@ export class OOXMLFileCache {
    * Creates a new instance of an ooxml file cache.
    *
    * @constructor
-   * @param {ExtensionContext} context The extension context.
+   * @param {string} filePath The relative path to the ooxml file.
+   * @param {string} storagePath The path to workspace storage directory.
    */
-  constructor(private context: ExtensionContext) {}
+  constructor(filePath: string, private storagePath: string) {
+    this.uniqueFileHash = crypto.createHash('sha256').update(filePath).digest('hex');
+  }
 
   /**
    * Caches a file and its prev and compare parts.
@@ -214,6 +219,24 @@ export class OOXMLFileCache {
   }
 
   /**
+   * Initializes the cache.
+   *
+   * @returns {Promise<void>}
+   */
+  async initialize(): Promise<void> {
+    await FileSystemUtilities.createDirectory(this.cacheBasePath);
+  }
+
+  /**
+   * Resets the cache.
+   *
+   * @returns {Promise<void>}
+   */
+  async reset(): Promise<void> {
+    await this.deleteFile(this.cacheBasePath, true);
+  }
+
+  /**
    * Caches a normal file.
    *
    * @param {string} filePath The file path in the ooxml file.
@@ -293,16 +316,6 @@ export class OOXMLFileCache {
   }
 
   /**
-   * Resets the cache.
-   *
-   * @returns {Promise<void>}
-   */
-  async reset(): Promise<void> {
-    await this.deleteFile(this.cacheBasePath, true);
-    await this.initializeCache();
-  }
-
-  /**
    * Create a file from a part of the zip file.
    *
    * @param {string} cachedFilePath The path to the cached file.
@@ -311,10 +324,10 @@ export class OOXMLFileCache {
    */
   private async writeFile(cachedFilePath: string, fileContents: Uint8Array): Promise<void> {
     try {
-      await workspace.fs.createDirectory(Uri.file(dirname(cachedFilePath)));
-      await workspace.fs.writeFile(Uri.file(cachedFilePath), fileContents);
+      await FileSystemUtilities.createDirectory(dirname(this.cacheBasePath));
+      await FileSystemUtilities.writeFile(cachedFilePath, fileContents);
     } catch (err) {
-      await ExtensionUtilities.handleError(err);
+      await ExtensionUtilities.showError(err);
     }
   }
 
@@ -327,10 +340,10 @@ export class OOXMLFileCache {
    */
   private async deleteFile(cachedFilePath: string, silentlyFail: boolean = false): Promise<void> {
     try {
-      await workspace.fs.delete(Uri.file(cachedFilePath), { recursive: true, useTrash: false });
+      await FileSystemUtilities.deleteFile(cachedFilePath);
     } catch (err) {
       if (!silentlyFail) {
-        await ExtensionUtilities.handleError(err);
+        await ExtensionUtilities.showError(err);
       }
     }
   }
@@ -343,20 +356,11 @@ export class OOXMLFileCache {
    */
   private async readFile(cachedFilePath: string): Promise<Uint8Array> {
     try {
-      return await workspace.fs.readFile(Uri.file(cachedFilePath));
+      return await FileSystemUtilities.readFile(cachedFilePath);
     } catch (err) {
-      await ExtensionUtilities.handleError(err);
+      await ExtensionUtilities.showError(err);
     }
 
     return new Uint8Array();
-  }
-
-  /**
-   * Initializes the cache.
-   *
-   * @returns {Promise<void>}
-   */
-  private async initializeCache(): Promise<void> {
-    await workspace.fs.createDirectory(Uri.file(this.cacheBasePath));
   }
 }

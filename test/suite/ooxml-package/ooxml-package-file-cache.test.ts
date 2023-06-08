@@ -2,40 +2,39 @@ import { expect } from 'chai';
 import { tmpdir } from 'os';
 import { basename, join } from 'path';
 import { SinonStub, stub } from 'sinon';
-import { ExtensionContext, Uri, window, workspace } from 'vscode';
-import { OOXMLFileCache } from '../../src/ooxml-file-cache';
+import { Uri, workspace } from 'vscode';
+import { OOXMLPackageFileCache } from '../../../src/ooxml-package/ooxml-package-file-cache';
+import { ExtensionUtilities } from '../../../src/utilities/extension-utilities';
+import { FileSystemUtilities } from '../../../src/utilities/file-system-utilities';
 
-suite('OOXMLViewer File Cache', function () {
+suite('OOXMLPackageFileCache', function () {
   const stubs: SinonStub[] = [];
-  let ooxmlFileCache: OOXMLFileCache;
+  let ooxmlFileCache: OOXMLPackageFileCache;
 
   const filePath = 'doc/document.xml';
-  const fileCachePath = join(tmpdir(), 'ooxml-viewer', 'cache', 'normal', 'doc/document.xml');
-  const prevFileCachePath = join(tmpdir(), 'ooxml-viewer', 'cache', 'prev', 'doc/document.xml');
-  const compareFileCachePath = join(tmpdir(), 'ooxml-viewer', 'cache', 'compare', 'doc/document.xml');
+  const cacheStoragePath = join(tmpdir(), 'ooxml-viewer');
+  const cacheBasePath = join(cacheStoragePath, 'cache', '3d1cd110b4520dcdf5889ed7339950a536f686f6fa749bc3d5072a79d9156b4e');
+  const fileCachePath = join(cacheBasePath, 'normal', 'doc/document.xml');
+  const prevFileCachePath = join(cacheBasePath, 'prev', 'doc/document.xml');
+  const compareFileCachePath = join(cacheBasePath, 'compare', 'doc/document.xml');
   const fileCacheUri = Uri.file(fileCachePath);
   const prevFileCacheUri = Uri.file(prevFileCachePath);
   const compareFileCacheUri = Uri.file(compareFileCachePath);
 
   setup(async function () {
-    const context = {
-      storageUri: {
-        fsPath: join(tmpdir(), 'ooxml-viewer'),
-      },
-    } as ExtensionContext;
+    ooxmlFileCache = new OOXMLPackageFileCache(filePath, join(tmpdir(), 'ooxml-viewer'));
 
-    ooxmlFileCache = new OOXMLFileCache(context);
+    await ooxmlFileCache.initialize();
+  });
 
+  teardown(async function () {
+    stubs.forEach(s => s.restore());
+    stubs.length = 0;
     await ooxmlFileCache.reset();
   });
 
-  teardown(function () {
-    stubs.forEach(s => s.restore());
-    stubs.length = 0;
-  });
-
   test('should create cachedFile, prevCachedFile, and compareCachedFile when createCachedFiles is called', async function () {
-    const writeFileStub = stub(ooxmlFileCache, <never>'writeFile').returns(Promise.resolve());
+    const writeFileStub = stub(FileSystemUtilities, 'writeFile').returns(Promise.resolve(true));
     stubs.push(writeFileStub);
     const fileContents = new TextEncoder().encode('test');
 
@@ -54,7 +53,7 @@ suite('OOXMLViewer File Cache', function () {
     'should create cachedFile and prevCachedFile with fileContents' +
       ' and compareCachedFile with empty contents when createCachedFilesWithEmptyCompare is called',
     async function () {
-      const writeFileStub = stub(ooxmlFileCache, <never>'writeFile').returns(Promise.resolve());
+      const writeFileStub = stub(FileSystemUtilities, 'writeFile').returns(Promise.resolve(true));
       stubs.push(writeFileStub);
       const fileContents = new TextEncoder().encode('test');
 
@@ -92,8 +91,8 @@ suite('OOXMLViewer File Cache', function () {
     async function () {
       const fileContents = new TextEncoder().encode('new content');
       const oldFileContents = new TextEncoder().encode('old content');
-      const readFileStub = stub(ooxmlFileCache, <never>'readFile').returns(Promise.resolve(oldFileContents));
-      const writeFileStub = stub(ooxmlFileCache, <never>'writeFile').returns(Promise.resolve());
+      const readFileStub = stub(FileSystemUtilities, 'readFile').returns(Promise.resolve(oldFileContents));
+      const writeFileStub = stub(FileSystemUtilities, 'writeFile').returns(Promise.resolve(true));
       stubs.push(readFileStub, writeFileStub);
 
       await ooxmlFileCache.updateCachedFiles(filePath, fileContents);
@@ -121,7 +120,7 @@ suite('OOXMLViewer File Cache', function () {
   });
 
   test('should deleted cachedFile, prevCachedFile and compareCachedFile when deleteNormalCachedFile is called', async function () {
-    const deleteFileStub = stub(ooxmlFileCache, <never>'deleteFile').returns(Promise.resolve());
+    const deleteFileStub = stub(FileSystemUtilities, 'deleteFile').returns(Promise.resolve());
     stubs.push(deleteFileStub);
 
     await ooxmlFileCache.deleteCachedFiles(filePath);
@@ -204,7 +203,7 @@ suite('OOXMLViewer File Cache', function () {
 
   test('should get cached file when getCachedPrevFile is called', async function () {
     const fileContents = new TextEncoder().encode('text');
-    const readFileStub = stub(ooxmlFileCache, <never>'readFile').returns(Promise.resolve(fileContents));
+    const readFileStub = stub(FileSystemUtilities, 'readFile').returns(Promise.resolve(fileContents));
     stubs.push(readFileStub);
 
     const result = await ooxmlFileCache.getCachedPrevFile(filePath);
@@ -216,7 +215,7 @@ suite('OOXMLViewer File Cache', function () {
 
   test('should get cached file when getCachedCompareFile is called', async function () {
     const fileContents = new TextEncoder().encode('text');
-    const readFileStub = stub(ooxmlFileCache, <never>'readFile').returns(Promise.resolve(fileContents));
+    const readFileStub = stub(FileSystemUtilities, 'readFile').returns(Promise.resolve(fileContents));
     stubs.push(readFileStub);
 
     const result = await ooxmlFileCache.getCachedCompareFile(filePath);
@@ -227,11 +226,11 @@ suite('OOXMLViewer File Cache', function () {
   });
 
   test('should reset the cache when reset is called when delete cacheBasePath does not exist', async function () {
-    workspace.fs.delete(Uri.file(ooxmlFileCache.cacheBasePath), { useTrash: false, recursive: true });
-    const showErrorStub = stub(window, 'showErrorMessage').returns(Promise.resolve(undefined));
+    workspace.fs.delete(Uri.file(cacheStoragePath), { useTrash: false, recursive: true });
+    const showErrorStub = stub(ExtensionUtilities, 'showError').returns(Promise.resolve(undefined));
     stubs.push(showErrorStub);
 
     expect(showErrorStub.callCount).to.equal(0);
-    expect(async () => await workspace.fs.stat(Uri.file(ooxmlFileCache.cacheBasePath))).to.not.throw;
+    expect(async () => await workspace.fs.stat(Uri.file(cacheStoragePath))).to.not.throw;
   });
 });
