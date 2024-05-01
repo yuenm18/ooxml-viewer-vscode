@@ -36,15 +36,22 @@ export class OOXMLPackageFileWatcher {
 
     // Prevent multiple comparison operations on large files
     let locked = false;
-    fileSystemWatcher.onDidChange(async _ => {
+    // Prevents multiple file system watcher triggers from unmodified files
+    let stats = { mtime: 0 };
+
+    fileSystemWatcher.onDidChange(async uri => {
       logger.trace(`File system did change triggered`);
-      if (!locked) {
+      const newStats = await workspace.fs.stat(uri);
+
+      if (!locked && stats.mtime !== newStats.mtime) {
         logger.trace('Locking file system watcher');
         locked = true;
 
         await ooxmlPackage.openOOXMLPackage();
 
         locked = false;
+        stats = await workspace.fs.stat(uri);
+
         logger.trace('Unlocking file system watcher');
       } else {
         logger.debug('File system watcher locked');
