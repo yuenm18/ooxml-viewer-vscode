@@ -2,9 +2,11 @@
 
 ## [Unreleased]
 
+## [2.0.1] - 2024-05-01
+
 ### Fixed
 
-- Fixes Compare to Previous functionality for Excel [#44](https://github.com/yuenm18/ooxml-viewer-vscode/issues/44)
+- Compare to Previous issue for Excel in Windows [#44](https://github.com/yuenm18/ooxml-viewer-vscode/issues/44)
 
 ## [2.0.0] - 2023-06-07
 
@@ -104,7 +106,8 @@
 
 - Support for viewing the contents of OOXML documents
 
-[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.0...HEAD
+[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.3.1...v2.0.0
 [1.3.1]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.2.2...v1.3.0
