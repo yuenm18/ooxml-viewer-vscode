@@ -41,7 +41,10 @@ export class OOXMLPackageFileCache {
    * @param {string} filePath The relative path to the ooxml file.
    * @param {string} storagePath The path to workspace storage directory.
    */
-  constructor(filePath: string, private storagePath: string) {
+  constructor(
+    filePath: string,
+    private storagePath: string,
+  ) {
     this.uniqueFileHash = crypto.createHash('sha256').update(filePath).digest('hex');
   }
 

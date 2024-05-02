@@ -13,7 +13,10 @@ export class OOXMLPackageTreeView {
    * @param {OOXMLTreeDataProvider} treeDataProvider The tree data provider.
    * @param {string} ooxmlPackagePath The path to the ooxml file.
    */
-  constructor(private treeDataProvider: OOXMLTreeDataProvider, private ooxmlPackagePath: string) {
+  constructor(
+    private treeDataProvider: OOXMLTreeDataProvider,
+    private ooxmlPackagePath: string,
+  ) {
     this.rootFileNode = this.createRootNode();
   }
 

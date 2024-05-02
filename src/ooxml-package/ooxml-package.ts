@@ -86,9 +86,12 @@ export class OOXMLPackage {
   async tryFormatDocument(filePath: string): Promise<void> {
     try {
       if (this.cache.cachePathIsNormal(filePath)) {
-        await ExtensionUtilities.withProgress(async () => {
-          await this.formatXml(this.cache.getFilePathFromCacheFilePath(filePath));
-        }, `Formatting '${basename(filePath)}'`);
+        await ExtensionUtilities.withProgress(
+          async () => {
+            await this.formatXml(this.cache.getFilePathFromCacheFilePath(filePath));
+          },
+          `Formatting '${basename(filePath)}'`,
+        );
       } else {
         logger.debug(`Unable to format file '${filePath}' since file is not in cache path`);
       }
