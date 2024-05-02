@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixes Compare to Previous functionality for Excel [#44](https://github.com/yuenm18/ooxml-viewer-vscode/issues/44)
+
 ## [2.0.0] - 2023-06-07
 
 ### Added
