@@ -40,7 +40,7 @@ export class OOXMLPackageFileWatcher {
     let stats = { mtime: 0 };
 
     fileSystemWatcher.onDidChange(async uri => {
-      logger.trace(`File system did change triggered`);
+      logger.trace('File system did change triggered');
       const newStats = await workspace.fs.stat(uri);
 
       if (!locked && stats.mtime !== newStats.mtime) {
@@ -56,6 +56,12 @@ export class OOXMLPackageFileWatcher {
       } else {
         logger.debug('File system watcher locked');
       }
+    });
+
+    fileSystemWatcher.onDidDelete(async uri => {
+      logger.trace('File system did delete triggered');
+
+      await ooxmlPackage.removePackage();
     });
 
     const openTextDocumentWatcher = workspace.onDidOpenTextDocument(async document => ooxmlPackage.tryFormatDocument(document.fileName));

@@ -50,7 +50,12 @@ export class OOXMLViewer {
       return;
     }
 
-    const ooxmlPackage = OOXMLPackageFacade.create(filePath, this.treeDataProvider, this.contextStorageUri);
+    const ooxmlPackage = OOXMLPackageFacade.create(
+      filePath,
+      this.treeDataProvider,
+      this.contextStorageUri,
+      this.removeOOXMLPackage.bind(this),
+    );
     this.ooxmlPackages.push(ooxmlPackage);
     await ooxmlPackage.openOOXMLPackage();
   }

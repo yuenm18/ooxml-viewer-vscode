@@ -17,13 +17,26 @@ export class OOXMLPackageFacade {
    * @param filePath The path to the ooxml package.
    * @param treeDataProvider The tree data provider.
    * @param storagePath The path to the extension's storage path.
+   * @param removeOOXMLPackage The function to remove the ooxml package.
    * @returns {Promise<OOXMLPackageFacade>} The OOXML package facade.
    */
-  static create(filePath: string, treeDataProvider: OOXMLTreeDataProvider, storagePath: string): OOXMLPackageFacade {
+  static create(
+    filePath: string,
+    treeDataProvider: OOXMLTreeDataProvider,
+    storagePath: string,
+    removeOOXMLPackage: (arg0: string) => Promise<void>,
+  ): OOXMLPackageFacade {
     const ooxmlFileCache = new OOXMLPackageFileCache(filePath, storagePath);
     const packageRootNode = new OOXMLPackageTreeView(treeDataProvider, filePath);
     const ooxmlFileAccessor = new OOXMLPackageFileAccessor(filePath);
-    const ooxmlPackage = new OOXMLPackage(filePath, ooxmlFileAccessor, packageRootNode, ooxmlFileCache, getExtensionSettings());
+    const ooxmlPackage = new OOXMLPackage(
+      filePath,
+      ooxmlFileAccessor,
+      packageRootNode,
+      ooxmlFileCache,
+      getExtensionSettings(),
+      removeOOXMLPackage,
+    );
     const fileWatchers = new OOXMLPackageFileWatcher(filePath, ooxmlPackage);
 
     return new OOXMLPackageFacade(filePath, ooxmlPackage, packageRootNode, fileWatchers, ooxmlFileCache);

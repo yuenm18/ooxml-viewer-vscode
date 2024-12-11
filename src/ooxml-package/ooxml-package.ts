@@ -27,6 +27,7 @@ export class OOXMLPackage {
    * @param {OOXMLPackageTreeView} treeView The package tree view.
    * @param {OOXMLPackageFileCache} cache The file cache for the ooxml package.
    * @param {OOXMLExtensionSettings} extensionSettings The extension settings.
+   * @param {(string) => Promise<void>} removeOOXMLPackage The function to remove the ooxml package.
    */
   constructor(
     private ooxmlFilePath: string,
@@ -34,6 +35,7 @@ export class OOXMLPackage {
     private treeView: OOXMLPackageTreeView,
     private cache: OOXMLPackageFileCache,
     private extensionSettings: OOXMLExtensionSettings,
+    private removeOOXMLPackage: (arg0: string) => Promise<void>,
   ) {
     this.isFirstOpen = true;
     this.packageName = basename(ooxmlFilePath);
@@ -176,6 +178,14 @@ export class OOXMLPackage {
     } catch (err) {
       await ExtensionUtilities.showError(err);
     }
+  }
+
+  /**
+   * Removes the OOXML package from the tree view.
+   */
+
+  async removePackage(): Promise<void> {
+    await this.removeOOXMLPackage(this.ooxmlFilePath);
   }
 
   /**
