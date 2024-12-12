@@ -179,6 +179,19 @@ export class OOXMLPackage {
   }
 
   /**
+   * Removes the OOXML package from the tree view.
+   */
+  async removePackage(): Promise<void> {
+    try {
+      await ExtensionUtilities.withProgress(async () => {
+        await ExtensionUtilities.dispatch(new RemoveOOXMLCommand(this.treeView.getRootFileNode()));
+      }, `Removing '${this.packageName}'`);
+    } catch (err) {
+      await ExtensionUtilities.showError(err);
+    }
+  }
+
+  /**
    * Creates or updates tree view file nodes and creates cache files for comparison.
    */
   private async populateOOXMLViewer(): Promise<void> {

@@ -58,6 +58,12 @@ export class OOXMLPackageFileWatcher {
       }
     });
 
+    fileSystemWatcher.onDidDelete(async uri => {
+      logger.trace('File system did delete triggered');
+
+      await ooxmlPackage.removePackage();
+    });
+
     const openTextDocumentWatcher = workspace.onDidOpenTextDocument(async document => ooxmlPackage.tryFormatDocument(document.fileName));
     const saveTextDocumentWatcher = workspace.onDidSaveTextDocument(async document => ooxmlPackage.updateOOXMLFile(document.fileName));
 

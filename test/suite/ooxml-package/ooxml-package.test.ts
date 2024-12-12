@@ -10,6 +10,7 @@ import { OOXMLPackageTreeView } from '../../../src/ooxml-package/ooxml-package-t
 import { FileNode } from '../../../src/tree-view/ooxml-tree-view-provider';
 import { ExtensionUtilities } from '../../../src/utilities/extension-utilities';
 import { FileSystemUtilities } from '../../../src/utilities/file-system-utilities';
+import { RemoveOOXMLCommand } from '../../../src/utilities/ooxml-commands';
 import { XmlFormatter } from '../../../src/utilities/xml-formatter';
 
 suite('OOXMLPackage', async function () {
@@ -466,6 +467,41 @@ suite('OOXMLPackage', async function () {
 
       expect(errorStub.callCount).to.eq(1);
       expect((errorStub.args[0][0] as Error).message).to.eq(err.message);
+    });
+  });
+
+  suite('removePackage', () => {
+    test('should call withProgress', async function () {
+      const withProgressStub = stub(ExtensionUtilities, 'withProgress');
+      stubs.push(withProgressStub);
+
+      await ooxmlPackage.removePackage();
+
+      expect(withProgressStub.callCount).to.equal(1);
+      expect(withProgressStub.args[0][0]).to.be.an.instanceOf(Function);
+      expect(withProgressStub.args[0][1]).to.equal("Removing 'package.json'");
+    });
+
+    test('should call dispatch with new RemoveOOXMLCommand', async function () {
+      const dispatchStub = stub(ExtensionUtilities, 'dispatch');
+      stubs.push(dispatchStub);
+
+      await ooxmlPackage.removePackage();
+
+      expect(dispatchStub.callCount).to.equal(1);
+      expect(dispatchStub.args[0][0]).to.be.instanceOf(RemoveOOXMLCommand);
+    });
+
+    test('should throw an error if an error is thrown', async function () {
+      const withProgressStub = stub(ExtensionUtilities, 'withProgress').throws(new Error('Pants on backwards'));
+      const errorStub = stub(ExtensionUtilities, 'showError').returns(Promise.resolve());
+      stubs.push(withProgressStub, errorStub);
+
+      await ooxmlPackage.removePackage();
+
+      expect(errorStub.callCount).to.equal(1);
+      expect(errorStub.args[0][0]).to.be.instanceOf(Error);
+      expect((errorStub.args[0][0] as Error).message).to.equal('Pants on backwards');
     });
   });
 });

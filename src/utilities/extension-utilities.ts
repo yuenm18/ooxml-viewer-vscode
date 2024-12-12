@@ -106,7 +106,7 @@ export class ExtensionUtilities {
         title: extensionName,
       },
       async progress => {
-        progress.report({ message: loadingMessage });
+        await progress.report({ message: loadingMessage });
         await func();
       },
     );
