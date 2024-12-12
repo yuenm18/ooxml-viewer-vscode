@@ -479,7 +479,7 @@ suite('OOXMLPackage', async function () {
 
       expect(withProgressStub.callCount).to.equal(1);
       expect(withProgressStub.args[0][0]).to.be.an.instanceOf(Function);
-      expect(withProgressStub.args[0][1]).to.equal("Removing 'package.json'");
+      expect(withProgressStub.args[0][1]).to.equal(`Removing '${ooxmlFilePath}'`);
     });
 
     test('should call dispatch with new RemoveOOXMLCommand', async function () {
@@ -493,7 +493,8 @@ suite('OOXMLPackage', async function () {
     });
 
     test('should throw an error if an error is thrown', async function () {
-      const withProgressStub = stub(ExtensionUtilities, 'withProgress').throws(new Error('Pants on backwards'));
+      const errMsg = 'Pants on backwards';
+      const withProgressStub = stub(ExtensionUtilities, 'withProgress').throws(new Error(errMsg));
       const errorStub = stub(ExtensionUtilities, 'showError').returns(Promise.resolve());
       stubs.push(withProgressStub, errorStub);
 
@@ -501,7 +502,7 @@ suite('OOXMLPackage', async function () {
 
       expect(errorStub.callCount).to.equal(1);
       expect(errorStub.args[0][0]).to.be.instanceOf(Error);
-      expect((errorStub.args[0][0] as Error).message).to.equal('Pants on backwards');
+      expect((errorStub.args[0][0] as Error).message).to.equal(errMsg);
     });
   });
 });
