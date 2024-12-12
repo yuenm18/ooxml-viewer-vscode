@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { join } from 'path';
-import { createStubInstance, restore, SinonSpy, SinonStub, SinonStubbedInstance, spy, stub } from 'sinon';
+import { createStubInstance, SinonStub, SinonStubbedInstance, stub } from 'sinon';
 import { ThemeIcon, TreeItemCollapsibleState, Uri } from 'vscode';
 import { OOXMLExtensionSettings } from '../../../src/ooxml-extension-settings';
 import { OOXMLPackage } from '../../../src/ooxml-package/ooxml-package';
@@ -22,7 +22,6 @@ suite('OOXMLPackage', async function () {
   let ooxmlPackageTreeView: SinonStubbedInstance<OOXMLPackageTreeView>;
   let cache: SinonStubbedInstance<OOXMLPackageFileCache>;
   let extensionSettings: OOXMLExtensionSettings;
-  let removeOOXMLPackage: SinonSpy;
 
   const stubs: SinonStub[] = [];
 
@@ -35,15 +34,13 @@ suite('OOXMLPackage', async function () {
       maximumNumberOfOOXMLParts: 1000,
       maximumXmlPartsFileSizeBytes: 1000000,
     };
-    removeOOXMLPackage = spy();
 
-    ooxmlPackage = new OOXMLPackage(ooxmlFilePath, ooxmlFileAccessor, ooxmlPackageTreeView, cache, extensionSettings, removeOOXMLPackage);
+    ooxmlPackage = new OOXMLPackage(ooxmlFilePath, ooxmlFileAccessor, ooxmlPackageTreeView, cache, extensionSettings);
   });
 
   teardown(function () {
     stubs.forEach(s => s.restore());
     stubs.length = 0;
-    restore();
   });
 
   suite('viewFile', async function () {
@@ -469,15 +466,6 @@ suite('OOXMLPackage', async function () {
 
       expect(errorStub.callCount).to.eq(1);
       expect((errorStub.args[0][0] as Error).message).to.eq(err.message);
-    });
-  });
-
-  suite('removePackage', () => {
-    test('should remove the package', async function () {
-      await ooxmlPackage.removePackage();
-
-      expect(removeOOXMLPackage.callCount).to.eq(1);
-      expect(removeOOXMLPackage.args[0][0]).to.eq(ooxmlFilePath);
     });
   });
 });
