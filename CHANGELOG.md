@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [2.0.2] - 2024-12-12
+
+### Fixed
+
+- Remove package from tree view if package is deleted in the file system [#47](https://github.com/yuenm18/ooxml-viewer-vscode/pull/47)
+
 ## [2.0.1] - 2024-05-01
 
 ### Fixed
@@ -106,7 +112,8 @@
 
 - Support for viewing the contents of OOXML documents
 
-[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.1...HEAD
+[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.2...HEAD
+[2.0.2]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.3.1...v2.0.0
 [1.3.1]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.3.0...v1.3.1
