@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.0.3] - 2024-12-17
+
 ### Fixed
 
 - Issue where extension could recursively delete all files [#48](https://github.com/yuenm18/ooxml-viewer-vscode/issues/48)
@@ -116,7 +118,8 @@
 
 - Support for viewing the contents of OOXML documents
 
-[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.2...HEAD
+[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.3...HEAD
+[2.0.3]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v1.3.1...v2.0.0
