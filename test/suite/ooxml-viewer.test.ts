@@ -124,4 +124,20 @@ suite('OOXMLViewer', async function () {
     expect(ooxmlPackage.dispose.callCount).to.be.eq(1);
     expect(deleteFileStub.callCount).to.be.eq(1);
   });
+
+  test('reset should not call deleteFile if there is no storageUri', async function () {
+    const context = {
+      storageUri: null,
+      subscriptions: [],
+    } as unknown as ExtensionContext;
+    const treeViewDataProvider = createStubInstance(OOXMLTreeDataProvider);
+    treeViewDataProvider.rootFileNode = new FileNode();
+    const ooxmlViewer = new OOXMLViewer(treeViewDataProvider, settings, context);
+    const deleteFileStub = stub(FileSystemUtilities, 'deleteFile').returns(Promise.resolve());
+    stubs.push(deleteFileStub);
+
+    await ooxmlViewer.reset();
+
+    expect(deleteFileStub.callCount).to.be.eq(0);
+  });
 });

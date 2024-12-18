@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Issue where extension could recursively delete all files [#48](https://github.com/yuenm18/ooxml-viewer-vscode/issues/48)
+
 ## [2.0.2] - 2024-12-12
 
 ### Fixed
