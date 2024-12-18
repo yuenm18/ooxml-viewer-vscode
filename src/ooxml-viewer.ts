@@ -14,7 +14,12 @@ export class OOXMLViewer {
   private ooxmlPackages: OOXMLPackageFacade[];
 
   private get contextStorageUri() {
-    return this.context.storageUri?.fsPath || '';
+    return (
+      this.context.storageUri?.fsPath ??
+      (() => {
+        throw new Error('Storage URI does not exist');
+      })()
+    );
   }
 
   /**

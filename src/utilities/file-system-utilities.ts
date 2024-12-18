@@ -1,4 +1,6 @@
+import assert from 'assert';
 import { FileSystemError, Uri, workspace } from 'vscode';
+import packageJson from '../../package.json';
 import logger from './logger';
 
 /**
@@ -67,6 +69,7 @@ export class FileSystemUtilities {
    */
   static async deleteFile(filePath: string): Promise<void> {
     logger.trace(`Deleting file '${filePath}'`);
+    assert.ok(filePath.includes(packageJson.name), "Attempting to delete a file that doesn't belong to the extension");
     await workspace.fs.delete(Uri.file(filePath), { recursive: true, useTrash: false });
   }
 
