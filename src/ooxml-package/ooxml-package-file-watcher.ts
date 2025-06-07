@@ -1,5 +1,5 @@
 import { basename, dirname } from 'path';
-import { Disposable, FileSystemWatcher, RelativePattern, workspace } from 'vscode';
+import { Disposable, FileSystemWatcher, RelativePattern, Uri, workspace } from 'vscode';
 import logger from '../utilities/logger';
 import { OOXMLPackage } from './ooxml-package';
 
@@ -39,7 +39,7 @@ export class OOXMLPackageFileWatcher {
     // Prevents multiple file system watcher triggers from unmodified files
     let stats = { mtime: 0 };
 
-    fileSystemWatcher.onDidChange(async uri => {
+    const handleExternalChange = async (uri: Uri) => {
       logger.trace(`File system did change triggered`);
       const newStats = await workspace.fs.stat(uri);
 
@@ -56,6 +56,14 @@ export class OOXMLPackageFileWatcher {
       } else {
         logger.debug('File system watcher locked');
       }
+    };
+
+    fileSystemWatcher.onDidChange(async uri => {
+      handleExternalChange(uri);
+    });
+
+    fileSystemWatcher.onDidCreate(async uri => {
+      handleExternalChange(uri);
     });
 
     fileSystemWatcher.onDidDelete(async uri => {
