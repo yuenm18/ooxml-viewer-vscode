@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [2.0.4] - 2025-06-08
+
+### Fixed
+
+- "Compare with Previous" functionality not working with PowerPoint on Mac [#36](https://github.com/yuenm18/ooxml-viewer-vscode/pull/36) [#51](https://github.com/yuenm18/ooxml-viewer-vscode/pull/51)
+
 ## [2.0.3] - 2024-12-17
 
 ### Fixed
@@ -118,7 +124,8 @@
 
 - Support for viewing the contents of OOXML documents
 
-[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.3...HEAD
+[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.4...HEAD
+[2.0.4]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.3...v2.0.4
 [2.0.3]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.0...v2.0.1
