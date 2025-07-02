@@ -42,11 +42,10 @@ export class XmlFormatter {
     }
 
     const text = textDecoder.decode(data);
-    const xml = preserveComments
-      ? text
-      : text.replace(/\<![ \r\n\t]*(--([^\-]|[\r\n]|-[^\-])*--[ \r\n\t]*)\>/g, '').replace(/[ \r\n\t]{1,}xmlns/g, ' xmlns');
-
-    const minifiedXml = xml.replace(/>\s{0,}</g, '><');
+    const minifiedXml = xmlFormatter.minify(text, {
+      filter: preserveComments ? undefined : node => node.type !== 'Comment',
+      collapseContent: true,
+    });
 
     return textEncoder.encode(minifiedXml);
   }

@@ -237,7 +237,7 @@ suite('OOXMLPackage', async function () {
         {
           filePath: 'doc/document.xml',
           isDirectory: false,
-          data: new TextEncoder().encode('<?xml?>'),
+          data: new TextEncoder().encode('<?xml?><Root/>'),
         },
       ];
       const fileNode = new FileNode();
@@ -278,7 +278,7 @@ suite('OOXMLPackage', async function () {
         {
           filePath: 'document.xml',
           isDirectory: false,
-          data: new TextEncoder().encode('<?xml?>'),
+          data: new TextEncoder().encode('<?xml?><Root/>'),
         },
       ];
       const fileNode = new FileNode();
@@ -296,7 +296,7 @@ suite('OOXMLPackage', async function () {
         {
           filePath: 'document.xml',
           isDirectory: false,
-          data: new TextEncoder().encode('<?xml?>'),
+          data: new TextEncoder().encode('<?xml?><Root/>'),
         },
       ];
       const fileNode = new FileNode();
@@ -316,13 +316,13 @@ suite('OOXMLPackage', async function () {
         {
           filePath: 'document.xml',
           isDirectory: false,
-          data: new TextEncoder().encode('<?xml?>'),
+          data: new TextEncoder().encode('<?xml?><NewRoot/>'),
         },
       ];
       const fileNode = new FileNode();
       ooxmlFileAccessor.getPackageContents.onCall(0).returns(Promise.resolve(packageContents));
       ooxmlFileAccessor.getPackageContents.onCall(1).returns(Promise.resolve(packageContents));
-      cache.getCachedPrevFile.returns(Promise.resolve(new TextEncoder().encode('<?xml?><></>')));
+      cache.getCachedPrevFile.returns(Promise.resolve(new TextEncoder().encode('<?xml?><Root/>')));
       ooxmlPackageTreeView.getRootFileNode.returns(fileNode);
 
       await ooxmlPackage.openOOXMLPackage();
@@ -337,7 +337,7 @@ suite('OOXMLPackage', async function () {
         {
           filePath: 'document.xml',
           isDirectory: false,
-          data: new TextEncoder().encode('<?xml?>'),
+          data: new TextEncoder().encode('<?xml?><Root/>'),
         },
       ];
       const fileNode = new FileNode();
@@ -357,7 +357,7 @@ suite('OOXMLPackage', async function () {
         {
           filePath: 'document.xml',
           isDirectory: false,
-          data: new TextEncoder().encode('<?xml?>'),
+          data: new TextEncoder().encode('<?xml?><Root/>'),
         },
       ];
       const fileNode = new FileNode();
@@ -379,7 +379,7 @@ suite('OOXMLPackage', async function () {
         {
           filePath: 'document.xml',
           isDirectory: false,
-          data: new TextEncoder().encode('<?xml?>'),
+          data: new TextEncoder().encode('<?xml?><Root/>'),
         },
       ];
       const fileNode = new FileNode();
@@ -411,8 +411,8 @@ suite('OOXMLPackage', async function () {
   suite('updateOOXMLPackage', () => {
     test('should update ooxml if there is a difference between the normal and the prev files', async function () {
       cache.cachePathIsNormal.returns(true);
-      cache.getCachedNormalFile.returns(Promise.resolve(new TextEncoder().encode('<?xml?>')));
-      cache.getCachedPrevFile.returns(Promise.resolve(new TextEncoder().encode('<?xml?><></>')));
+      cache.getCachedNormalFile.returns(Promise.resolve(new TextEncoder().encode('<?xml?><ModifiedRoot/>')));
+      cache.getCachedPrevFile.returns(Promise.resolve(new TextEncoder().encode('<?xml?><Root/>')));
       ooxmlFileAccessor.updatePackage.returns(Promise.resolve(true));
 
       await ooxmlPackage.updateOOXMLFile('file/path');
@@ -422,8 +422,8 @@ suite('OOXMLPackage', async function () {
 
     test('should not update ooxml if the cache path does not belong to the ', async function () {
       cache.cachePathIsNormal.returns(false);
-      cache.getCachedNormalFile.returns(Promise.resolve(new TextEncoder().encode('<?xml?>')));
-      cache.getCachedPrevFile.returns(Promise.resolve(new TextEncoder().encode('<?xml?><></>')));
+      cache.getCachedNormalFile.returns(Promise.resolve(new TextEncoder().encode('<?xml?><ModifiedRoot/>')));
+      cache.getCachedPrevFile.returns(Promise.resolve(new TextEncoder().encode('<?xml?><Root/>')));
       ooxmlFileAccessor.updatePackage.returns(Promise.resolve(true));
 
       await ooxmlPackage.updateOOXMLFile('file/path');
@@ -433,8 +433,8 @@ suite('OOXMLPackage', async function () {
 
     test('should not update ooxml if there is no difference between the normal and the prev files', async function () {
       cache.cachePathIsNormal.returns(true);
-      cache.getCachedNormalFile.returns(Promise.resolve(new TextEncoder().encode('<?xml?>')));
-      cache.getCachedPrevFile.returns(Promise.resolve(new TextEncoder().encode('<?xml?>')));
+      cache.getCachedNormalFile.returns(Promise.resolve(new TextEncoder().encode('<?xml?><Root/>')));
+      cache.getCachedPrevFile.returns(Promise.resolve(new TextEncoder().encode('<?xml?><Root/>')));
       ooxmlFileAccessor.updatePackage.returns(Promise.resolve(true));
 
       await ooxmlPackage.updateOOXMLFile('file/path');
@@ -444,8 +444,8 @@ suite('OOXMLPackage', async function () {
 
     test('should make editor dirty and displays warning if update package call fails', async function () {
       cache.cachePathIsNormal.returns(true);
-      cache.getCachedNormalFile.returns(Promise.resolve(new TextEncoder().encode('<?xml?>')));
-      cache.getCachedPrevFile.returns(Promise.resolve(new TextEncoder().encode('<?xml?><></>')));
+      cache.getCachedNormalFile.returns(Promise.resolve(new TextEncoder().encode('<?xml?><ModifiedRoot/>')));
+      cache.getCachedPrevFile.returns(Promise.resolve(new TextEncoder().encode('<?xml?><Root/>')));
       ooxmlFileAccessor.updatePackage.returns(Promise.resolve(false));
       const makeDirtyStub = stub(ExtensionUtilities, 'makeActiveTextEditorDirty').returns(Promise.resolve());
       const showWarningStub = stub(ExtensionUtilities, 'showWarning').returns(Promise.resolve());
