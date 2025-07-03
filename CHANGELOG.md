@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [2.0.5] - 2025-07-02
+
+### Fixed
+
+- XML space="preserve" not being respected during minification [#52](https://github.com/yuenm18/ooxml-viewer-vscode/pull/52)
+
 ## [2.0.4] - 2025-06-08
 
 ### Fixed
@@ -124,7 +130,8 @@
 
 - Support for viewing the contents of OOXML documents
 
-[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.4...HEAD
+[unreleased]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.5...HEAD
+[2.0.5]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.4...v2.0.5
 [2.0.4]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.3...v2.0.4
 [2.0.3]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/yuenm18/ooxml-viewer-vscode/compare/v2.0.1...v2.0.2
