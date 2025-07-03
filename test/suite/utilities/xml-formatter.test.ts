@@ -52,7 +52,7 @@ suite('OOXMLViewer Xml Formatter', function () {
     },
     {
       description: 'contents are not the same when minified',
-      content1: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>`,
+      content1: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Root/>`,
       content2: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
 </Types>`,
@@ -75,17 +75,17 @@ suite('OOXMLViewer Xml Formatter', function () {
   var minifyTests = [
     {
       preserveComments: true,
-      raw: `<?xml ?><!-- comment -->
+      raw: `<?xml?><!-- comment -->
 <Types>
 </Types>`,
-      minified: `<?xml ?><!-- comment --><Types></Types>`,
+      minified: `<?xml?><!-- comment --><Types></Types>`,
     },
     {
       preserveComments: false,
-      raw: `<?xml ?><!-- comment -->
+      raw: `<?xml?><!-- comment -->
 <Types>
 </Types>`,
-      minified: `<?xml ?><Types></Types>`,
+      minified: `<?xml?><Types></Types>`,
     },
   ];
 
@@ -96,6 +96,39 @@ suite('OOXMLViewer Xml Formatter', function () {
       const rawData = encoder.encode(args.raw);
 
       const minified = XmlFormatter.minify(rawData, args.preserveComments);
+
+      expect(decoder.decode(minified)).to.equal(args.minified);
+    });
+  });
+
+  var minifySpaceTests = [
+    {
+      description: 'xml:space is honored',
+      preserveComments: true,
+      raw: `<?xml?><BlankText xml:space="preserve">  </BlankText>`,
+      minified: `<?xml?><BlankText xml:space="preserve">  </BlankText>`,
+    },
+    {
+      description: 'xml:space is honored',
+      preserveComments: false,
+      raw: `<?xml?><BlankText xml:space="preserve">  </BlankText>`,
+      minified: `<?xml?><BlankText xml:space="preserve">  </BlankText>`,
+    },
+    {
+      description: 'xml:space is honored even if not the only attribute',
+      preserveComments: true,
+      raw: `<?xml?><BlankText xml:space="preserve" otherattr="attrval">  </BlankText>`,
+      minified: `<?xml?><BlankText xml:space="preserve" otherattr="attrval">  </BlankText>`,
+    },
+  ];
+
+  minifySpaceTests.forEach(function (args) {
+    test(`minify when preserve comments is ${args.preserveComments} ${args.description}`, function () {
+      const encoder = new TextEncoder();
+      const decoder = new TextDecoder();
+      const rawData = encoder.encode(args.raw);
+
+      const minified = XmlFormatter.minify(rawData, true);
 
       expect(decoder.decode(minified)).to.equal(args.minified);
     });
